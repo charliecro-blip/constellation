@@ -32,12 +32,34 @@ def test_index_serves_prototype_ui():
     assert response.status_code == 200
     assert "Constellation Prototype" in response.text
     assert "Generate Report" in response.text
+    assert "Search Person A Place" in response.text
 
 
 def test_health_endpoint():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_places_endpoint():
+    response = client.get("/places")
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert any(place["label"] == "Austin, TX" for place in payload)
+
+
+def test_places_search_endpoint_without_provider(monkeypatch):
+    monkeypatch.delenv("GEOAPIFY_API_KEY", raising=False)
+    monkeypatch.delenv("GEOCODING_API_KEY", raising=False)
+
+    response = client.get("/places/search", params={"q": "Austin"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] == "presets"
+    assert payload["provider_available"] is False
+    assert payload["results"]
+    assert payload["results"][0]["timezone"] == "America/Chicago"
 
 
 def test_chart_endpoint():
