@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from .confidence import confidence_markdown
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
+from .natal_profile import natal_profile_markdown
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .schemas import BirthData, RelationshipCalculation
@@ -238,6 +239,8 @@ def generate_relationship_report(
         ReportSection(title="Context", body=_context_summary(context)),
         ReportSection(title="Chart Confidence", body=confidence_markdown(relationship)),
         ReportSection(title="Bird's-Eye View", body=_birdseye(patterns, context)),
+        ReportSection(title=f"{relationship.person_a.name} Relational Profile", body=natal_profile_markdown(relationship.person_a)),
+        ReportSection(title=f"{relationship.person_b.name} Relational Profile", body=natal_profile_markdown(relationship.person_b)),
         ReportSection(title="Top Detected Patterns", body=_pattern_list(patterns)),
         ReportSection(
             title="Mutual Activation / Synastry",
@@ -263,10 +266,7 @@ def generate_relationship_report(
                 "No emotional safety patterns were selected yet.",
             ),
         ),
-        ReportSection(
-            title="Early Interpretation Layer",
-            body=_pattern_interpretations(patterns),
-        ),
+        ReportSection(title="Early Interpretation Layer", body=_pattern_interpretations(patterns)),
         ReportSection(title="Biographical Activation", body=_biographical_activation(context)),
         ReportSection(title="The Field Between You / Composite Core", body=_composite_summary(relationship)),
         ReportSection(title="Friction Loop", body=_friction_loop(patterns)),
