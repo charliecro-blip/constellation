@@ -33,9 +33,26 @@ def test_generate_report_markdown_contains_core_sections():
 
     assert "Relationship Field Map" in markdown
     assert "Context" in markdown
-    assert "Top Detected Patterns" in markdown
-    assert "Early Interpretation Layer" in markdown
-    assert "The Field Between You" in markdown
+    required_sections = [
+        "Context",
+        "Chart Confidence",
+        "Bird's-Eye View",
+        "Person A Relational Profile",
+        "Person B Relational Profile",
+        "Surface vs Engine",
+        "Top Detected Patterns",
+        "Mutual Activation / Synastry",
+        "Desire & Affection Layer",
+        "Emotional Safety Layer",
+        "Biographical Activation",
+        "The Field Between You / Composite Core",
+        "Friction Loop",
+        "Repair Path",
+        "One-Sentence Summary",
+        "Report Metadata",
+    ]
+    for section in required_sections:
+        assert section in markdown
     assert "Composite Sun" in markdown
     assert "Composite Moon" in markdown
 
@@ -56,3 +73,16 @@ def test_generate_report_includes_context_and_origin_story():
     assert "Origin story" in markdown
     assert "Biographical Activation" in markdown
     assert "not as decorative background" in markdown
+
+
+def test_generate_report_includes_export_metadata():
+    context = RelationshipContext(relationship_type="friend", status="current")
+    report = generate_report_from_birth_data(_person_a(), _person_b(), context=context)
+    markdown = report.to_markdown()
+
+    assert "Generated at (UTC):" in markdown
+    assert "House system:" in markdown
+    assert "Prototype output: yes" in markdown
+    assert "Person A: Person A" in markdown
+    assert "Person B: Person B" in markdown
+    assert "Relationship type: friend" in markdown
