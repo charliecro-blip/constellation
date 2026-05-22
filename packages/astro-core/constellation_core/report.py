@@ -8,6 +8,7 @@ calculation to structured output.
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import UTC, datetime
 
 from pydantic import BaseModel
 
@@ -221,6 +222,22 @@ def _repair_path(patterns: list[Pattern]) -> str:
     return "\n".join(f"- {principle}" for principle in principles)
 
 
+
+
+def _report_metadata(relationship: RelationshipCalculation, context: RelationshipContext | None) -> str:
+    generated_at = datetime.now(UTC).replace(microsecond=0).isoformat()
+    lines = [
+        "- Prototype output: yes (for testing and iteration)",
+        f"- Generated at (UTC): {generated_at}",
+        f"- House system: {relationship.person_a.house_system}",
+        f"- Person A: {relationship.person_a.name} | date {relationship.person_a.birth.date} | time known {relationship.person_a.birth.time_known}",
+        f"- Person B: {relationship.person_b.name} | date {relationship.person_b.birth.date} | time known {relationship.person_b.birth.time_known}",
+    ]
+    if context:
+        lines.append(f"- Relationship type: {context.relationship_type}")
+        lines.append(f"- Relationship status: {context.status}")
+    return "\n".join(lines)
+
 def _one_sentence_summary(patterns: list[Pattern]) -> str:
     if not patterns:
         return "This relationship map needs more validated chart data before a strong summary can be generated."
@@ -274,6 +291,7 @@ def generate_relationship_report(
         ReportSection(title="Friction Loop", body=_friction_loop(patterns)),
         ReportSection(title="Repair Path", body=_repair_path(patterns)),
         ReportSection(title="One-Sentence Summary", body=_one_sentence_summary(patterns)),
+        ReportSection(title="Report Metadata", body=_report_metadata(relationship, context)),
     ]
     return RelationshipReport(title=title, sections=sections)
 

@@ -33,6 +33,7 @@ def test_index_serves_prototype_ui():
     assert "Constellation Prototype" in response.text
     assert "Generate Report" in response.text
     assert "Search Person A Place" in response.text
+    assert "Testing sample scenario" in response.text
 
 
 def test_health_endpoint():
