@@ -64,9 +64,20 @@ class Aspect(BaseModel):
     orb: float
 
 
+class HouseOverlay(BaseModel):
+    """A planet from one person's chart landing in the other person's house."""
+
+    planet_owner: Literal["person_a", "person_b"]
+    house_owner: Literal["person_a", "person_b"]
+    body: str
+    house: int
+    body_longitude: float
+
+
 class RelationshipCalculation(BaseModel):
     person_a: Chart
     person_b: Chart
     synastry_aspects: list[Aspect]
+    house_overlays: list[HouseOverlay] = Field(default_factory=list)
     composite: Chart | None = None
     composite_aspects: list[Aspect] = Field(default_factory=list)
