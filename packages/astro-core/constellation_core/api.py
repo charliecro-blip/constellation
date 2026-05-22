@@ -6,7 +6,7 @@ persistence, payments, or a polished frontend.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, time
 import json
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -35,8 +35,8 @@ class CreateBirthProfileRequest(BaseModel):
     user_id: str | None = None
     anonymous_id: str | None = None
     display_name: str
-    birth_date: str
-    birth_time: str | None = None
+    birth_date: date
+    birth_time: time | None = None
     time_known: bool = True
     latitude: float
     longitude: float
