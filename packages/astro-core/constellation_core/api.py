@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from .chart import calculate_chart
 from .context import RelationshipContext
 from .patterns import Pattern, detect_relationship_patterns
+from .places import PlacePreset, list_place_presets
 from .relationship import calculate_relationship
 from .report import generate_relationship_report
 from .schemas import BirthData, Chart, RelationshipCalculation
@@ -51,6 +52,11 @@ def index() -> str:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/places", response_model=list[PlacePreset])
+def places_endpoint() -> list[PlacePreset]:
+    return list_place_presets()
 
 
 @app.post("/chart", response_model=Chart)
