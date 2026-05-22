@@ -11,6 +11,7 @@
   <header>
     <div class="eyebrow">Constellation Prototype</div>
     <h1>Relationship Field Map</h1>
+    <p class="tagline">An observatory for all your human relationships.</p>
     <p class="muted">Enter two birth records, choose the relationship context, and generate a draft map. Search for a birth place, use a preset, or enter coordinates manually.</p>
     <div id="provider-status" class="notice">Checking geocoding provider…</div>
   </header>
@@ -71,7 +72,8 @@
       </div>
 
       <div class="actions sticky-actions">
-        <button id="generate" type="submit">Generate Report</button>
+        <button id="generate" type="submit">Save + Generate Report</button>
+        <button class="secondary" id="save_relationship" type="button">Save Relationship</button>
         <button class="secondary" id="save" type="button">Save Browser Draft</button>
         <button class="secondary" id="restore" type="button">Restore Draft</button>
         <button class="secondary" id="sample" type="button">Reset Sample</button>
@@ -87,6 +89,14 @@
       <div id="preview" class="output-html">Generate a report to see the formatted preview.</div>
       <pre id="markdown" class="hidden">Generate a report to see Markdown.</pre>
     </section>
+    <section class="card stack">
+      <div class="actions" style="justify-content: space-between; gap: 12px;">
+        <div><h2>Constellation View</h2><p class="muted">Saved relationship snapshots across your field.</p></div>
+        <button class="secondary" id="refresh_constellation" type="button">Refresh</button>
+      </div>
+      <div id="constellation" class="constellation-list">Loading saved relationships…</div>
+    </section>
+
   </section>
 </main>
 
