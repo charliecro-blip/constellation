@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from .schemas import Aspect, Chart, RelationshipCalculation
+from .schemas import Aspect, Chart, HouseOverlay, RelationshipCalculation
 
 
 class Pattern(BaseModel):
@@ -65,6 +65,54 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 confidence="high",
             ))
 
+        if "sun" in pts and "moon" in pts:
+            patterns.append(Pattern(
+                id="synastry_sun_moon",
+                layer="synastry",
+                category="recognition",
+                priority=84 + bonus,
+                title="Sun and Moon contact",
+                evidence=[_evidence(aspect)],
+                key="synastry.sun_moon",
+                confidence="high",
+            ))
+
+        if pts == {"moon"}:
+            patterns.append(Pattern(
+                id="synastry_moon_moon",
+                layer="synastry",
+                category="emotional_translation",
+                priority=80 + bonus,
+                title="Moon to Moon contact",
+                evidence=[_evidence(aspect)],
+                key="synastry.moon_moon",
+                confidence="high",
+            ))
+
+        if "moon" in pts and "venus" in pts:
+            patterns.append(Pattern(
+                id="synastry_moon_venus",
+                layer="synastry",
+                category="affection",
+                priority=78 + bonus,
+                title="Moon and Venus contact",
+                evidence=[_evidence(aspect)],
+                key="synastry.moon_venus",
+                confidence="high",
+            ))
+
+        if "moon" in pts and "mars" in pts:
+            patterns.append(Pattern(
+                id="synastry_moon_mars",
+                layer="synastry",
+                category="emotional_activation",
+                priority=78 + bonus,
+                title="Moon and Mars contact",
+                evidence=[_evidence(aspect)],
+                key="synastry.moon_mars",
+                confidence="medium",
+            ))
+
         if "mercury" in pts and "mars" in pts:
             patterns.append(Pattern(
                 id="synastry_mercury_mars",
@@ -74,6 +122,18 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 title="Mercury and Mars contact",
                 evidence=[_evidence(aspect)],
                 key="synastry.mercury_mars",
+                confidence="medium",
+            ))
+
+        if pts == {"mercury"}:
+            patterns.append(Pattern(
+                id="synastry_mercury_mercury",
+                layer="synastry",
+                category="communication",
+                priority=72 + bonus,
+                title="Mercury to Mercury contact",
+                evidence=[_evidence(aspect)],
+                key="synastry.mercury_mercury",
                 confidence="medium",
             ))
 
@@ -100,6 +160,90 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 key="synastry.moon_pluto",
                 confidence="medium",
             ))
+
+        if "venus" in pts and "pluto" in pts:
+            patterns.append(Pattern(
+                id="synastry_venus_pluto",
+                layer="synastry",
+                category="attraction_intensity",
+                priority=82 + bonus,
+                title="Venus and Pluto contact",
+                evidence=[_evidence(aspect)],
+                key="synastry.venus_pluto",
+                confidence="medium",
+            ))
+
+        if "mars" in pts and "pluto" in pts:
+            patterns.append(Pattern(
+                id="synastry_mars_pluto",
+                layer="synastry",
+                category="intensity",
+                priority=82 + bonus,
+                title="Mars and Pluto contact",
+                evidence=[_evidence(aspect)],
+                key="synastry.mars_pluto",
+                confidence="medium",
+            ))
+
+        if "venus" in pts and "saturn" in pts:
+            patterns.append(Pattern(
+                id="synastry_venus_saturn",
+                layer="synastry",
+                category="bond_structure",
+                priority=76 + bonus,
+                title="Venus and Saturn contact",
+                evidence=[_evidence(aspect)],
+                key="synastry.venus_saturn",
+                confidence="medium",
+            ))
+
+        if "mars" in pts and "saturn" in pts:
+            patterns.append(Pattern(
+                id="synastry_mars_saturn",
+                layer="synastry",
+                category="action_structure",
+                priority=74 + bonus,
+                title="Mars and Saturn contact",
+                evidence=[_evidence(aspect)],
+                key="synastry.mars_saturn",
+                confidence="medium",
+            ))
+
+    return patterns
+
+
+def _overlay_evidence(overlay: HouseOverlay) -> str:
+    return f"{overlay.planet_owner} {overlay.body} in {overlay.house_owner} house {overlay.house}"
+
+
+def detect_house_overlay_patterns(relationship: RelationshipCalculation) -> list[Pattern]:
+    patterns: list[Pattern] = []
+    important_houses = {
+        1: ("identity_body", 76),
+        4: ("home_roots", 80),
+        5: ("romance_creativity", 74),
+        6: ("daily_life", 72),
+        7: ("partnership", 82),
+        8: ("intimacy_depth", 80),
+        10: ("public_direction", 74),
+        12: ("hidden_field", 76),
+    }
+    important_bodies = {"sun", "moon", "mercury", "venus", "mars", "saturn", "pluto", "north_node", "south_node"}
+
+    for overlay in relationship.house_overlays:
+        if overlay.house not in important_houses or overlay.body not in important_bodies:
+            continue
+        category, priority = important_houses[overlay.house]
+        patterns.append(Pattern(
+            id=f"overlay_{overlay.planet_owner}_{overlay.body}_in_{overlay.house_owner}_house_{overlay.house}",
+            layer="house_overlay",
+            category=category,
+            priority=priority,
+            title=f"{overlay.body.title()} in the other's {overlay.house} house",
+            evidence=[_overlay_evidence(overlay)],
+            key=f"overlay.house_{overlay.house}",
+            confidence="medium",
+        ))
 
     return patterns
 
@@ -137,6 +281,18 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
         pts = _points(aspect)
         bonus = _bonus(aspect)
 
+        if "venus" in pts and "mars" in pts:
+            patterns.append(Pattern(
+                id="composite_venus_mars",
+                layer="composite",
+                category="desire",
+                priority=82 + bonus,
+                title="Composite Venus and Mars contact",
+                evidence=[_evidence(aspect)],
+                key="composite.venus_mars",
+                confidence="high",
+            ))
+
         if "mars" in pts and "pluto" in pts:
             patterns.append(Pattern(
                 id="composite_mars_pluto",
@@ -147,6 +303,30 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
                 evidence=[_evidence(aspect)],
                 key="composite.mars_pluto",
                 confidence="high",
+            ))
+
+        if "venus" in pts and "saturn" in pts:
+            patterns.append(Pattern(
+                id="composite_venus_saturn",
+                layer="composite",
+                category="bond_structure",
+                priority=80 + bonus,
+                title="Composite Venus and Saturn contact",
+                evidence=[_evidence(aspect)],
+                key="composite.venus_saturn",
+                confidence="medium",
+            ))
+
+        if "sun" in pts and "saturn" in pts:
+            patterns.append(Pattern(
+                id="composite_sun_saturn",
+                layer="composite",
+                category="relationship_structure",
+                priority=80 + bonus,
+                title="Composite Sun and Saturn contact",
+                evidence=[_evidence(aspect)],
+                key="composite.sun_saturn",
+                confidence="medium",
             ))
 
         if "moon" in pts and "saturn" in pts:
@@ -178,6 +358,7 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
 
 def detect_relationship_patterns(relationship: RelationshipCalculation) -> list[Pattern]:
     patterns = detect_synastry_patterns(relationship)
+    patterns.extend(detect_house_overlay_patterns(relationship))
     if relationship.composite is not None:
         patterns.extend(detect_composite_patterns(relationship.composite, relationship.composite_aspects))
     return sorted(patterns, key=lambda pattern: pattern.priority, reverse=True)
