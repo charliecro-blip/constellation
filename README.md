@@ -4,13 +4,14 @@ A relational astrology MVP for generating non-scored Relationship Field Maps fro
 
 ## Current Build Target
 
-Phase 0 is a calculation spike:
+The current prototype is a calculation-first pipeline:
 
 1. Accept birth date, local birth time, latitude, longitude, and timezone.
-2. Calculate natal placements.
-3. Calculate Ascendant, MC, and houses when birth time is known.
-4. Output normalized JSON.
-5. Validate against known chart examples before building interpretation.
+2. Calculate natal placements, Ascendant, MC, and houses when birth time is known.
+3. Calculate synastry aspects, house overlays, and midpoint composite placements.
+4. Detect and weight relationship patterns.
+5. Generate a draft Markdown Relationship Field Map.
+6. Expose the pipeline through CLI commands and a minimal FastAPI app.
 
 ## Product Doctrine
 
@@ -43,16 +44,55 @@ python -m constellation_core.cli --name Example --date YYYY-MM-DD --time HH:MM -
 The relationship CLI accepts two birth-data JSON fixture files.
 
 ```bash
-python -m constellation_core.relationship_cli --person-a data/fixtures/person_a_birth.json --person-b data/fixtures/person_b_birth.json --house-system whole_sign --output data/sample-output/relationship.json
+python -m constellation_core.relationship_cli --person-a data/fixtures/example_person_a_birth.json --person-b data/fixtures/example_person_b_birth.json --house-system whole_sign --output data/sample-output/relationship.json
 ```
+
+Generate ranked patterns:
+
+```bash
+python -m constellation_core.patterns_cli --person-a data/fixtures/example_person_a_birth.json --person-b data/fixtures/example_person_b_birth.json --house-system whole_sign
+```
+
+Generate a draft Markdown Relationship Field Map:
+
+```bash
+python -m constellation_core.report_cli --person-a data/fixtures/example_person_a_birth.json --person-b data/fixtures/example_person_b_birth.json --context data/fixtures/example_romantic_context.json --house-system whole_sign --output data/sample-output/report.md
+```
+
+Validate a known chart fixture:
+
+```bash
+python -m constellation_core.validate_fixture_cli data/fixtures/my_validation_fixture.json --house-system whole_sign
+```
+
+## API Usage
+
+Run the local API:
+
+```bash
+uvicorn constellation_core.api:app --reload
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Available endpoints:
+
+- `GET /health`
+- `POST /chart`
+- `POST /relationship`
+- `POST /report`
 
 ## Near-Term Roadmap
 
-- Phase 0: chart calculation core.
-- Phase 1: synastry and midpoint composite JSON.
-- Phase 2: ranked signature detector.
-- Phase 3: structured Relationship Field Map generator.
-- Phase 4: minimal web UI.
+- Validate calculations against trusted chart software.
+- Add real validation fixtures.
+- Add more pattern detectors and interpretation blocks.
+- Add geocoding and historical timezone lookup.
+- Add a minimal web UI.
 
 ## Working Principle
 
