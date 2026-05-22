@@ -18,6 +18,7 @@ from .natal_profile import natal_profile_markdown
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .schemas import BirthData, RelationshipCalculation
+from .surface_engine import surface_engine_markdown
 from .weighting import weight_patterns
 
 
@@ -242,6 +243,7 @@ def generate_relationship_report(
         ReportSection(title=f"{relationship.person_a.name} Relational Profile", body=natal_profile_markdown(relationship.person_a)),
         ReportSection(title=f"{relationship.person_b.name} Relational Profile", body=natal_profile_markdown(relationship.person_b)),
         ReportSection(title="Top Detected Patterns", body=_pattern_list(patterns)),
+        ReportSection(title="Surface vs Engine", body=surface_engine_markdown(patterns)),
         ReportSection(
             title="Mutual Activation / Synastry",
             body=_interpretation_for_categories(
