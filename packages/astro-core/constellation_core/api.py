@@ -7,6 +7,7 @@ persistence, payments, or a polished frontend.
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from .chart import calculate_chart
@@ -15,6 +16,7 @@ from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .report import generate_relationship_report
 from .schemas import BirthData, Chart, RelationshipCalculation
+from .web import INDEX_HTML
 from .weighting import weight_patterns
 
 
@@ -39,6 +41,11 @@ app = FastAPI(
     version="0.1.0",
     description="Calculation-first API for relational astrology maps.",
 )
+
+
+@app.get("/", response_class=HTMLResponse)
+def index() -> str:
+    return INDEX_HTML
 
 
 @app.get("/health")
