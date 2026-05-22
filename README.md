@@ -22,6 +22,30 @@ Phase 0 is a calculation spike:
 - Strong contact is not the same as healthy contact.
 - Every friction point should eventually produce a repair path.
 
+## Setup
+
+Install the package in editable mode with development dependencies, then run the tests.
+
+```bash
+python -m pip install --upgrade pip
+pip install -e '.[dev]'
+pytest -q
+```
+
+## CLI Usage
+
+The Phase 0 CLI accepts birth data with latitude, longitude, and timezone directly. Place lookup comes later.
+
+```bash
+python -m constellation_core.cli --name Example --date YYYY-MM-DD --time HH:MM --lat 0 --lon 0 --timezone UTC --house-system whole_sign
+```
+
+The relationship CLI accepts two birth-data JSON fixture files.
+
+```bash
+python -m constellation_core.relationship_cli --person-a data/fixtures/person_a_birth.json --person-b data/fixtures/person_b_birth.json --house-system whole_sign --output data/sample-output/relationship.json
+```
+
 ## Near-Term Roadmap
 
 - Phase 0: chart calculation core.
