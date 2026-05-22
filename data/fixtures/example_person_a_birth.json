@@ -1,0 +1,9 @@
+{
+  "name": "Example Person A",
+  "date": "1992-01-03",
+  "time": "17:37",
+  "time_known": true,
+  "latitude": 29.4252,
+  "longitude": -98.4946,
+  "timezone": "America/Chicago"
+}
