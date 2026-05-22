@@ -13,11 +13,11 @@ const constellationEl = document.getElementById("constellation");
 let currentMarkdown = "";
 let currentDownloadUrl = "";
 let currentSavedRelationship = null;
-let placePresets = [];
 let searchResults = { a: [], b: [] };
 const draftKey = "constellation.relationshipForm.v1";
 
-const sample = { a_name: "You", a_date: "1992-01-03", a_time: "17:37", a_time_known: "true", a_place_preset: "san_antonio_tx", a_place_query: "San Antonio, TX", a_latitude: "29.4252", a_longitude: "-98.4946", a_timezone: "America/Chicago", b_name: "Someone", b_date: "1990-07-15", b_time: "09:15", b_time_known: "true", b_place_preset: "new_york_ny", b_place_query: "New York, NY", b_latitude: "40.7128", b_longitude: "-74.0060", b_timezone: "America/New_York", relationship_type: "romantic", status: "current", user_question: "What is the dynamic between us?", origin_story: "We met unexpectedly and the connection felt vivid from the beginning.", known_themes: "attraction, communication, timing", house_system: "whole_sign" };
+const defaultState = { a_name: "", a_date: "", a_time: "", a_time_known: "true", a_place_query: "", a_latitude: "", a_longitude: "", a_timezone: "", b_name: "", b_date: "", b_time: "", b_time_known: "true", b_place_query: "", b_latitude: "", b_longitude: "", b_timezone: "", relationship_type: "romantic", status: "current", user_question: "", origin_story: "", known_themes: "", house_system: "placidus" };
+const sample = { a_name: "You", a_date: "1992-01-03", a_time: "17:37", a_time_known: "true", a_place_query: "San Antonio, TX", a_latitude: "29.4252", a_longitude: "-98.4946", a_timezone: "America/Chicago", b_name: "Someone", b_date: "1990-07-15", b_time: "09:15", b_time_known: "true", b_place_query: "New York, NY", b_latitude: "40.7128", b_longitude: "-74.0060", b_timezone: "America/New_York", relationship_type: "romantic", status: "current", user_question: "What is the dynamic between us?", origin_story: "We met unexpectedly and the connection felt vivid from the beginning.", known_themes: "attraction, communication, timing", house_system: "placidus" };
 
 function setForm(values) { for (const [key, value] of Object.entries(values)) { const field = form.elements[key]; if (field) field.value = value; } updateTimeKnown("a"); updateTimeKnown("b"); }
 function formValues() { const values = {}; for (const element of Array.from(form.elements)) { if (element.name) values[element.name] = element.value; } return values; }
@@ -25,8 +25,7 @@ function saveDraft() { localStorage.setItem(draftKey, JSON.stringify(formValues(
 function restoreDraft() { const raw = localStorage.getItem(draftKey); if (!raw) { statusEl.textContent = "No browser draft saved yet."; return; } setForm(JSON.parse(raw)); statusEl.textContent = "Browser draft restored."; }
 function updateTimeKnown(prefix) { const known = form.elements[`${prefix}_time_known`].value === "true"; form.elements[`${prefix}_time`].disabled = !known; if (!known) form.elements[`${prefix}_time`].value = ""; }
 function applyPlace(prefix, place) { form.elements[`${prefix}_latitude`].value = Number(place.latitude).toFixed(4); form.elements[`${prefix}_longitude`].value = Number(place.longitude).toFixed(4); form.elements[`${prefix}_timezone`].value = place.timezone; form.elements[`${prefix}_place_query`].value = place.label; }
-function applyPreset(prefix, id) { const preset = placePresets.find((place) => place.id === id); if (!preset) return; applyPlace(prefix, preset); }
-function populateSearchResults(prefix, results) { const select = form.elements[`${prefix}_place_result`]; select.innerHTML = '<option value="">Select a city result</option>'; searchResults[prefix] = results; for (let index = 0; index < results.length; index++) { const place = results[index]; const option = document.createElement("option"); option.value = String(index); option.textContent = `${place.label} — ${place.timezone}`; select.appendChild(option); } }
+function populateSearchResults(prefix, results) { const select = form.elements[`${prefix}_place_result`]; select.innerHTML = '<option value="">Select the closest birthplace</option>'; searchResults[prefix] = results; for (let index = 0; index < results.length; index++) { const place = results[index]; const option = document.createElement("option"); option.value = String(index); option.textContent = `${place.label} — ${place.timezone}`; select.appendChild(option); } }
 async function searchPlace(prefix) {
   const query = form.elements[`${prefix}_place_query`].value.trim();
   if (!query) { statusEl.textContent = "Enter a birthplace search first."; return; }
@@ -39,13 +38,13 @@ async function searchPlace(prefix) {
     if (results.length) {
       applyPlace(prefix, results[0]);
       statusEl.textContent = payload.provider_available
-        ? "City found. Use the results dropdown to choose a different match."
-        : (payload.message || "Fallback city match found.");
+        ? "Birthplace found. Choose this city or pick another nearby option."
+        : (payload.message || "Closest birthplace found from fallback data.");
       return;
     }
-    statusEl.textContent = payload.message || "No city results found. Try a broader city/state/country search or use advanced manual details.";
+    statusEl.textContent = payload.message || "No birthplace options found. Try a broader search or use advanced manual details.";
   } catch {
-    statusEl.textContent = "City search failed. You can still use advanced manual details.";
+    statusEl.textContent = "Birthplace search is unavailable right now. You can still use advanced manual details.";
   }
 }
 function person(prefix) { const timeKnown = form.elements[`${prefix}_time_known`].value === "true"; const timeValue = form.elements[`${prefix}_time`].value; return { display_name: form.elements[`${prefix}_name`].value, birth_date: form.elements[`${prefix}_date`].value, birth_time: timeKnown && timeValue ? timeValue : null, time_known: timeKnown, latitude: Number(form.elements[`${prefix}_latitude`].value), longitude: Number(form.elements[`${prefix}_longitude`].value), timezone: form.elements[`${prefix}_timezone`].value, birthplace_label: form.elements[`${prefix}_place_query`].value || null }; }
@@ -64,24 +63,23 @@ async function generateSavedReport(relationshipId) { const response = await fetc
 function relationshipLabel(item) { return `${item.relationship_type} • ${item.status}`; }
 async function loadConstellation() { constellationEl.innerHTML = "Loading saved relationships…"; const relResponse = await fetch("/saved-relationships"); if (!relResponse.ok) { constellationEl.innerHTML = '<div class="error">Could not load constellation.</div>'; return; } const relationships = await relResponse.json(); if (!relationships.length) { constellationEl.innerHTML = "No saved relationships yet. Save one to start your constellation."; return; } constellationEl.innerHTML = ""; for (const rel of relationships.slice(0, 12)) { const node = document.createElement("div"); node.className = "constellation-node"; node.innerHTML = `<strong>${escapeHtml(relationshipLabel(rel))}</strong><div class="small-note">${new Date(rel.created_at).toLocaleString()}</div><div class="small-note">themes: ${escapeHtml(rel.known_themes.join(", ") || "none")}</div>`; const action = document.createElement("button"); action.type = "button"; action.className = "secondary"; action.textContent = "Generate Report"; action.addEventListener("click", async () => { statusEl.textContent = "Generating report from saved relationship…"; try { await generateSavedReport(rel.id); statusEl.textContent = "Saved relationship report generated."; } catch (error) { statusEl.textContent = error.message; } }); node.appendChild(action); constellationEl.appendChild(node); } }
 
-async function loadPlaces() { const response = await fetch("/places"); placePresets = await response.json(); for (const prefix of ["a", "b"]) { const select = form.elements[`${prefix}_place_preset`]; for (const place of placePresets) { const option = document.createElement("option"); option.value = place.id; option.textContent = place.label; select.appendChild(option); } } const raw = localStorage.getItem(draftKey); setForm(raw ? JSON.parse(raw) : sample); }
-async function loadProviderStatus() { try { const response = await fetch("/geocoding/status"); const payload = await response.json(); providerStatus.textContent = payload.message; providerStatus.className = payload.provider_configured ? "notice" : "small-note"; } catch { providerStatus.textContent = "City search status unavailable. Advanced manual entry still works."; providerStatus.className = "small-note"; } }
+async function loadPlaces() { const raw = localStorage.getItem(draftKey); setForm(raw ? JSON.parse(raw) : defaultState); }
+async function loadProviderStatus() { try { await fetch("/geocoding/status"); providerStatus.textContent = "Search for the city where you were born."; providerStatus.className = "hint"; } catch { providerStatus.textContent = "Start typing a birthplace and choose the closest match."; providerStatus.className = "hint"; } }
 
 form.addEventListener("submit", async (event) => { event.preventDefault(); statusEl.textContent = "Saving relationship and generating report…"; generateButton.disabled = true; try { const relationship = await createSavedRelationship(); await generateSavedReport(relationship.id); await loadConstellation(); saveDraft(); statusEl.textContent = "Relationship mapped. Your constellation is updated."; } catch (error) { statusEl.textContent = error.message || "Request failed"; } finally { generateButton.disabled = false; } });
 saveRelationshipButton.addEventListener("click", async () => { statusEl.textContent = "Saving relationship only…"; try { await createSavedRelationship(); await loadConstellation(); saveDraft(); statusEl.textContent = "Relationship saved."; } catch (error) { statusEl.textContent = error.message; } });
 refreshConstellationButton.addEventListener("click", loadConstellation);
 document.getElementById("save").addEventListener("click", () => { saveDraft(); statusEl.textContent = "Browser draft saved."; });
 document.getElementById("restore").addEventListener("click", restoreDraft);
-document.getElementById("sample").addEventListener("click", () => { setForm(sample); applyPreset("a", sample.a_place_preset); applyPreset("b", sample.b_place_preset); statusEl.textContent = "Sample relationship restored."; });
+document.getElementById("sample").addEventListener("click", () => { setForm(sample); statusEl.textContent = "Sample relationship restored."; });
 document.getElementById("copy").addEventListener("click", async () => { if (!currentMarkdown) return; await navigator.clipboard.writeText(currentMarkdown); statusEl.textContent = "Markdown copied."; });
 previewTab.addEventListener("click", () => setTab("preview")); markdownTab.addEventListener("click", () => setTab("markdown"));
 form.elements.a_time_known.addEventListener("change", () => updateTimeKnown("a")); form.elements.b_time_known.addEventListener("change", () => updateTimeKnown("b"));
-form.elements.a_place_preset.addEventListener("change", (event) => applyPreset("a", event.target.value)); form.elements.b_place_preset.addEventListener("change", (event) => applyPreset("b", event.target.value));
 form.elements.a_place_result.addEventListener("change", (event) => { const place = searchResults.a[Number(event.target.value)]; if (place) applyPlace("a", place); });
 form.elements.b_place_result.addEventListener("change", (event) => { const place = searchResults.b[Number(event.target.value)]; if (place) applyPlace("b", place); });
 document.getElementById("a_search_button").addEventListener("click", () => searchPlace("a")); document.getElementById("b_search_button").addEventListener("click", () => searchPlace("b"));
 
-setForm(sample);
+setForm(defaultState);
 loadProviderStatus();
 loadPlaces().catch(() => {});
 loadConstellation().catch(() => { constellationEl.innerHTML = "Constellation view unavailable."; });
