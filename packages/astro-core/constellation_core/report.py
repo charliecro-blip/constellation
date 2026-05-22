@@ -16,6 +16,7 @@ from .interpretations import interpret_pattern
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .schemas import BirthData, RelationshipCalculation
+from .weighting import weight_patterns
 
 
 class ReportSection(BaseModel):
@@ -228,7 +229,8 @@ def generate_relationship_report(
     relationship: RelationshipCalculation,
     context: RelationshipContext | None = None,
 ) -> RelationshipReport:
-    patterns = detect_relationship_patterns(relationship)
+    raw_patterns = detect_relationship_patterns(relationship)
+    patterns = weight_patterns(raw_patterns, context)
 
     title = f"Relationship Field Map — {relationship.person_a.name} / {relationship.person_b.name}"
     sections = [
