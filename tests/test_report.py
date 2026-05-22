@@ -27,6 +27,7 @@ def test_generate_report_markdown_contains_core_sections():
 
     assert "Relationship Field Map" in markdown
     assert "Top Detected Patterns" in markdown
+    assert "Early Interpretation Layer" in markdown
     assert "The Field Between You" in markdown
     assert "Composite Sun" in markdown
     assert "Composite Moon" in markdown
