@@ -11,6 +11,7 @@ from collections import defaultdict
 
 from pydantic import BaseModel
 
+from .confidence import confidence_markdown
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .patterns import Pattern, detect_relationship_patterns
@@ -235,6 +236,7 @@ def generate_relationship_report(
     title = f"Relationship Field Map — {relationship.person_a.name} / {relationship.person_b.name}"
     sections = [
         ReportSection(title="Context", body=_context_summary(context)),
+        ReportSection(title="Chart Confidence", body=confidence_markdown(relationship)),
         ReportSection(title="Bird's-Eye View", body=_birdseye(patterns, context)),
         ReportSection(title="Top Detected Patterns", body=_pattern_list(patterns)),
         ReportSection(
