@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from .chart import calculate_chart
 from .context import RelationshipContext
-from .geocoding import PlaceSearchResponse, search_places
+from .geocoding import GeocodingStatus, PlaceSearchResponse, geocoding_status, search_places
 from .patterns import Pattern, detect_relationship_patterns
 from .places import PlacePreset, list_place_presets
 from .relationship import calculate_relationship
@@ -53,6 +53,11 @@ def index() -> str:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/geocoding/status", response_model=GeocodingStatus)
+def geocoding_status_endpoint() -> GeocodingStatus:
+    return geocoding_status()
 
 
 @app.get("/places", response_model=list[PlacePreset])
