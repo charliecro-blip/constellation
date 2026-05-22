@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from .chart import calculate_chart
 from .context import RelationshipContext
+from .geocoding import PlaceSearchResponse, search_places
 from .patterns import Pattern, detect_relationship_patterns
 from .places import PlacePreset, list_place_presets
 from .relationship import calculate_relationship
@@ -57,6 +58,11 @@ def health() -> dict[str, str]:
 @app.get("/places", response_model=list[PlacePreset])
 def places_endpoint() -> list[PlacePreset]:
     return list_place_presets()
+
+
+@app.get("/places/search", response_model=PlaceSearchResponse)
+def place_search_endpoint(q: str) -> PlaceSearchResponse:
+    return search_places(q)
 
 
 @app.post("/chart", response_model=Chart)
