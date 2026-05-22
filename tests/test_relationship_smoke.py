@@ -29,4 +29,6 @@ def test_calculate_relationship_smoke():
     assert relationship.composite is not None
     assert "sun" in relationship.composite.placements
     assert isinstance(relationship.synastry_aspects, list)
+    assert isinstance(relationship.house_overlays, list)
+    assert relationship.house_overlays
     assert isinstance(relationship.composite_aspects, list)
