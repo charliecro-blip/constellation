@@ -65,6 +65,9 @@ Open the deployed URL on desktop and mobile.
 8. Open `/docs` and confirm API docs load.
 9. Open `/health` and confirm `{"status":"ok"}`.
 
+10. Open `/geocoding/status` and confirm provider status message is clear (`provider_configured=true` when key set).
+11. Save a relationship, generate report, then regenerate from Constellation View.
+
 ## Known Prototype Limits
 
 - No accounts.

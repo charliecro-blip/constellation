@@ -26,13 +26,14 @@
           <label>Time<input name="a_time" type="time" value="17:37" /></label>
           <label>Time known?<select name="a_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
           <label>Search birthplace<input name="a_place_query" placeholder="Austin, TX" /></label>
-          <label>Search results<select name="a_place_result"><option value="">Search first or use preset</option></select></label>
-          <label>Place preset<select name="a_place_preset"><option value="">Manual coordinates</option></select></label>
+          <label>Search results<select name="a_place_result"><option value="">Search to see city options</option></select></label>
+          <label>Built-in city preset<select name="a_place_preset"><option value="">No preset selected</option></select></label>
           <label>Timezone<input name="a_timezone" value="America/Chicago" required /></label>
           <label>Latitude<input name="a_latitude" type="number" step="0.0001" value="29.4252" required /></label>
           <label>Longitude<input name="a_longitude" type="number" step="0.0001" value="-98.4946" required /></label>
         </div>
-        <div class="actions"><button class="secondary" type="button" id="a_search_button">Search Person A Place</button></div>
+        <div class="actions"><button class="secondary" type="button" id="a_search_button">Search birthplace</button></div>
+        <details class="advanced-place"><summary>Advanced / manual birthplace details</summary><p class="small-note">If city search is unavailable or you need a specific location, use preset or enter timezone/coordinates manually.</p></details>
         <p class="hint">Unknown time uses a local-noon chart. Angles, houses, and overlays become unreliable when time is unknown.</p>
       </div>
 
@@ -46,13 +47,14 @@
           <label>Time<input name="b_time" type="time" value="09:15" /></label>
           <label>Time known?<select name="b_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
           <label>Search birthplace<input name="b_place_query" placeholder="New York, NY" /></label>
-          <label>Search results<select name="b_place_result"><option value="">Search first or use preset</option></select></label>
-          <label>Place preset<select name="b_place_preset"><option value="">Manual coordinates</option></select></label>
+          <label>Search results<select name="b_place_result"><option value="">Search to see city options</option></select></label>
+          <label>Built-in city preset<select name="b_place_preset"><option value="">No preset selected</option></select></label>
           <label>Timezone<input name="b_timezone" value="America/New_York" required /></label>
           <label>Latitude<input name="b_latitude" type="number" step="0.0001" value="40.7128" required /></label>
           <label>Longitude<input name="b_longitude" type="number" step="0.0001" value="-74.0060" required /></label>
         </div>
-        <div class="actions"><button class="secondary" type="button" id="b_search_button">Search Person B Place</button></div>
+        <div class="actions"><button class="secondary" type="button" id="b_search_button">Search birthplace</button></div>
+        <details class="advanced-place"><summary>Advanced / manual birthplace details</summary><p class="small-note">Use these fields for precise chart work or when city search cannot find the birthplace.</p></details>
         <p class="hint">Coordinates only need to be approximate for planets, but angles and houses need good location + time accuracy.</p>
       </div>
 

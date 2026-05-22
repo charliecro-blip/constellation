@@ -46,3 +46,5 @@
     .divider { height: 1px; background: var(--line); margin: 3px 0; }
     .sticky-actions { position: sticky; bottom: 0; margin: 0 -20px -20px; padding: 14px 20px; background: rgba(255, 250, 242, 0.94); border-top: 1px solid var(--line); backdrop-filter: blur(12px); border-radius: 0 0 24px 24px; }
     @media (max-width: 960px) { main { padding: 16px; } header { padding: 22px; border-radius: 24px; } .grid { grid-template-columns: 1fr; } .person-grid, .context-grid { grid-template-columns: 1fr; } pre, .output-html { min-height: 360px; } .tabs { width: 100%; } .tab { flex: 1; } .actions button, .actions .download-link { flex: 1; } }
+.advanced-place { border: 1px dashed var(--line); border-radius: 12px; padding: 8px 10px; background: #fff8ef; }
+.advanced-place summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); font-weight: 700; }
