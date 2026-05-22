@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from .interpretations import interpret_pattern
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .schemas import BirthData, RelationshipCalculation
@@ -41,6 +42,18 @@ def _pattern_list(patterns: list[Pattern], limit: int = 8) -> str:
         evidence = "; ".join(pattern.evidence)
         lines.append(f"- **{pattern.title}** ({pattern.layer}, priority {pattern.priority}): {evidence}")
     return "\n".join(lines)
+
+
+def _pattern_interpretations(patterns: list[Pattern], limit: int = 5) -> str:
+    if not patterns:
+        return "No interpretation blocks were selected yet."
+    lines = []
+    for pattern in patterns[:limit]:
+        lines.append(f"### {pattern.title}")
+        lines.append("")
+        lines.append(interpret_pattern(pattern))
+        lines.append("")
+    return "\n".join(lines).strip()
 
 
 def _composite_summary(relationship: RelationshipCalculation) -> str:
@@ -85,14 +98,18 @@ def generate_relationship_report(relationship: RelationshipCalculation) -> Relat
             body=_pattern_list(patterns),
         ),
         ReportSection(
+            title="Early Interpretation Layer",
+            body=_pattern_interpretations(patterns),
+        ),
+        ReportSection(
             title="The Field Between You / Composite Core",
             body=_composite_summary(relationship),
         ),
         ReportSection(
             title="Next Interpretation Step",
             body=(
-                "The next layer will translate these ranked patterns into somatic, relational "
-                "language: mutual activation, emotional body, friction loop, and repair path."
+                "The next layer will translate these ranked patterns into full somatic, relational "
+                "sections: mutual activation, emotional body, friction loop, and repair path."
             ),
         ),
     ]
