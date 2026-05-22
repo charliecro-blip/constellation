@@ -11,7 +11,7 @@ The current prototype is a calculation-first pipeline:
 3. Calculate synastry aspects, house overlays, and midpoint composite placements.
 4. Detect and weight relationship patterns.
 5. Generate a draft Markdown Relationship Field Map.
-6. Expose the pipeline through CLI commands and a minimal FastAPI app.
+6. Expose the pipeline through CLI commands, a minimal FastAPI app, and a browser prototype UI.
 
 ## Product Doctrine
 
@@ -65,7 +65,7 @@ Validate a known chart fixture:
 python -m constellation_core.validate_fixture_cli data/fixtures/my_validation_fixture.json --house-system whole_sign
 ```
 
-## API Usage
+## API and Browser Prototype
 
 Run the local API:
 
@@ -73,7 +73,13 @@ Run the local API:
 uvicorn constellation_core.api:app --reload
 ```
 
-Then open:
+Then open the browser prototype:
+
+```text
+http://127.0.0.1:8000/
+```
+
+Or open the API docs:
 
 ```text
 http://127.0.0.1:8000/docs
@@ -81,10 +87,25 @@ http://127.0.0.1:8000/docs
 
 Available endpoints:
 
+- `GET /`
 - `GET /health`
 - `POST /chart`
 - `POST /relationship`
 - `POST /report`
+
+## Deployment
+
+The repo includes a Render blueprint in `render.yaml`.
+
+Suggested first web deployment:
+
+1. Connect this GitHub repository to Render.
+2. Create a new Blueprint or Web Service from `render.yaml`.
+3. Use the default build and start commands from the blueprint.
+4. Deploy.
+5. Open the generated Render URL on desktop and mobile.
+
+The deployed prototype will show a JSON editor and Markdown report output. It is intentionally internal/tester-grade, not the final product UI.
 
 ## Near-Term Roadmap
 
@@ -92,7 +113,7 @@ Available endpoints:
 - Add real validation fixtures.
 - Add more pattern detectors and interpretation blocks.
 - Add geocoding and historical timezone lookup.
-- Add a minimal web UI.
+- Improve the browser UI from JSON editor to form-based input.
 
 ## Working Principle
 
