@@ -6,13 +6,19 @@ persistence, payments, or a polished frontend.
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from datetime import date, datetime, time
+import json
+
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from sqlmodel import Session, select
 
 from .chart import calculate_chart
 from .context import RelationshipContext
+from .database import get_session, init_db
+from .models import BirthProfile, SavedRelationship, SavedReport
 from .geocoding import GeocodingStatus, PlaceSearchResponse, geocoding_status, search_places
 from .patterns import Pattern, detect_relationship_patterns
 from .places import PlacePreset, list_place_presets
@@ -22,6 +28,67 @@ from .schemas import BirthData, Chart, RelationshipCalculation
 from .web import INDEX_PATH, STATIC_DIR
 from .weighting import weight_patterns
 
+
+
+
+class CreateBirthProfileRequest(BaseModel):
+    user_id: str | None = None
+    anonymous_id: str | None = None
+    display_name: str
+    birth_date: date
+    birth_time: time | None = None
+    time_known: bool = True
+    latitude: float
+    longitude: float
+    timezone: str
+    birthplace_label: str | None = None
+    geocoding_source: str | None = None
+
+
+class BirthProfileResponse(CreateBirthProfileRequest):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CreateSavedRelationshipRequest(BaseModel):
+    user_id: str | None = None
+    anonymous_id: str | None = None
+    person_a_id: str
+    person_b_id: str
+    relationship_type: str
+    status: str
+    user_question: str | None = None
+    origin_story: str | None = None
+    known_themes: list[str] = Field(default_factory=list)
+    house_system: str = "whole_sign"
+
+
+class SavedRelationshipResponse(BaseModel):
+    id: str
+    user_id: str | None
+    anonymous_id: str | None
+    person_a_id: str
+    person_b_id: str
+    relationship_type: str
+    status: str
+    user_question: str | None
+    origin_story: str | None
+    known_themes: list[str]
+    house_system: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class SavedReportResponse(BaseModel):
+    id: str
+    relationship_id: str
+    markdown: str
+    calculation_engine_version: str
+    interpretation_engine_version: str
+    report_template_version: str
+    generated_at: datetime
+    created_at: datetime
 
 class RelationshipRequest(BaseModel):
     person_a: BirthData
@@ -46,6 +113,11 @@ app = FastAPI(
 )
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    init_db()
 
 
 @app.get("/", response_class=FileResponse)
@@ -99,3 +171,118 @@ def report_endpoint(request: RelationshipRequest) -> ReportResponse:
     )
     report = generate_relationship_report(calculation, context=request.context)
     return ReportResponse(markdown=report.to_markdown())
+
+
+@app.post("/birth-profiles", response_model=BirthProfileResponse)
+def create_birth_profile(request: CreateBirthProfileRequest, session: Session = Depends(get_session)) -> BirthProfile:
+    profile = BirthProfile.model_validate(request.model_dump())
+    session.add(profile)
+    session.commit()
+    session.refresh(profile)
+    return profile
+
+
+@app.get("/birth-profiles", response_model=list[BirthProfileResponse])
+def list_birth_profiles(session: Session = Depends(get_session)) -> list[BirthProfile]:
+    return list(session.exec(select(BirthProfile).order_by(BirthProfile.created_at.desc())))
+
+
+@app.get("/birth-profiles/{birth_profile_id}", response_model=BirthProfileResponse)
+def get_birth_profile(birth_profile_id: str, session: Session = Depends(get_session)) -> BirthProfile:
+    profile = session.get(BirthProfile, birth_profile_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Birth profile not found")
+    return profile
+
+
+def _relationship_response(relationship: SavedRelationship) -> SavedRelationshipResponse:
+    return SavedRelationshipResponse(
+        id=relationship.id,
+        user_id=relationship.user_id,
+        anonymous_id=relationship.anonymous_id,
+        person_a_id=relationship.person_a_id,
+        person_b_id=relationship.person_b_id,
+        relationship_type=relationship.relationship_type,
+        status=relationship.status,
+        user_question=relationship.user_question,
+        origin_story=relationship.origin_story,
+        known_themes=json.loads(relationship.known_themes_json),
+        house_system=relationship.house_system,
+        created_at=relationship.created_at,
+        updated_at=relationship.updated_at,
+    )
+
+
+@app.post("/saved-relationships", response_model=SavedRelationshipResponse)
+def create_saved_relationship(request: CreateSavedRelationshipRequest, session: Session = Depends(get_session)) -> SavedRelationshipResponse:
+    if session.get(BirthProfile, request.person_a_id) is None or session.get(BirthProfile, request.person_b_id) is None:
+        raise HTTPException(status_code=404, detail="Birth profile not found")
+    relationship = SavedRelationship(
+        user_id=request.user_id,
+        anonymous_id=request.anonymous_id,
+        person_a_id=request.person_a_id,
+        person_b_id=request.person_b_id,
+        relationship_type=request.relationship_type,
+        status=request.status,
+        user_question=request.user_question,
+        origin_story=request.origin_story,
+        known_themes_json=json.dumps(request.known_themes),
+        house_system=request.house_system,
+    )
+    session.add(relationship)
+    session.commit()
+    session.refresh(relationship)
+    return _relationship_response(relationship)
+
+
+@app.get("/saved-relationships", response_model=list[SavedRelationshipResponse])
+def list_saved_relationships(session: Session = Depends(get_session)) -> list[SavedRelationshipResponse]:
+    relationships = list(session.exec(select(SavedRelationship).order_by(SavedRelationship.created_at.desc())))
+    return [_relationship_response(item) for item in relationships]
+
+
+@app.get("/saved-relationships/{relationship_id}", response_model=SavedRelationshipResponse)
+def get_saved_relationship(relationship_id: str, session: Session = Depends(get_session)) -> SavedRelationshipResponse:
+    relationship = session.get(SavedRelationship, relationship_id)
+    if relationship is None:
+        raise HTTPException(status_code=404, detail="Saved relationship not found")
+    return _relationship_response(relationship)
+
+
+@app.post("/saved-relationships/{relationship_id}/report", response_model=SavedReportResponse)
+def generate_saved_relationship_report(relationship_id: str, session: Session = Depends(get_session)) -> SavedReport:
+    relationship = session.get(SavedRelationship, relationship_id)
+    if relationship is None:
+        raise HTTPException(status_code=404, detail="Saved relationship not found")
+
+    person_a = session.get(BirthProfile, relationship.person_a_id)
+    person_b = session.get(BirthProfile, relationship.person_b_id)
+    if person_a is None or person_b is None:
+        raise HTTPException(status_code=404, detail="Birth profile not found")
+
+    context = RelationshipContext(
+        relationship_type=relationship.relationship_type,
+        status=relationship.status,
+        user_question=relationship.user_question,
+        origin_story=relationship.origin_story,
+        known_themes=json.loads(relationship.known_themes_json),
+    )
+
+    calc = calculate_relationship(
+        BirthData(name=person_a.display_name, date=person_a.birth_date.isoformat(), time=person_a.birth_time.isoformat() if person_a.birth_time else None, time_known=person_a.time_known, latitude=person_a.latitude, longitude=person_a.longitude, timezone=person_a.timezone),
+        BirthData(name=person_b.display_name, date=person_b.birth_date.isoformat(), time=person_b.birth_time.isoformat() if person_b.birth_time else None, time_known=person_b.time_known, latitude=person_b.latitude, longitude=person_b.longitude, timezone=person_b.timezone),
+        house_system=relationship.house_system,
+    )
+    report = generate_relationship_report(calc, context=context)
+    saved = SavedReport(relationship_id=relationship.id, markdown=report.to_markdown())
+    session.add(saved)
+    session.commit()
+    session.refresh(saved)
+    return saved
+
+
+@app.get("/saved-relationships/{relationship_id}/reports", response_model=list[SavedReportResponse])
+def list_saved_relationship_reports(relationship_id: str, session: Session = Depends(get_session)) -> list[SavedReport]:
+    if session.get(SavedRelationship, relationship_id) is None:
+        raise HTTPException(status_code=404, detail="Saved relationship not found")
+    return list(session.exec(select(SavedReport).where(SavedReport.relationship_id == relationship_id).order_by(SavedReport.created_at.desc())))
