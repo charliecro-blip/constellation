@@ -41,6 +41,17 @@ def test_health_endpoint():
     assert response.json() == {"status": "ok"}
 
 
+def test_geocoding_status_without_provider(monkeypatch):
+    monkeypatch.delenv("GEOAPIFY_API_KEY", raising=False)
+    monkeypatch.delenv("GEOCODING_API_KEY", raising=False)
+
+    response = client.get("/geocoding/status")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] == "presets"
+    assert payload["provider_configured"] is False
+
+
 def test_places_endpoint():
     response = client.get("/places")
     assert response.status_code == 200
