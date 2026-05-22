@@ -6,6 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
+from .context import RelationshipContext
 from .report import generate_report_from_birth_data
 from .schemas import BirthData
 
@@ -14,10 +15,17 @@ def load_birth_data(path: str) -> BirthData:
     return BirthData(**json.loads(Path(path).read_text()))
 
 
+def load_context(path: str | None) -> RelationshipContext | None:
+    if path is None:
+        return None
+    return RelationshipContext(**json.loads(Path(path).read_text()))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate a markdown Relationship Field Map.")
     parser.add_argument("--person-a", required=True)
     parser.add_argument("--person-b", required=True)
+    parser.add_argument("--context", required=False, help="Optional relationship context JSON")
     parser.add_argument("--house-system", default="whole_sign")
     parser.add_argument("--output", required=False)
     return parser
@@ -29,6 +37,7 @@ def main() -> None:
         load_birth_data(args.person_a),
         load_birth_data(args.person_b),
         house_system=args.house_system,
+        context=load_context(args.context),
     )
     markdown = report.to_markdown()
     if args.output:
