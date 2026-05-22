@@ -3,95 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Constellation Prototype</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+  <title>Constellation</title>
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
 <main>
   <header>
-    <div class="eyebrow">Constellation Prototype</div>
-    <h1>Relationship Field Map</h1>
+    <div class="eyebrow">Constellation</div>
+    <h1>Your relationship observatory</h1>
     <p class="tagline">An observatory for all your human relationships.</p>
-    <p class="muted">Enter two birth records, choose the relationship context, and generate a draft map. Search for a birth place, use a preset, or enter coordinates manually.</p>
-    <div id="provider-status" class="notice">Checking geocoding provider…</div>
+    <p class="muted">Start with your own birth information, add someone important, and map the connection in your constellation.</p>
+    <div class="start-grid">
+      <a href="#you-section" class="quick-link">Add yourself</a>
+      <a href="#someone-section" class="quick-link">Add a relationship</a>
+      <a href="#constellation-section" class="quick-link">View your constellation</a>
+    </div>
+    <div id="provider-status" class="notice">Checking city search…</div>
   </header>
 
   <section class="grid">
-    <form id="relationship-form" class="card stack">
-      <div class="tight">
-        <h2>Person A</h2>
-        <div class="person-grid">
-          <label>Name<input name="a_name" value="Person A" required /></label>
-          <label>Date<input name="a_date" type="date" value="1992-01-03" required /></label>
-          <label>Time<input name="a_time" type="time" value="17:37" /></label>
-          <label>Time known?<select name="a_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
-          <label>Search birthplace<input name="a_place_query" placeholder="Austin, TX" /></label>
-          <label>Search results<select name="a_place_result"><option value="">Search to see city options</option></select></label>
-          <label>Built-in city preset<select name="a_place_preset"><option value="">No preset selected</option></select></label>
-          <label>Timezone<input name="a_timezone" value="America/Chicago" required /></label>
-          <label>Latitude<input name="a_latitude" type="number" step="0.0001" value="29.4252" required /></label>
-          <label>Longitude<input name="a_longitude" type="number" step="0.0001" value="-98.4946" required /></label>
-        </div>
-        <div class="actions"><button class="secondary" type="button" id="a_search_button">Search birthplace</button></div>
-        <details class="advanced-place"><summary>Advanced / manual birthplace details</summary><p class="small-note">If city search is unavailable or you need a specific location, use preset or enter timezone/coordinates manually.</p></details>
-        <p class="hint">Unknown time uses a local-noon chart. Angles, houses, and overlays become unreliable when time is unknown.</p>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="tight">
-        <h2>Person B</h2>
-        <div class="person-grid">
-          <label>Name<input name="b_name" value="Person B" required /></label>
-          <label>Date<input name="b_date" type="date" value="1990-07-15" required /></label>
-          <label>Time<input name="b_time" type="time" value="09:15" /></label>
-          <label>Time known?<select name="b_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
-          <label>Search birthplace<input name="b_place_query" placeholder="New York, NY" /></label>
-          <label>Search results<select name="b_place_result"><option value="">Search to see city options</option></select></label>
-          <label>Built-in city preset<select name="b_place_preset"><option value="">No preset selected</option></select></label>
-          <label>Timezone<input name="b_timezone" value="America/New_York" required /></label>
-          <label>Latitude<input name="b_latitude" type="number" step="0.0001" value="40.7128" required /></label>
-          <label>Longitude<input name="b_longitude" type="number" step="0.0001" value="-74.0060" required /></label>
-        </div>
-        <div class="actions"><button class="secondary" type="button" id="b_search_button">Search birthplace</button></div>
-        <details class="advanced-place"><summary>Advanced / manual birthplace details</summary><p class="small-note">Use these fields for precise chart work or when city search cannot find the birthplace.</p></details>
-        <p class="hint">Coordinates only need to be approximate for planets, but angles and houses need good location + time accuracy.</p>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="tight">
-        <h2>Relationship Context</h2>
-        <label>Testing sample scenario<select id="relationship_sample"><option value="">Choose a sample context</option><option value="romantic_current">Romantic current</option><option value="ex_unresolved">Ex / unresolved</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="family">Family</option><option value="admired_figure">Admired figure</option></select></label>
-        <div class="context-grid">
-          <label>Relationship type<select name="relationship_type"><option value="romantic" selected>Romantic</option><option value="long_term_partner">Long-term partner</option><option value="ex">Ex</option><option value="parent">Parent</option><option value="child">Child</option><option value="sibling">Sibling</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="admired_figure">Admired figure</option><option value="other">Other</option></select></label>
-          <label>Status<select name="status"><option value="current" selected>Current</option><option value="past">Past</option><option value="hypothetical">Hypothetical</option><option value="complicated">Complicated</option><option value="unresolved">Unresolved</option><option value="unknown">Unknown</option></select></label>
-        </div>
-        <label>User question<textarea name="user_question">What is the dynamic between us?</textarea></label>
-        <label>Origin story / symbolic context<textarea name="origin_story">We met unexpectedly and the connection felt vivid from the beginning.</textarea></label>
-        <label>Known themes, comma separated<input name="known_themes" value="attraction, communication, timing" /></label>
-        <label>House system<select name="house_system"><option value="whole_sign" selected>Whole Sign</option><option value="placidus">Placidus</option><option value="porphyry">Porphyry</option><option value="regiomontanus">Regiomontanus</option><option value="equal">Equal</option></select></label>
-      </div>
-
-      <div class="actions sticky-actions">
-        <button id="generate" type="submit">Save + Generate Report</button>
-        <button class="secondary" id="save_relationship" type="button">Save Relationship</button>
-        <button class="secondary" id="save" type="button">Save Browser Draft</button>
-        <button class="secondary" id="restore" type="button">Restore Draft</button>
-        <button class="secondary" id="sample" type="button">Reset Sample</button>
-        <button class="secondary" id="copy" type="button">Copy Markdown</button>
-      </div>
-      <div id="status" class="status">Ready.</div>
-      <p class="small-note">The frontend never receives the geocoding key. Place search calls the backend, which uses provider search only when a server-side key is configured.</p>
-    </form>
-
-    <section class="card stack">
-      <div class="actions" style="justify-content: space-between; gap: 12px;"><div><h2>Report Output</h2><p class="muted">Preview or raw Markdown.</p></div><div class="tabs" role="tablist" aria-label="Output view"><button class="tab active" id="preview-tab" type="button">Preview</button><button class="tab" id="markdown-tab" type="button">Markdown</button></div></div>
-      <div class="actions"><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download Markdown</a></div>
-      <div id="preview" class="output-html">Generate a report to see the formatted preview.</div>
-      <pre id="markdown" class="hidden">Generate a report to see Markdown.</pre>
-    </section>
-    <section class="card stack">
+    <section id="constellation-section" class="card stack">
       <div class="actions" style="justify-content: space-between; gap: 12px;">
         <div><h2>Constellation View</h2><p class="muted">Saved relationship snapshots across your field.</p></div>
         <button class="secondary" id="refresh_constellation" type="button">Refresh</button>
@@ -99,6 +30,73 @@
       <div id="constellation" class="constellation-list">Loading saved relationships…</div>
     </section>
 
+    <form id="relationship-form" class="card stack">
+      <div id="you-section" class="tight">
+        <h2>Start with you</h2>
+        <p class="small-note">Your birth information anchors this relationship map.</p>
+        <div class="person-grid">
+          <label>Your name<input name="a_name" value="You" required /></label>
+          <label>Your birth date<input name="a_date" type="date" value="1992-01-03" required /></label>
+          <label>Your birth time<input name="a_time" type="time" value="17:37" /></label>
+          <label>Is your birth time known?<select name="a_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
+          <label>Where were you born?<input name="a_place_query" placeholder="Austin, TX" /></label>
+          <label>City matches<select name="a_place_result"><option value="">Search to see city options</option></select></label>
+        </div>
+        <div class="actions"><button class="secondary" type="button" id="a_search_button">Search city</button></div>
+        <p class="hint">Search for the city where you were born. We'll use this to calculate the chart.</p>
+        <details class="advanced-place"><summary>Advanced / enter coordinates manually</summary><p class="small-note">Use this only if city search cannot find your birthplace.</p><div class="person-grid"><label>Timezone<input name="a_timezone" value="America/Chicago" required /></label><label>Latitude<input name="a_latitude" type="number" step="0.0001" value="29.4252" required /></label><label>Longitude<input name="a_longitude" type="number" step="0.0001" value="-98.4946" required /></label><label>Fallback city preset<select name="a_place_preset"><option value="">No preset selected</option></select></label></div></details>
+      </div>
+
+      <div class="divider"></div>
+
+      <div id="someone-section" class="tight">
+        <h2>Add someone to your constellation</h2>
+        <p class="small-note">Their birth information helps map the connection between you.</p>
+        <div class="person-grid">
+          <label>Their name<input name="b_name" value="Someone" required /></label>
+          <label>Their birth date<input name="b_date" type="date" value="1990-07-15" required /></label>
+          <label>Their birth time<input name="b_time" type="time" value="09:15" /></label>
+          <label>Is their birth time known?<select name="b_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
+          <label>Where were they born?<input name="b_place_query" placeholder="New York, NY" /></label>
+          <label>City matches<select name="b_place_result"><option value="">Search to see city options</option></select></label>
+        </div>
+        <div class="actions"><button class="secondary" type="button" id="b_search_button">Search city</button></div>
+        <p class="hint">Search for their birth city so we can calculate this relationship map.</p>
+        <details class="advanced-place"><summary>Advanced / enter coordinates manually</summary><p class="small-note">Use this only for edge cases or precise birthplace corrections.</p><div class="person-grid"><label>Timezone<input name="b_timezone" value="America/New_York" required /></label><label>Latitude<input name="b_latitude" type="number" step="0.0001" value="40.7128" required /></label><label>Longitude<input name="b_longitude" type="number" step="0.0001" value="-74.0060" required /></label><label>Fallback city preset<select name="b_place_preset"><option value="">No preset selected</option></select></label></div></details>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="tight">
+        <h2>Map this relationship</h2>
+        <label>Optional sample scenario<select id="relationship_sample"><option value="">Choose a sample context</option><option value="romantic_current">Romantic current</option><option value="ex_unresolved">Ex / unresolved</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="family">Family</option><option value="admired_figure">Admired figure</option></select></label>
+        <div class="context-grid">
+          <label>What kind of connection is this?<select name="relationship_type"><option value="romantic" selected>Romantic</option><option value="long_term_partner">Long-term partner</option><option value="ex">Ex</option><option value="parent">Parent</option><option value="child">Child</option><option value="sibling">Sibling</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="admired_figure">Admired figure</option><option value="other">Other</option></select></label>
+          <label>Current state<select name="status"><option value="current" selected>Current</option><option value="past">Past</option><option value="hypothetical">Hypothetical</option><option value="complicated">Complicated</option><option value="unresolved">Unresolved</option><option value="unknown">Unknown</option></select></label>
+        </div>
+        <label>What are you hoping to understand?<textarea name="user_question">What is the dynamic between us?</textarea></label>
+        <label>Connection story or context<textarea name="origin_story">We met unexpectedly and the connection felt vivid from the beginning.</textarea></label>
+        <label>Known themes (comma separated)<input name="known_themes" value="attraction, communication, timing" /></label>
+        <label>House system<select name="house_system"><option value="whole_sign" selected>Whole Sign</option><option value="placidus">Placidus</option><option value="porphyry">Porphyry</option><option value="regiomontanus">Regiomontanus</option><option value="equal">Equal</option></select></label>
+      </div>
+
+      <div class="actions sticky-actions">
+        <button id="generate" type="submit">Map this relationship</button>
+        <button class="secondary" id="save_relationship" type="button">Save relationship</button>
+        <button class="secondary" id="save" type="button">Save browser draft</button>
+        <button class="secondary" id="restore" type="button">Restore draft</button>
+        <button class="secondary" id="sample" type="button">Reset sample</button>
+        <button class="secondary" id="copy" type="button">Copy markdown</button>
+      </div>
+      <div id="status" class="status">Ready.</div>
+    </form>
+
+    <section id="report-section" class="card stack report-panel">
+      <div class="actions" style="justify-content: space-between; gap: 12px;"><div><h2>Relationship Map</h2><p class="muted">Your generated relationship map appears here.</p></div><div class="tabs" role="tablist" aria-label="Output view"><button class="tab active" id="preview-tab" type="button">Preview</button><button class="tab" id="markdown-tab" type="button">Markdown</button></div></div>
+      <div class="actions"><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download markdown</a></div>
+      <div id="preview" class="output-html">Generate a relationship map to see the formatted reading.</div>
+      <pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre>
+    </section>
   </section>
 </main>
 
