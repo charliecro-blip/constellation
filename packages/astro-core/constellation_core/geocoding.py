@@ -35,7 +35,35 @@ class PlaceSearchResponse(BaseModel):
     message: str | None = None
 
 
+class GeocodingStatus(BaseModel):
+    provider: str
+    provider_available: bool
+    provider_configured: bool
+    message: str
+
+
 _TIMEZONE_FINDER = TimezoneFinder()
+
+
+def geocoding_api_key() -> str | None:
+    return os.getenv("GEOCODING_API_KEY") or os.getenv("GEOAPIFY_API_KEY")
+
+
+def geocoding_status() -> GeocodingStatus:
+    configured = bool(geocoding_api_key())
+    if configured:
+        return GeocodingStatus(
+            provider="geoapify",
+            provider_available=True,
+            provider_configured=True,
+            message="Geoapify provider is configured server-side.",
+        )
+    return GeocodingStatus(
+        provider="presets",
+        provider_available=False,
+        provider_configured=False,
+        message="No geocoding API key configured; built-in place presets are available.",
+    )
 
 
 def timezone_for_coordinates(latitude: float, longitude: float) -> str:
@@ -97,7 +125,7 @@ def search_geoapify(query: str, api_key: str, limit: int = 5) -> list[ResolvedPl
 
 
 def search_places(query: str) -> PlaceSearchResponse:
-    api_key = os.getenv("GEOCODING_API_KEY") or os.getenv("GEOAPIFY_API_KEY")
+    api_key = geocoding_api_key()
     if api_key:
         try:
             results = search_geoapify(query, api_key=api_key)
