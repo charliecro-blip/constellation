@@ -143,7 +143,7 @@ def search_places(query: str) -> PlaceSearchResponse:
                 results=preset_results,
                 provider="geoapify",
                 provider_available=False,
-                message=f"Geocoding provider failed; returned preset matches instead. Error: {exc}",
+                message="Live city search is temporarily unavailable; showing built-in city matches instead.",
             )
 
     preset_results = search_place_presets(query)
@@ -152,5 +152,5 @@ def search_places(query: str) -> PlaceSearchResponse:
         results=preset_results,
         provider="presets",
         provider_available=False,
-        message="No geocoding API key configured; returned built-in preset matches only.",
+        message="Live city search is not configured yet. Built-in city presets and manual birthplace details are still available.",
     )
