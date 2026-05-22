@@ -1,22 +1,21 @@
-"""FastAPI app for the Constellation calculation and report prototype."""
+"""FastAPI app for the Constellation prototype.
+
+This exposes the calculation and report pipeline without adding accounts,
+persistence, payments, or a polished frontend.
+"""
 
 from __future__ import annotations
 
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from .chart import calculate_chart
 from .context import RelationshipContext
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .report import generate_relationship_report
 from .schemas import BirthData, Chart, RelationshipCalculation
 from .weighting import weight_patterns
-
-app = FastAPI(
-    title="Constellation API",
-    version="0.1.0",
-    description="Calculation-first API for relational astrology maps.",
-)
 
 
 class RelationshipRequest(BaseModel):
@@ -35,16 +34,21 @@ class ReportResponse(BaseModel):
     markdown: str
 
 
+app = FastAPI(
+    title="Constellation API",
+    version="0.1.0",
+    description="Calculation-first API for relational astrology maps.",
+)
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.post("/chart", response_model=Chart)
-def chart_endpoint(birth: BirthData) -> Chart:
-    from .chart import calculate_chart
-
-    return calculate_chart(birth)
+def chart_endpoint(birth: BirthData, house_system: str = "whole_sign") -> Chart:
+    return calculate_chart(birth, house_system=house_system)
 
 
 @app.post("/relationship", response_model=RelationshipResponse)
