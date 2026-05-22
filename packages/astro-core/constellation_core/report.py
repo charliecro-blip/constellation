@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
@@ -34,6 +35,23 @@ class RelationshipReport(BaseModel):
         return "\n".join(lines).strip() + "\n"
 
 
+def _context_summary(context: RelationshipContext | None) -> str:
+    if context is None:
+        return "No relationship context was provided. This report is reading the chart field only."
+
+    lines = [
+        f"- Relationship type: {context.relationship_type}",
+        f"- Status: {context.status}",
+    ]
+    if context.user_question:
+        lines.append(f"- User question: {context.user_question}")
+    if context.origin_story:
+        lines.append(f"- Origin story / symbolic context: {context.origin_story}")
+    if context.known_themes:
+        lines.append(f"- Known themes: {', '.join(context.known_themes)}")
+    return "\n".join(lines)
+
+
 def _pattern_list(patterns: list[Pattern], limit: int = 8) -> str:
     if not patterns:
         return "No high-priority patterns were detected yet."
@@ -54,6 +72,20 @@ def _pattern_interpretations(patterns: list[Pattern], limit: int = 5) -> str:
         lines.append(interpret_pattern(pattern))
         lines.append("")
     return "\n".join(lines).strip()
+
+
+def _biographical_activation(context: RelationshipContext | None) -> str:
+    if context is None or not context.has_origin_story():
+        return (
+            "No origin story was provided. Later versions can ask about meaningful places, "
+            "objects, dreams, timing, family context, or old relationship chapters."
+        )
+    return (
+        "The user provided an origin story or symbolic context. This should be treated as "
+        "part of the relationship field, not as decorative background. Some relationships "
+        "do not only activate chemistry; they activate memory, biography, place, timing, "
+        "or an unfinished storyline."
+    )
 
 
 def _composite_summary(relationship: RelationshipCalculation) -> str:
@@ -81,11 +113,18 @@ def _composite_summary(relationship: RelationshipCalculation) -> str:
     return "\n".join(f"- {part}" for part in parts)
 
 
-def generate_relationship_report(relationship: RelationshipCalculation) -> RelationshipReport:
+def generate_relationship_report(
+    relationship: RelationshipCalculation,
+    context: RelationshipContext | None = None,
+) -> RelationshipReport:
     patterns = detect_relationship_patterns(relationship)
 
     title = f"Relationship Field Map — {relationship.person_a.name} / {relationship.person_b.name}"
     sections = [
+        ReportSection(
+            title="Context",
+            body=_context_summary(context),
+        ),
         ReportSection(
             title="Bird's-Eye View",
             body=(
@@ -100,6 +139,10 @@ def generate_relationship_report(relationship: RelationshipCalculation) -> Relat
         ReportSection(
             title="Early Interpretation Layer",
             body=_pattern_interpretations(patterns),
+        ),
+        ReportSection(
+            title="Biographical Activation",
+            body=_biographical_activation(context),
         ),
         ReportSection(
             title="The Field Between You / Composite Core",
@@ -120,6 +163,7 @@ def generate_report_from_birth_data(
     person_a: BirthData,
     person_b: BirthData,
     house_system: str = "whole_sign",
+    context: RelationshipContext | None = None,
 ) -> RelationshipReport:
     relationship = calculate_relationship(person_a, person_b, house_system=house_system)
-    return generate_relationship_report(relationship)
+    return generate_relationship_report(relationship, context=context)
