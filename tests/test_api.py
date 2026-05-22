@@ -32,7 +32,7 @@ def test_index_serves_prototype_ui():
     assert response.status_code == 200
     assert "Constellation Prototype" in response.text
     assert "Generate Report" in response.text
-    assert "Search Person A Place" in response.text
+    assert "Search birthplace" in response.text
     assert "Testing sample scenario" in response.text
 
 
