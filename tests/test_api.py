@@ -30,9 +30,9 @@ PERSON_B = {
 def test_index_serves_prototype_ui():
     response = client.get("/")
     assert response.status_code == 200
-    assert "Constellation Prototype" in response.text
-    assert "Generate Report" in response.text
-    assert "Search birthplace" in response.text
+    assert "Constellation" in response.text
+    assert "Map this relationship" in response.text
+    assert "Search city" in response.text
     assert "An observatory for all your human relationships." in response.text
     assert ("Your Constellation" in response.text) or ("Constellation View" in response.text)
 
