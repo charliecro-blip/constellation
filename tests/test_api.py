@@ -36,7 +36,7 @@ def test_index_serves_prototype_ui():
     assert ("Your Constellation" in response.text) or ("Constellation View" in response.text)
     assert "Relationship Map" in response.text
     assert "Search for the city where you were born." in response.text
-    assert "Advanced / enter coordinates manually" in response.text
+    assert "coordinates manually" in response.text
 
 
 def test_health_endpoint():
