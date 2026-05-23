@@ -26,8 +26,10 @@ def _points(aspect: Aspect) -> set[str]:
     return {aspect.point_a.lower(), aspect.point_b.lower()}
 
 
-def _evidence(aspect: Aspect) -> str:
-    return f"{aspect.point_a} {aspect.aspect} {aspect.point_b}; orb {aspect.orb:.2f}"
+def _evidence(aspect: Aspect, relationship: RelationshipCalculation) -> str:
+    left = f"{relationship.person_a.name}'s {aspect.point_a.replace('_', ' ').title()}"
+    right = f"{relationship.person_b.name}'s {aspect.point_b.replace('_', ' ').title()}"
+    return f"{left} {aspect.aspect} {right}; orb {aspect.orb:.2f}"
 
 
 def _bonus(aspect: Aspect) -> int:
@@ -47,8 +49,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="attraction",
                 priority=90 + bonus,
-                title="Venus and Ascendant contact",
-                evidence=[_evidence(aspect)],
+                title="Venus/Ascendant activation",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.venus_ascendant",
                 confidence="high",
             ))
@@ -59,8 +61,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="desire",
                 priority=82 + bonus,
-                title="Venus and Mars contact",
-                evidence=[_evidence(aspect)],
+                title="Venus/Mars attraction signature",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.venus_mars",
                 confidence="high",
             ))
@@ -71,8 +73,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="recognition",
                 priority=84 + bonus,
-                title="Sun and Moon contact",
-                evidence=[_evidence(aspect)],
+                title="Sun/Moon recognition signature",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.sun_moon",
                 confidence="high",
             ))
@@ -83,8 +85,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="emotional_translation",
                 priority=80 + bonus,
-                title="Moon to Moon contact",
-                evidence=[_evidence(aspect)],
+                title="Moon-to-Moon emotional contact",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.moon_moon",
                 confidence="high",
             ))
@@ -95,8 +97,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="affection",
                 priority=78 + bonus,
-                title="Moon and Venus contact",
-                evidence=[_evidence(aspect)],
+                title="Moon/Venus affection contact",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.moon_venus",
                 confidence="high",
             ))
@@ -107,8 +109,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="emotional_activation",
                 priority=78 + bonus,
-                title="Moon and Mars contact",
-                evidence=[_evidence(aspect)],
+                title="Moon/Mars emotional activation",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.moon_mars",
                 confidence="medium",
             ))
@@ -119,8 +121,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="communication",
                 priority=76 + bonus,
-                title="Mercury and Mars contact",
-                evidence=[_evidence(aspect)],
+                title="Mercury/Mars communication heat",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.mercury_mars",
                 confidence="medium",
             ))
@@ -131,8 +133,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="communication",
                 priority=72 + bonus,
-                title="Mercury to Mercury contact",
-                evidence=[_evidence(aspect)],
+                title="Mercury-to-Mercury contact",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.mercury_mercury",
                 confidence="medium",
             ))
@@ -143,8 +145,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="emotional_structure",
                 priority=78 + bonus,
-                title="Moon and Saturn contact",
-                evidence=[_evidence(aspect)],
+                title="Moon/Saturn structure pressure",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.moon_saturn",
                 confidence="medium",
             ))
@@ -155,8 +157,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="emotional_intensity",
                 priority=82 + bonus,
-                title="Moon and Pluto contact",
-                evidence=[_evidence(aspect)],
+                title="Moon/Pluto emotional intensity",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.moon_pluto",
                 confidence="medium",
             ))
@@ -167,8 +169,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="attraction_intensity",
                 priority=82 + bonus,
-                title="Venus and Pluto contact",
-                evidence=[_evidence(aspect)],
+                title="Venus/Pluto attraction intensity",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.venus_pluto",
                 confidence="medium",
             ))
@@ -179,8 +181,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="intensity",
                 priority=82 + bonus,
-                title="Mars and Pluto contact",
-                evidence=[_evidence(aspect)],
+                title="Mars/Pluto intensity signature",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.mars_pluto",
                 confidence="medium",
             ))
@@ -191,8 +193,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="bond_structure",
                 priority=76 + bonus,
-                title="Venus and Saturn contact",
-                evidence=[_evidence(aspect)],
+                title="Venus/Saturn bond structure",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.venus_saturn",
                 confidence="medium",
             ))
@@ -203,8 +205,8 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 layer="synastry",
                 category="action_structure",
                 priority=74 + bonus,
-                title="Mars and Saturn contact",
-                evidence=[_evidence(aspect)],
+                title="Mars/Saturn action structure",
+                evidence=[_evidence(aspect, relationship)],
                 key="synastry.mars_saturn",
                 confidence="medium",
             ))
@@ -212,8 +214,10 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
     return patterns
 
 
-def _overlay_evidence(overlay: HouseOverlay) -> str:
-    return f"{overlay.planet_owner} {overlay.body} in {overlay.house_owner} house {overlay.house}"
+def _overlay_evidence(overlay: HouseOverlay, relationship: RelationshipCalculation) -> str:
+    planet_owner = relationship.person_a.name if overlay.planet_owner == "person_a" else relationship.person_b.name
+    house_owner = relationship.person_a.name if overlay.house_owner == "person_a" else relationship.person_b.name
+    return f"{planet_owner}'s {overlay.body.title()} in {house_owner}'s house {overlay.house}"
 
 
 def detect_house_overlay_patterns(relationship: RelationshipCalculation) -> list[Pattern]:
@@ -239,8 +243,8 @@ def detect_house_overlay_patterns(relationship: RelationshipCalculation) -> list
             layer="house_overlay",
             category=category,
             priority=priority,
-            title=f"{overlay.body.title()} in the other's {overlay.house} house",
-            evidence=[_overlay_evidence(overlay)],
+            title=f"{overlay.body.title()} house overlay",
+            evidence=[_overlay_evidence(overlay, relationship)],
             key=f"overlay.house_{overlay.house}",
             confidence="medium",
         ))

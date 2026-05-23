@@ -12,7 +12,7 @@ from .schemas import BirthData, RelationshipCalculation
 def calculate_relationship(
     person_a: BirthData,
     person_b: BirthData,
-    house_system: str = "whole_sign",
+    house_system: str = "placidus",
 ) -> RelationshipCalculation:
     """Calculate natal charts, synastry aspects, house overlays, and midpoint composite."""
     chart_a = calculate_chart(person_a, house_system=house_system)

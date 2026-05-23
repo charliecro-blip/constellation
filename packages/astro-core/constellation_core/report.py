@@ -19,7 +19,6 @@ from .natal_profile import natal_profile_markdown
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .schemas import BirthData, RelationshipCalculation
-from .surface_engine import surface_engine_markdown
 from .weighting import weight_patterns
 
 
@@ -65,7 +64,7 @@ def _pattern_list(patterns: list[Pattern], limit: int = 10) -> str:
     lines = []
     for pattern in patterns[:limit]:
         evidence = "; ".join(pattern.evidence)
-        lines.append(f"- **{pattern.title}** ({pattern.layer}, priority {pattern.priority}): {evidence}")
+        lines.append(f"- **{pattern.title}** ({pattern.layer}, strength {pattern.priority}/100): {evidence}. Why it matters: {interpret_pattern(pattern)}")
     return "\n".join(lines)
 
 
@@ -164,6 +163,11 @@ def _composite_summary(relationship: RelationshipCalculation) -> str:
     if mars:
         parts.append(f"Composite Mars: {mars.degree:.2f} {mars.sign}")
 
+    if relationship.person_a.angles and relationship.person_b.angles:
+        parts.append("Composite Ascendant/MC: available from midpoint of both natal angles.")
+    else:
+        parts.append("Composite Ascendant/MC: unavailable because one or both birth times are unknown.")
+
     if not parts:
         return "Composite chart has no core placements available."
     return "\n".join(f"- {part}" for part in parts)
@@ -254,15 +258,10 @@ def generate_relationship_report(
 
     title = f"Relationship Field Map — {relationship.person_a.name} / {relationship.person_b.name}"
     sections = [
-        ReportSection(title="Context", body=_context_summary(context)),
-        ReportSection(title="Chart Confidence", body=confidence_markdown(relationship)),
-        ReportSection(title="Bird's-Eye View", body=_birdseye(patterns, context)),
-        ReportSection(title=f"{relationship.person_a.name} Relational Profile", body=natal_profile_markdown(relationship.person_a)),
-        ReportSection(title=f"{relationship.person_b.name} Relational Profile", body=natal_profile_markdown(relationship.person_b)),
-        ReportSection(title="Top Detected Patterns", body=_pattern_list(patterns)),
-        ReportSection(title="Surface vs Engine", body=surface_engine_markdown(patterns)),
+        ReportSection(title="Relationship Map Summary", body=_birdseye(patterns, context)),
+        ReportSection(title="Most Important Signatures", body=_pattern_list(patterns)),
         ReportSection(
-            title="Mutual Activation / Synastry",
+            title="Synastry: How You Activate Each Other",
             body=_interpretation_for_categories(
                 patterns,
                 {"recognition", "communication", "emotional_translation", "emotional_activation"},
@@ -270,28 +269,16 @@ def generate_relationship_report(
             ),
         ),
         ReportSection(
-            title="Desire & Affection Layer",
+            title="House Overlays: Where Each Person Lands",
             body=_interpretation_for_categories(
                 patterns,
-                {"attraction", "desire", "affection", "attraction_intensity"},
-                "No desire or affection patterns were selected yet.",
+                {"home_roots", "partnership", "intimacy_depth", "daily_life", "identity_body", "romance_creativity"},
+                "No major house overlays were selected yet.",
             ),
         ),
-        ReportSection(
-            title="Emotional Safety Layer",
-            body=_interpretation_for_categories(
-                patterns,
-                {"emotional_structure", "emotional_intensity", "emotional_variability", "home_roots"},
-                "No emotional safety patterns were selected yet.",
-            ),
-        ),
-        ReportSection(title="Early Interpretation Layer", body=_pattern_interpretations(patterns)),
-        ReportSection(title="Biographical Activation", body=_biographical_activation(context)),
-        ReportSection(title="The Field Between You / Composite Core", body=_composite_summary(relationship)),
-        ReportSection(title="Friction Loop", body=_friction_loop(patterns)),
-        ReportSection(title="Repair Path", body=_repair_path(patterns)),
-        ReportSection(title="One-Sentence Summary", body=_one_sentence_summary(patterns)),
-        ReportSection(title="Report Metadata", body=_report_metadata(relationship, context)),
+        ReportSection(title="Composite: The Field Between You", body=_composite_summary(relationship)),
+        ReportSection(title="Friction / Repair Themes", body=f"{_friction_loop(patterns)}\n\n{_repair_path(patterns)}"),
+        ReportSection(title="Optional Technical Details", body=f"<details><summary>Technical report details</summary>\n\n{_context_summary(context)}\n\n{confidence_markdown(relationship)}\n\n{_report_metadata(relationship, context)}\n</details>"),
     ]
     return RelationshipReport(title=title, sections=sections)
 
@@ -299,7 +286,7 @@ def generate_relationship_report(
 def generate_report_from_birth_data(
     person_a: BirthData,
     person_b: BirthData,
-    house_system: str = "whole_sign",
+    house_system: str = "placidus",
     context: RelationshipContext | None = None,
 ) -> RelationshipReport:
     relationship = calculate_relationship(person_a, person_b, house_system=house_system)
