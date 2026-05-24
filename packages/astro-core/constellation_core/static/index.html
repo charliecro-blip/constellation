@@ -16,7 +16,7 @@
     <div class="start-grid">
       <a href="#you-section" class="quick-link">Add yourself</a>
       <a href="#someone-section" class="quick-link">Add a relationship</a>
-      <a href="#constellation-section" class="quick-link">View your constellation</a>
+      <a href="#constellation-section" class="quick-link">View constellation (optional)</a>
     </div>
     <p id="provider-status" class="hint">Start typing a birthplace and choose the closest match.</p>
   </header>
@@ -69,9 +69,9 @@
 
       <div class="tight">
         <h2>Map this relationship</h2>
-        <label>Optional sample scenario<select id="relationship_sample"><option value="">Choose a sample context</option><option value="romantic_current">Romantic current</option><option value="ex_unresolved">Ex / unresolved</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="family">Family</option><option value="admired_figure">Admired figure</option></select></label>
+        <label>Optional sample scenario<select id="relationship_sample"><option value="">Choose a sample context</option><option value="romantic_current">Romantic current</option><option value="ex">Ex</option><option value="unresolved_connection">Unresolved connection</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="family">Family</option><option value="admired_figure">Admired figure</option></select></label>
         <div class="context-grid">
-          <label>What kind of connection is this?<select name="relationship_type"><option value="romantic" selected>Romantic</option><option value="long_term_partner">Long-term partner</option><option value="ex">Ex</option><option value="parent">Parent</option><option value="child">Child</option><option value="sibling">Sibling</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="admired_figure">Admired figure</option><option value="other">Other</option></select></label>
+          <label>What kind of connection is this?<select name="relationship_type"><option value="romantic" selected>Romantic / current</option><option value="other">Dating / exploring</option><option value="ex">Ex</option><option value="other">Unresolved connection</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="child">Child</option><option value="other">Family / other</option><option value="admired_figure">Admired figure / mentor</option><option value="other">Other</option></select></label>
           <label>Current state<select name="status"><option value="current" selected>Current</option><option value="past">Past</option><option value="hypothetical">Hypothetical</option><option value="complicated">Complicated</option><option value="unresolved">Unresolved</option><option value="unknown">Unknown</option></select></label>
         </div>
         <label>What are you hoping to understand? (optional)<textarea name="user_question" placeholder="What is the dynamic between us?"></textarea></label>

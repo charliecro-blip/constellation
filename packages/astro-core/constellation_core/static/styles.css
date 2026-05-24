@@ -1,4 +1,4 @@
-:root { color-scheme: dark; --bg: #09070f; --bg2: #130d1d; --panel: #181225; --panel-soft: #231932; --ink: #f7eef4; --muted: #c3b1bf; --line: #3a2a46; --button: #b7637d; --button-text: #1f0c14; --soft: #33243f; --accent: #d4845b; --gold: #e8bc73; --error: #efc0ca; --error-bg: #472430; --ok: #f2ddbf; --ok-bg: #382b23; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+:root { color-scheme: dark; --bg: #09070f; --bg2: #130d1d; --panel: #181225; --panel-soft: #231932; --ink: #f7eef4; --muted: #c3b1bf; --line: #3a2a46; --button: #d07a46; --button-text: #1f0c14; --soft: #33243f; --accent: #d4845b; --gold: #e8bc73; --error: #efc0ca; --error-bg: #472430; --ok: #f2ddbf; --ok-bg: #382b23; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 * { box-sizing: border-box; }
 body { margin: 0; background: radial-gradient(circle at top left, rgba(152, 90, 124, 0.2), transparent 26rem), radial-gradient(circle at 80% 0, rgba(184, 110, 76, 0.14), transparent 28rem), var(--bg); color: var(--ink); }
 main { width: min(1220px, 100%); margin: 0 auto; padding: 28px; display: grid; gap: 22px; }
@@ -24,6 +24,7 @@ textarea { min-height: 92px; resize: vertical; }
 input:disabled { opacity: 0.64; background: #1e142d; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 button,.download-link { border: 0; border-radius: 999px; padding: 12px 17px; font-weight: 850; cursor: pointer; background: var(--button); color: var(--button-text); box-shadow: 0 10px 22px rgba(129, 71, 92, 0.3); text-decoration: none; display: inline-flex; justify-content: center; align-items: center; }
+button,#generate { font-family: "Baar Sophia", "Baar Sophia Regular", Georgia, serif; }
 button.secondary,.download-link.secondary { background: var(--soft); color: var(--ink); box-shadow: none; }
 .tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 5px; background: #2c1b3d; border-radius: 999px; width: fit-content; }
 .tab { background: transparent; color: var(--muted); box-shadow: none; padding: 9px 13px; }
@@ -43,4 +44,6 @@ pre { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, 
 .advanced-place summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); font-weight: 700; }
 .inline-advanced { width: 100%; margin-top: 2px; }
 .report-panel { border-color: #754a8f; box-shadow: 0 0 0 1px rgba(239,95,136,0.22), 0 18px 35px rgba(0,0,0,0.3); }
+#relationship-form { order: 1; }
+#constellation-section { order: 2; }
 @media (max-width: 960px) { main { padding: 16px; } header { padding: 22px; border-radius: 24px; } .grid, .start-grid { grid-template-columns: 1fr; } .person-grid,.context-grid { grid-template-columns: 1fr; } pre,.output-html { min-height: 340px; } .tabs { width: 100%; } .tab { flex: 1; } .actions button,.actions .download-link { flex: 1; } }

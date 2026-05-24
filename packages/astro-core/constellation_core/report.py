@@ -8,6 +8,7 @@ calculation to structured output.
 from __future__ import annotations
 
 from collections import defaultdict
+import re
 from datetime import UTC, datetime
 
 from pydantic import BaseModel
@@ -15,11 +16,9 @@ from pydantic import BaseModel
 from .confidence import confidence_markdown
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
-from .natal_profile import natal_profile_markdown
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .schemas import BirthData, RelationshipCalculation
-from .surface_engine import surface_engine_markdown
 from .weighting import weight_patterns
 
 
@@ -59,13 +58,20 @@ def _context_summary(context: RelationshipContext | None) -> str:
     return "\n".join(lines)
 
 
-def _pattern_list(patterns: list[Pattern], limit: int = 10) -> str:
+def _clean_evidence(evidence: str) -> str:
+    return re.sub(r";\s*orb\s+[0-9]+(?:\.[0-9]+)?", "", evidence).strip()
+
+
+def _pattern_list(patterns: list[Pattern], limit: int = 5) -> str:
     if not patterns:
         return "No high-priority patterns were detected yet."
     lines = []
     for pattern in patterns[:limit]:
-        evidence = "; ".join(pattern.evidence)
-        lines.append(f"- **{pattern.title}** ({pattern.layer}, priority {pattern.priority}): {evidence}")
+        evidence = _clean_evidence("; ".join(pattern.evidence))
+        lines.append(f"### {pattern.title}")
+        lines.append("")
+        lines.append(f"{evidence}. {interpret_pattern(pattern)}")
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -88,34 +94,24 @@ def _interpretation_for_categories(
 
     lines = []
     for pattern in selected[:limit]:
-        evidence = "; ".join(pattern.evidence)
+        evidence = _clean_evidence("; ".join(pattern.evidence))
         lines.append(f"### {pattern.title}")
         lines.append("")
-        lines.append(f"Evidence: {evidence}")
-        lines.append("")
-        lines.append(interpret_pattern(pattern))
+        lines.append(f"{evidence}. {interpret_pattern(pattern)}")
         lines.append("")
     return "\n".join(lines).strip()
 
 
 def _birdseye(patterns: list[Pattern], context: RelationshipContext | None) -> str:
     if not patterns:
-        return (
-            "This is a calculation-backed draft report. No high-priority patterns have been "
-            "selected yet, so the next step is to validate chart data and expand detection."
-        )
+        return "Not enough clear signatures were detected yet to produce a confident relationship reading."
 
     top = patterns[0]
     context_note = ""
     if context and context.relationship_type != "other":
         context_note = f" This is being framed as a {context.relationship_type} relationship."
 
-    return (
-        "This draft reads the relationship as a field of activation rather than a compatibility "
-        f"score.{context_note} The strongest currently detected pattern is **{top.title}**, "
-        "which should set the first interpretive emphasis while the remaining patterns provide "
-        "supporting layers."
-    )
+    return f"The strongest organizing signature is **{top.title}**.{context_note} The rest of this report focuses only on patterns that materially shape the bond."
 
 
 def _pattern_interpretations(patterns: list[Pattern], limit: int = 6) -> str:
@@ -163,6 +159,11 @@ def _composite_summary(relationship: RelationshipCalculation) -> str:
         parts.append(f"Composite Venus: {venus.degree:.2f} {venus.sign}")
     if mars:
         parts.append(f"Composite Mars: {mars.degree:.2f} {mars.sign}")
+
+    if relationship.person_a.angles and relationship.person_b.angles:
+        parts.append("Composite Ascendant/MC: available from midpoint of both natal angles.")
+    else:
+        parts.append("Composite Ascendant/MC: unavailable because one or both birth times are unknown.")
 
     if not parts:
         return "Composite chart has no core placements available."
@@ -254,44 +255,29 @@ def generate_relationship_report(
 
     title = f"Relationship Field Map — {relationship.person_a.name} / {relationship.person_b.name}"
     sections = [
-        ReportSection(title="Context", body=_context_summary(context)),
-        ReportSection(title="Chart Confidence", body=confidence_markdown(relationship)),
-        ReportSection(title="Bird's-Eye View", body=_birdseye(patterns, context)),
-        ReportSection(title=f"{relationship.person_a.name} Relational Profile", body=natal_profile_markdown(relationship.person_a)),
-        ReportSection(title=f"{relationship.person_b.name} Relational Profile", body=natal_profile_markdown(relationship.person_b)),
-        ReportSection(title="Top Detected Patterns", body=_pattern_list(patterns)),
-        ReportSection(title="Surface vs Engine", body=surface_engine_markdown(patterns)),
+        ReportSection(title="Relationship Map Summary", body=_birdseye(patterns, context)),
+        ReportSection(title="Most Important Signatures", body=_pattern_list(patterns)),
         ReportSection(
-            title="Mutual Activation / Synastry",
+            title="How You Activate Each Other",
             body=_interpretation_for_categories(
                 patterns,
                 {"recognition", "communication", "emotional_translation", "emotional_activation"},
-                "No mutual activation patterns were selected yet.",
+                "No clear synastry signatures stood out strongly enough to foreground.",
+                limit=3,
             ),
         ),
         ReportSection(
-            title="Desire & Affection Layer",
+            title="Where Each Person Lands",
             body=_interpretation_for_categories(
                 patterns,
-                {"attraction", "desire", "affection", "attraction_intensity"},
-                "No desire or affection patterns were selected yet.",
+                {"home_roots", "partnership", "intimacy_depth", "daily_life", "identity_body", "romance_creativity"},
+                "No house overlays were strong enough to lead this reading.",
+                limit=3,
             ),
         ),
-        ReportSection(
-            title="Emotional Safety Layer",
-            body=_interpretation_for_categories(
-                patterns,
-                {"emotional_structure", "emotional_intensity", "emotional_variability", "home_roots"},
-                "No emotional safety patterns were selected yet.",
-            ),
-        ),
-        ReportSection(title="Early Interpretation Layer", body=_pattern_interpretations(patterns)),
-        ReportSection(title="Biographical Activation", body=_biographical_activation(context)),
-        ReportSection(title="The Field Between You / Composite Core", body=_composite_summary(relationship)),
-        ReportSection(title="Friction Loop", body=_friction_loop(patterns)),
-        ReportSection(title="Repair Path", body=_repair_path(patterns)),
-        ReportSection(title="One-Sentence Summary", body=_one_sentence_summary(patterns)),
-        ReportSection(title="Report Metadata", body=_report_metadata(relationship, context)),
+        ReportSection(title="Composite Field", body=_composite_summary(relationship)),
+        ReportSection(title="Friction and Repair", body=f"{_friction_loop(patterns)}\n\n{_repair_path(patterns)}"),
+        ReportSection(title="Optional Technical Details", body=f"<details><summary>Technical report details</summary>\n\n{_context_summary(context)}\n\n{confidence_markdown(relationship)}\n\n{_report_metadata(relationship, context)}\n</details>"),
     ]
     return RelationshipReport(title=title, sections=sections)
 
@@ -299,7 +285,7 @@ def generate_relationship_report(
 def generate_report_from_birth_data(
     person_a: BirthData,
     person_b: BirthData,
-    house_system: str = "whole_sign",
+    house_system: str = "placidus",
     context: RelationshipContext | None = None,
 ) -> RelationshipReport:
     relationship = calculate_relationship(person_a, person_b, house_system=house_system)

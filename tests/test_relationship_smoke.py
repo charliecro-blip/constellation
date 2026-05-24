@@ -25,6 +25,7 @@ def test_calculate_relationship_smoke():
     relationship = calculate_relationship(person_a, person_b)
 
     assert relationship.person_a.name == "Person A"
+    assert relationship.person_a.house_system == "placidus"
     assert relationship.person_b.name == "Person B"
     assert relationship.composite is not None
     assert "sun" in relationship.composite.placements

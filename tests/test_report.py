@@ -32,24 +32,15 @@ def test_generate_report_markdown_contains_core_sections():
     markdown = report.to_markdown()
 
     assert "Relationship Field Map" in markdown
-    assert "Context" in markdown
+    assert "Relationship Map Summary" in markdown
     required_sections = [
-        "Context",
-        "Chart Confidence",
-        "Bird's-Eye View",
-        "Person A Relational Profile",
-        "Person B Relational Profile",
-        "Surface vs Engine",
-        "Top Detected Patterns",
-        "Mutual Activation / Synastry",
-        "Desire & Affection Layer",
-        "Emotional Safety Layer",
-        "Biographical Activation",
-        "The Field Between You / Composite Core",
-        "Friction Loop",
-        "Repair Path",
-        "One-Sentence Summary",
-        "Report Metadata",
+        "Relationship Map Summary",
+        "Most Important Signatures",
+        "How You Activate Each Other",
+        "Where Each Person Lands",
+        "Composite Field",
+        "Friction and Repair",
+        "Optional Technical Details",
     ]
     for section in required_sections:
         assert section in markdown
@@ -70,19 +61,30 @@ def test_generate_report_includes_context_and_origin_story():
 
     assert "Relationship type: romantic" in markdown
     assert "Status: current" in markdown
-    assert "Origin story" in markdown
-    assert "Biographical Activation" in markdown
-    assert "not as decorative background" in markdown
+    assert "Origin story / symbolic context" in markdown
+    assert "Technical report details" in markdown
 
 
-def test_generate_report_includes_export_metadata():
+def test_generate_report_includes_collapsed_technical_metadata_and_names():
     context = RelationshipContext(relationship_type="friend", status="current")
     report = generate_report_from_birth_data(_person_a(), _person_b(), context=context)
     markdown = report.to_markdown()
 
+    assert "<details><summary>Technical report details</summary>" in markdown
     assert "Generated at (UTC):" in markdown
     assert "House system:" in markdown
     assert "Prototype output: yes" in markdown
     assert "Person A: Person A" in markdown
     assert "Person B: Person B" in markdown
     assert "Relationship type: friend" in markdown
+    assert "person_a" not in markdown
+    assert "person_b" not in markdown
+
+
+def test_top_signatures_are_limited_and_no_surface_engine_or_glossary_leakage():
+    report = generate_report_from_birth_data(_person_a(), _person_b())
+    markdown = report.to_markdown()
+    most_important_block = markdown.split("## Most Important Signatures")[1].split("## How You Activate Each Other")[0]
+    assert most_important_block.count("\n### ") <= 5
+    assert "Surface vs Engine" not in markdown
+    assert "describes affection, attraction, aesthetics" not in markdown
