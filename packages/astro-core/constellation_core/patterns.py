@@ -32,6 +32,10 @@ def _evidence(aspect: Aspect, relationship: RelationshipCalculation) -> str:
     return f"{left} {aspect.aspect} {right}; orb {aspect.orb:.2f}"
 
 
+def _composite_evidence(aspect: Aspect) -> str:
+    return f"Composite {aspect.point_a.replace('_', ' ').title()} {aspect.aspect} {aspect.point_b.replace('_', ' ').title()}; orb {aspect.orb:.2f}"
+
+
 def _bonus(aspect: Aspect) -> int:
     return min(max(0, int(10 - min(aspect.orb, 10))), 10)
 
@@ -292,7 +296,7 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
                 category="desire",
                 priority=82 + bonus,
                 title="Composite Venus and Mars contact",
-                evidence=[_evidence(aspect)],
+                evidence=[_composite_evidence(aspect)],
                 key="composite.venus_mars",
                 confidence="high",
             ))
@@ -304,7 +308,7 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
                 category="intensity",
                 priority=88 + bonus,
                 title="Composite Mars and Pluto contact",
-                evidence=[_evidence(aspect)],
+                evidence=[_composite_evidence(aspect)],
                 key="composite.mars_pluto",
                 confidence="high",
             ))
@@ -316,7 +320,7 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
                 category="bond_structure",
                 priority=80 + bonus,
                 title="Composite Venus and Saturn contact",
-                evidence=[_evidence(aspect)],
+                evidence=[_composite_evidence(aspect)],
                 key="composite.venus_saturn",
                 confidence="medium",
             ))
@@ -328,7 +332,7 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
                 category="relationship_structure",
                 priority=80 + bonus,
                 title="Composite Sun and Saturn contact",
-                evidence=[_evidence(aspect)],
+                evidence=[_composite_evidence(aspect)],
                 key="composite.sun_saturn",
                 confidence="medium",
             ))
@@ -340,7 +344,7 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
                 category="emotional_structure",
                 priority=82 + bonus,
                 title="Composite Moon and Saturn contact",
-                evidence=[_evidence(aspect)],
+                evidence=[_composite_evidence(aspect)],
                 key="composite.moon_saturn",
                 confidence="medium",
             ))
@@ -352,7 +356,7 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
                 category="emotional_variability",
                 priority=82 + bonus,
                 title="Composite Moon and Uranus contact",
-                evidence=[_evidence(aspect)],
+                evidence=[_composite_evidence(aspect)],
                 key="composite.moon_uranus",
                 confidence="medium",
             ))

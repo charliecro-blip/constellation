@@ -6,6 +6,8 @@ emphasized for this particular relationship type.
 
 from __future__ import annotations
 
+import re
+
 from .context import RelationshipContext
 from .patterns import Pattern
 
@@ -75,11 +77,38 @@ def boosts_for_context(context: RelationshipContext | None) -> dict[str, int]:
 def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None = None) -> list[Pattern]:
     """Return patterns with relationship-type priority adjustments applied."""
     boosts = boosts_for_context(context)
-    if not boosts:
-        return sorted(patterns, key=lambda pattern: pattern.priority, reverse=True)
-
     weighted: list[Pattern] = []
     for pattern in patterns:
         boost = boosts.get(pattern.category, 0)
-        weighted.append(pattern.model_copy(update={"priority": min(100, pattern.priority + boost)}))
+        tier_boost = 0
+        # Tier 1: central signatures
+        if pattern.key in {"synastry.venus_ascendant", "synastry.sun_moon", "synastry.moon_moon", "synastry.moon_venus"}:
+            tier_boost += 14
+        if pattern.category in {"partnership", "home_roots", "intimacy_depth"}:
+            tier_boost += 10
+        if pattern.key in {"synastry.venus_mars", "synastry.moon_saturn"}:
+            tier_boost += 8
+
+        # Tier 2: mechanics
+        if pattern.key in {"synastry.mercury_mars", "synastry.venus_saturn", "synastry.mars_pluto", "synastry.venus_pluto", "synastry.mars_saturn", "composite.sun_saturn", "composite.moon_uranus"}:
+            tier_boost += 4
+
+        # Tier 3 texture + down-rank exactness-only overclaims
+        if pattern.key == "composite.mars_pluto":
+            tier_boost -= 8
+
+        orb_adjustment = 0
+        ev = " ".join(pattern.evidence)
+        orb_match = re.search(r"orb\\s+([0-9]+(?:\\.[0-9]+)?)", ev)
+        if orb_match:
+            orb = float(orb_match.group(1))
+            if orb <= 1.0:
+                orb_adjustment += 4
+            elif orb <= 2.0:
+                orb_adjustment += 2
+            elif orb >= 5.0:
+                orb_adjustment -= 2
+
+        new_priority = min(100, max(0, pattern.priority + boost + tier_boost + orb_adjustment))
+        weighted.append(pattern.model_copy(update={"priority": new_priority}))
     return sorted(weighted, key=lambda pattern: pattern.priority, reverse=True)

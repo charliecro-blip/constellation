@@ -15,7 +15,6 @@ from pydantic import BaseModel
 from .confidence import confidence_markdown
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
-from .natal_profile import natal_profile_markdown
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .schemas import BirthData, RelationshipCalculation
@@ -58,13 +57,33 @@ def _context_summary(context: RelationshipContext | None) -> str:
     return "\n".join(lines)
 
 
-def _pattern_list(patterns: list[Pattern], limit: int = 10) -> str:
+def _strength_label(priority: int) -> str:
+    if priority >= 90:
+        return "very strong / central"
+    if priority >= 80:
+        return "strong"
+    if priority >= 70:
+        return "moderate but relevant"
+    return "background texture"
+
+
+def _pattern_list(patterns: list[Pattern], limit: int = 5) -> str:
     if not patterns:
         return "No high-priority patterns were detected yet."
     lines = []
     for pattern in patterns[:limit]:
         evidence = "; ".join(pattern.evidence)
-        lines.append(f"- **{pattern.title}** ({pattern.layer}, strength {pattern.priority}/100): {evidence}. Why it matters: {interpret_pattern(pattern)}")
+        lines.append(f"### {pattern.title}")
+        lines.append("")
+        lines.append(f"{evidence}.")
+        lines.append("")
+        lines.append(f"Strength: {_strength_label(pattern.priority)}.")
+        lines.append("")
+        lines.append(f"Why it matters: {interpret_pattern(pattern)}")
+        lines.append("")
+        lines.append("Gift: clear activation and useful signal when handled consciously.")
+        lines.append("Care point: activation is not the same as long-term safety; pacing and repair still matter.")
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -110,10 +129,9 @@ def _birdseye(patterns: list[Pattern], context: RelationshipContext | None) -> s
         context_note = f" This is being framed as a {context.relationship_type} relationship."
 
     return (
-        "This draft reads the relationship as a field of activation rather than a compatibility "
-        f"score.{context_note} The strongest currently detected pattern is **{top.title}**, "
-        "which should set the first interpretive emphasis while the remaining patterns provide "
-        "supporting layers."
+        "This reading prioritizes central signatures over exhaustive pattern listing."
+        f"{context_note} The lead signature is **{top.title}**, which sets the tone."
+        " Secondary items are included only when they change interpretation or repair strategy."
     )
 
 
@@ -261,7 +279,7 @@ def generate_relationship_report(
         ReportSection(title="Relationship Map Summary", body=_birdseye(patterns, context)),
         ReportSection(title="Most Important Signatures", body=_pattern_list(patterns)),
         ReportSection(
-            title="Synastry: How You Activate Each Other",
+            title="How You Activate Each Other",
             body=_interpretation_for_categories(
                 patterns,
                 {"recognition", "communication", "emotional_translation", "emotional_activation"},
@@ -269,15 +287,15 @@ def generate_relationship_report(
             ),
         ),
         ReportSection(
-            title="House Overlays: Where Each Person Lands",
+            title="Where Each Person Lands",
             body=_interpretation_for_categories(
                 patterns,
                 {"home_roots", "partnership", "intimacy_depth", "daily_life", "identity_body", "romance_creativity"},
                 "No major house overlays were selected yet.",
             ),
         ),
-        ReportSection(title="Composite: The Field Between You", body=_composite_summary(relationship)),
-        ReportSection(title="Friction / Repair Themes", body=f"{_friction_loop(patterns)}\n\n{_repair_path(patterns)}"),
+        ReportSection(title="Composite Field", body=_composite_summary(relationship)),
+        ReportSection(title="Friction and Repair", body=f"{_friction_loop(patterns)}\n\n{_repair_path(patterns)}"),
         ReportSection(title="Optional Technical Details", body=f"<details><summary>Technical report details</summary>\n\n{_context_summary(context)}\n\n{confidence_markdown(relationship)}\n\n{_report_metadata(relationship, context)}\n</details>"),
     ]
     return RelationshipReport(title=title, sections=sections)

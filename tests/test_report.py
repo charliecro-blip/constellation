@@ -36,10 +36,10 @@ def test_generate_report_markdown_contains_core_sections():
     required_sections = [
         "Relationship Map Summary",
         "Most Important Signatures",
-        "Synastry: How You Activate Each Other",
-        "House Overlays: Where Each Person Lands",
-        "Composite: The Field Between You",
-        "Friction / Repair Themes",
+        "How You Activate Each Other",
+        "Where Each Person Lands",
+        "Composite Field",
+        "Friction and Repair",
         "Optional Technical Details",
     ]
     for section in required_sections:
@@ -79,3 +79,12 @@ def test_generate_report_includes_collapsed_technical_metadata_and_names():
     assert "Relationship type: friend" in markdown
     assert "person_a" not in markdown
     assert "person_b" not in markdown
+
+
+def test_top_signatures_are_limited_and_no_surface_engine_or_glossary_leakage():
+    report = generate_report_from_birth_data(_person_a(), _person_b())
+    markdown = report.to_markdown()
+    most_important_block = markdown.split("## Most Important Signatures")[1].split("## How You Activate Each Other")[0]
+    assert most_important_block.count("\n### ") <= 5
+    assert "Surface vs Engine" not in markdown
+    assert "describes affection, attraction, aesthetics" not in markdown

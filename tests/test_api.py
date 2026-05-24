@@ -119,8 +119,8 @@ def test_report_endpoint():
     assert "Relationship Field Map" in markdown
     assert "Relationship Map Summary" in markdown
     assert "Most Important Signatures" in markdown
-    assert "Synastry: How You Activate Each Other" in markdown
-    assert "House Overlays: Where Each Person Lands" in markdown
-    assert "Composite: The Field Between You" in markdown
-    assert "Friction / Repair Themes" in markdown
+    assert "How You Activate Each Other" in markdown
+    assert "Where Each Person Lands" in markdown
+    assert "Composite Field" in markdown
+    assert "Friction and Repair" in markdown
     assert "Origin story" in markdown
