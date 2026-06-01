@@ -11,75 +11,82 @@ from .patterns import Pattern
 
 INTERPRETATION_BLOCKS: dict[str, str] = {
     "synastry.venus_ascendant": (
-        "This is a direct attraction and recognition contact. One person's presence, body, "
-        "style, or way of entering the room may reach the other person's Venus field quickly. "
-        "The contact should be read as stimulus and receptivity, not as a verdict about safety "
-        "or longevity."
+        "Strong attraction through presence, style, and body-language. Noticeable pull, but not necessarily smooth."
+    ),
+    "synastry.angle_ascendant_sun": (
+        "The Sun person lands directly on the Ascendant person's embodied field. Recognition is immediate; the Sun person is hard for the Ascendant person to keep abstract."
+    ),
+    "synastry.angle_ascendant_moon": (
+        "The Moon person lands on the Ascendant person's body and instinctive field. Familiarity, reactivity, and emotional visibility arrive quickly."
+    ),
+    "synastry.angle_ascendant_mars": (
+        "Immediate charge through body, will, and movement. Energizing, provocative, and best with clean pacing."
+    ),
+    "synastry.angle_ascendant_saturn": (
+        "Saturn meets the Ascendant person's body and self-presentation directly. Seriousness is palpable; steadiness can become pressure if the bond tightens too quickly."
+    ),
+    "synastry.angle_ascendant_north_node": (
+        "The nodal axis hits the Ascendant field. The meeting can feel consequential, directional, or difficult to treat as casual."
+    ),
+    "synastry.angle_ascendant_south_node": (
+        "The nodal axis hits the Ascendant field. Familiarity can arrive fast, with old-pattern gravity that needs present-tense choice."
+    ),
+    "synastry.angle_midheaven_sun": (
+        "The Sun person touches the Midheaven person's direction, visibility, and public self. The bond can affect ambition, reputation, or life trajectory."
+    ),
+    "synastry.angle_midheaven_moon": (
+        "The Moon person touches the Midheaven person's visible life direction. Private feeling and public path are not easily separated here."
+    ),
+    "synastry.angle_midheaven_venus": (
+        "Venus touches the Midheaven field: admiration, aesthetics, social visibility, and public value can become part of the attraction."
+    ),
+    "synastry.angle_midheaven_saturn": (
+        "Saturn touches the Midheaven field. The bond may carry consequence, duty, mentorship, pressure, or long-range shaping."
+    ),
+    "synastry.angle_midheaven_north_node": (
+        "The nodal axis touches the Midheaven field. The relationship can feel tied to vocation, visibility, or a future-facing threshold."
+    ),
+    "synastry.angle_midheaven_south_node": (
+        "The nodal axis touches the Midheaven field. Old roles, reputation, or unfinished public-life material may be activated."
     ),
     "synastry.venus_mars": (
-        "This contact links affection and desire. It can create movement, flirtation, pursuit, "
-        "heat, and creative charge. The repair question is whether the desire channel can stay "
-        "clear, mutual, and well-paced."
+        "Affection and desire catch quickly. Flirtation, pursuit, and creative heat are easy; mutual pacing keeps it clean."
     ),
     "synastry.sun_moon": (
-        "This is a primary recognition signature. One person's life-force may meet the other "
-        "person's emotional body in a way that feels legible or consequential. It can support "
-        "being seen and received, but recognition still needs lived care and repair."
+        "A primary solar-lunar recognition signature. One person's direction meets the other's emotional rhythm; consequential, familiar, and not automatically easy."
     ),
     "synastry.moon_moon": (
-        "This describes emotional translation between two nervous systems. Easy contacts can "
-        "create instinctive familiarity; hard contacts can create polarity or mismatch. Either "
-        "way, the Moon layer asks how each person seeks safety, closeness, rest, and regulation."
+        "Two emotional rhythms recognize or challenge each other directly. Safety, closeness, rest, and regulation become central terrain."
     ),
     "synastry.moon_venus": (
-        "This contact blends emotional safety with affection. There may be sweetness, care, "
-        "comfort, or the feeling that tenderness has a place to land. The repair question is "
-        "whether affection can remain responsive rather than becoming appeasement."
+        "Tenderness has somewhere to land. Sweetness, comfort, and affection are available; avoid turning care into appeasement."
     ),
     "synastry.moon_mars": (
-        "This contact activates the emotional body. It can create aliveness, desire, protection, "
-        "and movement, but it may also make feelings reactive or easily stirred. The bond needs "
-        "a way to separate honest activation from unnecessary escalation."
+        "Feelings heat up quickly. Aliveness, desire, protection, and reactivity travel together; pacing matters."
     ),
     "synastry.mercury_mars": (
-        "This contact makes the communication field active. Words may carry heat, speed, humor, "
-        "argument, or provocation. The same pattern can sharpen clarity or escalate irritation, "
-        "depending on pacing and repair."
+        "Words carry heat, speed, humor, and provocation. It can sharpen clarity or escalate irritation."
     ),
     "synastry.mercury_mercury": (
-        "This contact describes how the minds meet. Similarity can make conversation easy; "
-        "difference can make conversation stimulating or polarizing. The important question is "
-        "whether the two people can translate, not whether they think identically."
+        "The minds meet directly. Similarity can ease conversation; difference can stimulate or polarize. Translation matters more than sameness."
     ),
     "synastry.moon_saturn": (
-        "This contact brings emotional life into contact with structure, time, responsibility, "
-        "or restraint. Saturn may offer steadiness and commitment, but it can also feel cold, "
-        "heavy, or inhibiting. The question is whether Saturn functions as container or constraint."
+        "Emotional life meets time, restraint, and responsibility. Saturn can steady the bond or make softness feel judged."
     ),
     "synastry.moon_pluto": (
-        "This contact can make the emotional field feel deep, exposing, magnetic, or difficult "
-        "to keep casual. Intensity is not the same as safety; the bond needs honesty, pacing, "
-        "and repair capacity."
+        "The emotional field becomes deep, exposing, magnetic, and hard to keep casual. Intensity needs honesty and repair capacity."
     ),
     "synastry.venus_pluto": (
-        "This contact intensifies attraction and value. Pleasure, beauty, longing, jealousy, "
-        "or vulnerability may press into deeper material quickly. The bond needs enough honesty "
-        "and self-possession that desire does not become control."
+        "Attraction intensifies fast. Pleasure, longing, jealousy, and vulnerability can press into deeper material."
     ),
     "synastry.mars_pluto": (
-        "This is a high-force activation pattern. Desire, anger, will, pressure, and power may "
-        "become amplified in contact. The repair task is learning how force moves without turning "
-        "into domination, compulsion, or escalation."
+        "High-force chemistry. Desire, anger, will, pressure, and power amplify quickly; force needs clean channels."
     ),
     "synastry.venus_saturn": (
-        "This contact links affection with time, seriousness, restraint, or commitment. It can "
-        "support loyalty and endurance, but it can also make love feel evaluated, delayed, or "
-        "burdened. The question is whether Saturn protects affection or restricts it."
+        "Affection meets time, seriousness, and restraint. Loyalty is possible; so is the feeling of love being evaluated."
     ),
     "synastry.mars_saturn": (
-        "This contact links action with resistance, discipline, duty, or frustration. It can "
-        "create stamina and accountability, but also the feeling of pushing against a wall. The "
-        "repair path is clear agreements around pace, effort, and pressure."
+        "Action meets resistance, discipline, duty, or frustration. Stamina is possible, but so is the feeling of pushing against a wall."
     ),
     "composite.venus_mars": (
         "The relationship field carries a built-in affection/desire current. This can create "
@@ -107,22 +114,20 @@ INTERPRETATION_BLOCKS: dict[str, str] = {
         "feel delayed or burdened."
     ),
     "composite.moon_uranus": (
-        "The relationship's emotional body is wired for change, electricity, and disruption. "
-        "There may be aliveness and freedom, but also uneven rhythm. The bond needs ways to "
-        "make space without turning distance into abandonment."
+        "The relationship's emotional rhythm is electric, changeable, and hard to settle. Space is necessary; inconsistency can become the wound."
     ),
 }
 
 
 OVERLAY_BLOCKS: dict[str, str] = {
-    "1": "This overlay enters the body and identity field. The person may feel immediately present, visible, or hard to keep abstract.",
-    "4": "This overlay enters the private/root system: home, family memory, belonging, childhood patterning, and emotional foundation.",
-    "5": "This overlay enters romance, play, creativity, pleasure, and the feeling of being chosen or enlivened.",
-    "6": "This overlay enters daily life: habits, work, chores, health, usefulness, repair routines, and the ordinary places where a bond is made or strained.",
-    "7": "This overlay enters the partner mirror. The person may appear as other, equal, counterpart, projection surface, or relationship threshold.",
-    "8": "This overlay enters intimacy, trust, shared resources, psychological exposure, erotic charge, and material that cannot stay fully casual.",
-    "10": "This overlay enters public life, vocation, visibility, ambition, reputation, and the sense of where the life is going.",
-    "12": "This overlay enters the hidden field: dreams, projection, retreat, unconscious material, longing, ambiguity, and what is felt before it is fully named.",
+    "1": "Body and identity are emphasized. The planet person may feel immediately present, visible, or hard to keep abstract.",
+    "4": "Private roots are emphasized: home, family memory, belonging, childhood patterning, and emotional foundation.",
+    "5": "Romance, play, creativity, pleasure, and the feeling of being chosen are emphasized.",
+    "6": "Daily life is emphasized: habits, work, health, usefulness, repair routines, and ordinary maintenance.",
+    "7": "The partner mirror is emphasized. The planet person may appear as counterpart, projection surface, or relationship threshold.",
+    "8": "Intimacy, trust, shared resources, psychological exposure, and erotic charge are emphasized.",
+    "10": "Public life, vocation, visibility, ambition, reputation, and life direction are emphasized.",
+    "12": "The hidden field is emphasized: dreams, projection, retreat, longing, ambiguity, and what is felt before it is named.",
 }
 
 
@@ -166,7 +171,7 @@ def interpret_pattern(pattern: Pattern) -> str:
 
     if key.startswith("overlay.house_"):
         house = key.split("_")[-1]
-        return OVERLAY_BLOCKS.get(house, "This overlay shows where one person appears inside the other person's life terrain.")
+        return OVERLAY_BLOCKS.get(house, "This shows where one person appears inside the other person's life terrain.")
 
     if key.startswith("composite.moon."):
         sign = key.split(".")[-1]

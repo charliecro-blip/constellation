@@ -1,7 +1,8 @@
 """Early deterministic pattern detection.
 
-The goal of this module is to turn calculated chart data into ranked,
-structured evidence for a future report generator. It does not write prose.
+The detector turns calculated chart data into ranked, structured evidence for
+report generation. The report layer decides which detected patterns deserve
+user-facing emphasis.
 """
 
 from __future__ import annotations
@@ -22,219 +23,281 @@ class Pattern(BaseModel):
     confidence: str = "medium"
 
 
+def _display_point(point: str) -> str:
+    return point.replace("_", " ").title()
+
+
 def _points(aspect: Aspect) -> set[str]:
     return {aspect.point_a.lower(), aspect.point_b.lower()}
 
 
+def _aspect_word(aspect_name: str) -> str:
+    return {"conjunction": "conjunct", "opposition": "opposite"}.get(aspect_name, aspect_name)
+
+
+def _synastry_title(aspect: Aspect, relationship: RelationshipCalculation) -> str:
+    left = f"{relationship.person_a.name}'s {_display_point(aspect.point_a)}"
+    right = f"{relationship.person_b.name}'s {_display_point(aspect.point_b)}"
+    return f"{left} {_aspect_word(aspect.aspect)} {right}"
+
+
+def _composite_title(aspect: Aspect) -> str:
+    return f"Composite {_display_point(aspect.point_a)} {_aspect_word(aspect.aspect)} {_display_point(aspect.point_b)}"
+
+
 def _evidence(aspect: Aspect, relationship: RelationshipCalculation) -> str:
-    left = f"{relationship.person_a.name}'s {aspect.point_a.replace('_', ' ').title()}"
-    right = f"{relationship.person_b.name}'s {aspect.point_b.replace('_', ' ').title()}"
-    return f"{left} {aspect.aspect} {right}; orb {aspect.orb:.2f}"
+    return f"{_synastry_title(aspect, relationship)}; orb {aspect.orb:.2f}"
 
 
 def _composite_evidence(aspect: Aspect) -> str:
-    return f"Composite {aspect.point_a.replace('_', ' ').title()} {aspect.aspect} {aspect.point_b.replace('_', ' ').title()}; orb {aspect.orb:.2f}"
+    return f"{_composite_title(aspect)}; orb {aspect.orb:.2f}"
 
 
 def _bonus(aspect: Aspect) -> int:
     return min(max(0, int(10 - min(aspect.orb, 10))), 10)
 
 
+def _pair_key(*points: str) -> str:
+    return "_".join(sorted(point.lower() for point in points))
+
+
+def _angle_category(body: str) -> str:
+    if body in {"sun", "moon"}:
+        return "angle_luminary"
+    if body == "venus":
+        return "attraction"
+    if body == "mars":
+        return "embodied_activation"
+    if body == "saturn":
+        return "angle_structure"
+    if body in {"north_node", "south_node"}:
+        return "fated_axis"
+    return "angular_contact"
+
+
+def _angle_priority(angle: str, body: str) -> int:
+    if angle == "ascendant" and body in {"sun", "moon"}:
+        return 94
+    if angle == "ascendant" and body == "venus":
+        return 90
+    if angle == "ascendant" and body in {"mars", "saturn", "north_node", "south_node"}:
+        return 86
+    if angle == "midheaven" and body in {"sun", "moon"}:
+        return 88
+    if angle == "midheaven" and body in {"venus", "saturn", "north_node", "south_node"}:
+        return 84
+    return 80
+
+
+def _synastry_pattern(
+    aspect: Aspect,
+    relationship: RelationshipCalculation,
+    *,
+    pattern_id: str,
+    category: str,
+    priority: int,
+    key: str,
+    confidence: str = "medium",
+) -> Pattern:
+    return Pattern(
+        id=pattern_id,
+        layer="synastry",
+        category=category,
+        priority=min(100, priority + _bonus(aspect)),
+        title=_synastry_title(aspect, relationship),
+        evidence=[_evidence(aspect, relationship)],
+        key=key,
+        confidence=confidence,
+    )
+
+
 def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Pattern]:
     patterns: list[Pattern] = []
+    important_angle_bodies = {"sun", "moon", "venus", "mars", "saturn", "north_node", "south_node"}
 
     for aspect in relationship.synastry_aspects:
         pts = _points(aspect)
-        bonus = _bonus(aspect)
+        point_a = aspect.point_a.lower()
+        point_b = aspect.point_b.lower()
+        pair = _pair_key(point_a, point_b)
 
-        if "ascendant" in pts and "venus" in pts:
-            patterns.append(Pattern(
-                id="synastry_venus_ascendant",
-                layer="synastry",
-                category="attraction",
-                priority=90 + bonus,
-                title="Venus/Ascendant activation",
-                evidence=[_evidence(aspect, relationship)],
-                key="synastry.venus_ascendant",
+        if point_a in {"ascendant", "midheaven"} and point_b in important_angle_bodies:
+            key = f"synastry.angle_{point_a}_{point_b}"
+            if point_a == "ascendant" and point_b == "venus":
+                key = "synastry.venus_ascendant"
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id=f"synastry_{point_a}_{point_b}",
+                category=_angle_category(point_b),
+                priority=_angle_priority(point_a, point_b),
+                key=key,
                 confidence="high",
             ))
+            continue
 
-        if "venus" in pts and "mars" in pts:
-            patterns.append(Pattern(
-                id="synastry_venus_mars",
-                layer="synastry",
+        if pair == "mars_venus":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_venus_mars",
                 category="desire",
-                priority=82 + bonus,
-                title="Venus/Mars attraction signature",
-                evidence=[_evidence(aspect, relationship)],
+                priority=82,
                 key="synastry.venus_mars",
                 confidence="high",
             ))
 
-        if "sun" in pts and "moon" in pts:
-            patterns.append(Pattern(
-                id="synastry_sun_moon",
-                layer="synastry",
+        if pair == "moon_sun":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_sun_moon",
                 category="recognition",
-                priority=84 + bonus,
-                title="Sun/Moon recognition signature",
-                evidence=[_evidence(aspect, relationship)],
+                priority=84,
                 key="synastry.sun_moon",
                 confidence="high",
             ))
 
         if pts == {"moon"}:
-            patterns.append(Pattern(
-                id="synastry_moon_moon",
-                layer="synastry",
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_moon_moon",
                 category="emotional_translation",
-                priority=80 + bonus,
-                title="Moon-to-Moon emotional contact",
-                evidence=[_evidence(aspect, relationship)],
+                priority=80,
                 key="synastry.moon_moon",
                 confidence="high",
             ))
 
-        if "moon" in pts and "venus" in pts:
-            patterns.append(Pattern(
-                id="synastry_moon_venus",
-                layer="synastry",
+        if pair == "moon_venus":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_moon_venus",
                 category="affection",
-                priority=78 + bonus,
-                title="Moon/Venus affection contact",
-                evidence=[_evidence(aspect, relationship)],
+                priority=78,
                 key="synastry.moon_venus",
                 confidence="high",
             ))
 
-        if "moon" in pts and "mars" in pts:
-            patterns.append(Pattern(
-                id="synastry_moon_mars",
-                layer="synastry",
+        if pair == "mars_moon":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_moon_mars",
                 category="emotional_activation",
-                priority=78 + bonus,
-                title="Moon/Mars emotional activation",
-                evidence=[_evidence(aspect, relationship)],
+                priority=78,
                 key="synastry.moon_mars",
-                confidence="medium",
             ))
 
-        if "mercury" in pts and "mars" in pts:
-            patterns.append(Pattern(
-                id="synastry_mercury_mars",
-                layer="synastry",
+        if pair == "mars_mercury":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_mercury_mars",
                 category="communication",
-                priority=76 + bonus,
-                title="Mercury/Mars communication heat",
-                evidence=[_evidence(aspect, relationship)],
+                priority=76,
                 key="synastry.mercury_mars",
-                confidence="medium",
             ))
 
         if pts == {"mercury"}:
-            patterns.append(Pattern(
-                id="synastry_mercury_mercury",
-                layer="synastry",
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_mercury_mercury",
                 category="communication",
-                priority=72 + bonus,
-                title="Mercury-to-Mercury contact",
-                evidence=[_evidence(aspect, relationship)],
+                priority=72,
                 key="synastry.mercury_mercury",
-                confidence="medium",
             ))
 
-        if "moon" in pts and "saturn" in pts:
-            patterns.append(Pattern(
-                id="synastry_moon_saturn",
-                layer="synastry",
+        if pair == "moon_saturn":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_moon_saturn",
                 category="emotional_structure",
-                priority=78 + bonus,
-                title="Moon/Saturn structure pressure",
-                evidence=[_evidence(aspect, relationship)],
+                priority=78,
                 key="synastry.moon_saturn",
-                confidence="medium",
             ))
 
-        if "moon" in pts and "pluto" in pts:
-            patterns.append(Pattern(
-                id="synastry_moon_pluto",
-                layer="synastry",
+        if pair == "moon_pluto":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_moon_pluto",
                 category="emotional_intensity",
-                priority=82 + bonus,
-                title="Moon/Pluto emotional intensity",
-                evidence=[_evidence(aspect, relationship)],
+                priority=82,
                 key="synastry.moon_pluto",
-                confidence="medium",
             ))
 
-        if "venus" in pts and "pluto" in pts:
-            patterns.append(Pattern(
-                id="synastry_venus_pluto",
-                layer="synastry",
+        if pair == "pluto_venus":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_venus_pluto",
                 category="attraction_intensity",
-                priority=82 + bonus,
-                title="Venus/Pluto attraction intensity",
-                evidence=[_evidence(aspect, relationship)],
+                priority=82,
                 key="synastry.venus_pluto",
-                confidence="medium",
             ))
 
-        if "mars" in pts and "pluto" in pts:
-            patterns.append(Pattern(
-                id="synastry_mars_pluto",
-                layer="synastry",
+        if pair == "mars_pluto":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_mars_pluto",
                 category="intensity",
-                priority=82 + bonus,
-                title="Mars/Pluto intensity signature",
-                evidence=[_evidence(aspect, relationship)],
+                priority=82,
                 key="synastry.mars_pluto",
-                confidence="medium",
             ))
 
-        if "venus" in pts and "saturn" in pts:
-            patterns.append(Pattern(
-                id="synastry_venus_saturn",
-                layer="synastry",
+        if pair == "saturn_venus":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_venus_saturn",
                 category="bond_structure",
-                priority=76 + bonus,
-                title="Venus/Saturn bond structure",
-                evidence=[_evidence(aspect, relationship)],
+                priority=76,
                 key="synastry.venus_saturn",
-                confidence="medium",
             ))
 
-        if "mars" in pts and "saturn" in pts:
-            patterns.append(Pattern(
-                id="synastry_mars_saturn",
-                layer="synastry",
+        if pair == "mars_saturn":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_mars_saturn",
                 category="action_structure",
-                priority=74 + bonus,
-                title="Mars/Saturn action structure",
-                evidence=[_evidence(aspect, relationship)],
+                priority=74,
                 key="synastry.mars_saturn",
-                confidence="medium",
             ))
 
     return patterns
 
 
+def _ordinal(number: int) -> str:
+    if 10 <= number % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
+    return f"{number}{suffix}"
+
+
 def _overlay_evidence(overlay: HouseOverlay, relationship: RelationshipCalculation) -> str:
     planet_owner = relationship.person_a.name if overlay.planet_owner == "person_a" else relationship.person_b.name
     house_owner = relationship.person_a.name if overlay.house_owner == "person_a" else relationship.person_b.name
-    return f"{planet_owner}'s {overlay.body.title()} in {house_owner}'s house {overlay.house}"
+    return f"{planet_owner}'s {_display_point(overlay.body)} in {house_owner}'s {_ordinal(overlay.house)} house"
 
 
 def detect_house_overlay_patterns(relationship: RelationshipCalculation) -> list[Pattern]:
     patterns: list[Pattern] = []
     important_houses = {
-        1: ("identity_body", 76),
-        4: ("home_roots", 80),
-        5: ("romance_creativity", 74),
-        6: ("daily_life", 72),
-        7: ("partnership", 82),
-        8: ("intimacy_depth", 80),
-        10: ("public_direction", 74),
-        12: ("hidden_field", 76),
+        1: ("identity_body", 58),
+        4: ("home_roots", 62),
+        5: ("romance_creativity", 56),
+        6: ("daily_life", 54),
+        7: ("partnership", 64),
+        8: ("intimacy_depth", 62),
+        10: ("public_direction", 56),
+        12: ("hidden_field", 58),
     }
     important_bodies = {"sun", "moon", "mercury", "venus", "mars", "saturn", "pluto", "north_node", "south_node"}
 
@@ -247,7 +310,7 @@ def detect_house_overlay_patterns(relationship: RelationshipCalculation) -> list
             layer="house_overlay",
             category=category,
             priority=priority,
-            title=f"{overlay.body.title()} house overlay",
+            title=_overlay_evidence(overlay, relationship),
             evidence=[_overlay_evidence(overlay, relationship)],
             key=f"overlay.house_{overlay.house}",
             confidence="medium",
@@ -265,7 +328,7 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
             id=f"composite_moon_{moon.sign.lower()}",
             layer="composite",
             category="emotional_body",
-            priority=76,
+            priority=66,
             title=f"Composite Moon in {moon.sign}",
             evidence=[f"Composite Moon {moon.degree:.2f} {moon.sign}"],
             key=f"composite.moon.{moon.sign.lower()}",
@@ -278,88 +341,41 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
             id=f"composite_sun_{sun.sign.lower()}",
             layer="composite",
             category="relationship_identity",
-            priority=70,
+            priority=62,
             title=f"Composite Sun in {sun.sign}",
             evidence=[f"Composite Sun {sun.degree:.2f} {sun.sign}"],
             key=f"composite.sun.{sun.sign.lower()}",
             confidence="high",
         ))
 
+    hard_aspects = {"conjunction", "opposition", "square"}
     for aspect in composite_aspects:
-        pts = _points(aspect)
+        pair = _pair_key(aspect.point_a, aspect.point_b)
         bonus = _bonus(aspect)
+        hard_bonus = 6 if aspect.aspect in hard_aspects else 0
+        trine_penalty = 4 if aspect.aspect == "trine" else 0
 
-        if "venus" in pts and "mars" in pts:
-            patterns.append(Pattern(
-                id="composite_venus_mars",
-                layer="composite",
-                category="desire",
-                priority=82 + bonus,
-                title="Composite Venus and Mars contact",
-                evidence=[_composite_evidence(aspect)],
-                key="composite.venus_mars",
-                confidence="high",
-            ))
-
-        if "mars" in pts and "pluto" in pts:
-            patterns.append(Pattern(
-                id="composite_mars_pluto",
-                layer="composite",
-                category="intensity",
-                priority=88 + bonus,
-                title="Composite Mars and Pluto contact",
-                evidence=[_composite_evidence(aspect)],
-                key="composite.mars_pluto",
-                confidence="high",
-            ))
-
-        if "venus" in pts and "saturn" in pts:
-            patterns.append(Pattern(
-                id="composite_venus_saturn",
-                layer="composite",
-                category="bond_structure",
-                priority=80 + bonus,
-                title="Composite Venus and Saturn contact",
-                evidence=[_composite_evidence(aspect)],
-                key="composite.venus_saturn",
-                confidence="medium",
-            ))
-
-        if "sun" in pts and "saturn" in pts:
-            patterns.append(Pattern(
-                id="composite_sun_saturn",
-                layer="composite",
-                category="relationship_structure",
-                priority=80 + bonus,
-                title="Composite Sun and Saturn contact",
-                evidence=[_composite_evidence(aspect)],
-                key="composite.sun_saturn",
-                confidence="medium",
-            ))
-
-        if "moon" in pts and "saturn" in pts:
-            patterns.append(Pattern(
-                id="composite_moon_saturn",
-                layer="composite",
-                category="emotional_structure",
-                priority=82 + bonus,
-                title="Composite Moon and Saturn contact",
-                evidence=[_composite_evidence(aspect)],
-                key="composite.moon_saturn",
-                confidence="medium",
-            ))
-
-        if "moon" in pts and "uranus" in pts:
-            patterns.append(Pattern(
-                id="composite_moon_uranus",
-                layer="composite",
-                category="emotional_variability",
-                priority=82 + bonus,
-                title="Composite Moon and Uranus contact",
-                evidence=[_composite_evidence(aspect)],
-                key="composite.moon_uranus",
-                confidence="medium",
-            ))
+        composite_specs = {
+            "mars_venus": ("composite_venus_mars", "desire", 78, "composite.venus_mars", "high"),
+            "mars_pluto": ("composite_mars_pluto", "intensity", 80, "composite.mars_pluto", "high"),
+            "saturn_venus": ("composite_venus_saturn", "bond_structure", 78, "composite.venus_saturn", "medium"),
+            "saturn_sun": ("composite_sun_saturn", "relationship_structure", 78, "composite.sun_saturn", "medium"),
+            "moon_saturn": ("composite_moon_saturn", "emotional_structure", 82, "composite.moon_saturn", "medium"),
+            "moon_uranus": ("composite_moon_uranus", "emotional_variability", 84, "composite.moon_uranus", "medium"),
+        }
+        if pair not in composite_specs:
+            continue
+        pattern_id, category, base_priority, key, confidence = composite_specs[pair]
+        patterns.append(Pattern(
+            id=pattern_id,
+            layer="composite",
+            category=category,
+            priority=min(100, base_priority + bonus + hard_bonus - trine_penalty),
+            title=_composite_title(aspect),
+            evidence=[_composite_evidence(aspect)],
+            key=key,
+            confidence=confidence,
+        ))
 
     return patterns
 

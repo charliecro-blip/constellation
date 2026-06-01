@@ -82,15 +82,19 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
         boost = boosts.get(pattern.category, 0)
         tier_boost = 0
         # Tier 1: central signatures
+        if pattern.category == "angle_luminary":
+            tier_boost += 18
         if pattern.key in {"synastry.venus_ascendant", "synastry.sun_moon", "synastry.moon_moon", "synastry.moon_venus"}:
-            tier_boost += 14
-        if pattern.category in {"partnership", "home_roots", "intimacy_depth"}:
-            tier_boost += 10
-        if pattern.key in {"synastry.venus_mars", "synastry.moon_saturn"}:
+            tier_boost += 12
+        if pattern.category in {"fated_axis", "angle_structure"}:
             tier_boost += 8
+        if pattern.key in {"synastry.venus_mars", "synastry.moon_saturn"}:
+            tier_boost += 6
+        if pattern.layer == "house_overlay":
+            tier_boost -= 14
 
         # Tier 2: mechanics
-        if pattern.key in {"synastry.mercury_mars", "synastry.venus_saturn", "synastry.mars_pluto", "synastry.venus_pluto", "synastry.mars_saturn", "composite.sun_saturn", "composite.moon_uranus"}:
+        if pattern.key in {"synastry.mercury_mars", "synastry.venus_saturn", "synastry.mars_pluto", "synastry.venus_pluto", "synastry.mars_saturn", "composite.sun_saturn", "composite.moon_uranus", "composite.moon_saturn"}:
             tier_boost += 4
 
         # Tier 3 texture + down-rank exactness-only overclaims
@@ -99,7 +103,7 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
 
         orb_adjustment = 0
         ev = " ".join(pattern.evidence)
-        orb_match = re.search(r"orb\\s+([0-9]+(?:\\.[0-9]+)?)", ev)
+        orb_match = re.search(r"orb\s+([0-9]+(?:\.[0-9]+)?)", ev)
         if orb_match:
             orb = float(orb_match.group(1))
             if orb <= 1.0:
