@@ -66,7 +66,8 @@ def test_birth_profile_relationship_and_saved_report_flow():
     assert report.status_code == 200
     markdown = report.json()["markdown"]
     assert "Relationship Field Map" in markdown
-    assert "Prototype output: yes" in markdown
+    assert "Central Signatures" in markdown
+    assert "Prototype output" not in markdown
 
     reports = client.get(f"/saved-relationships/{relationship_id}/reports")
     assert reports.status_code == 200
