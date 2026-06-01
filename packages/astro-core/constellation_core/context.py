@@ -13,14 +13,17 @@ from pydantic import BaseModel, Field
 
 RelationshipType = Literal[
     "romantic",
+    "dating_exploring",
     "long_term_partner",
     "ex",
+    "unresolved_connection",
     "parent",
     "child",
     "sibling",
     "friend",
     "collaborator",
     "admired_figure",
+    "family_other",
     "other",
 ]
 

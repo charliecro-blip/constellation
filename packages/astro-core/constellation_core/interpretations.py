@@ -116,6 +116,27 @@ INTERPRETATION_BLOCKS: dict[str, str] = {
     "composite.moon_uranus": (
         "The relationship's emotional rhythm is electric, changeable, and hard to settle. Space is necessary; inconsistency can become the wound."
     ),
+    "composite.baseline": (
+        "This is the basic weather of the relationship field: identity, emotional rhythm, and visible style. Use it as the fallback center when no sharper configuration dominates."
+    ),
+    "composite.conjunction_cluster": (
+        "Several composite points gather close together, so the relationship behaves less like separate traits and more like one concentrated circuit."
+    ),
+    "composite.planet_on_angle": (
+        "A composite planet sits on an angle, making that function visible and hard to keep peripheral in the relationship field."
+    ),
+    "composite.nodes_on_mc_ic": (
+        "The composite nodal axis is tied to the MC/IC line, so public direction, private roots, vocation, and origin-story may feel unusually consequential."
+    ),
+    "composite.nodes_on_asc_desc": (
+        "The composite nodal axis is tied to the Asc/Desc line, making identity, approach, partnership, and choice a central axis of the bond."
+    ),
+    "composite.grand_trine": (
+        "The composite chart contains a supportive triangular flow. Treat it as ease and coherence, not as proof that the relationship needs no effort."
+    ),
+    "composite.t_square": (
+        "The composite chart contains a T-square, concentrating pressure through one release point. The pattern asks for conscious repair rather than reactivity."
+    ),
 }
 
 
@@ -172,6 +193,14 @@ def interpret_pattern(pattern: Pattern) -> str:
     if key.startswith("overlay.house_"):
         house = key.split("_")[-1]
         return OVERLAY_BLOCKS.get(house, "This shows where one person appears inside the other person's life terrain.")
+
+    if key.startswith("composite.stellium."):
+        sign = key.split(".")[-1].title()
+        if sign == "Capricorn":
+            return "A Capricorn concentration makes structure, timing, responsibility, ambition, and endurance a major organizing feature of the relationship field."
+        if sign == "Scorpio":
+            return "A Scorpio concentration gathers attachment, nourishment, desire, privacy, and trust into one deeper emotional pattern."
+        return f"A {sign} concentration makes that sign's mode a major organizing feature of the relationship field."
 
     if key.startswith("composite.moon."):
         sign = key.split(".")[-1]

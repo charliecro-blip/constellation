@@ -57,17 +57,39 @@ def _strength_phrase(pattern: Pattern) -> str:
             return "Close."
         if orb <= 5.0 or pattern.priority >= 86:
             return "Moderate."
-        return "Background."
+        return "Supporting texture."
     if pattern.priority >= 92:
         return "Central."
     if pattern.priority >= 82:
         return "Strong."
     if pattern.priority >= 70:
         return "Moderate."
-    return "Background."
+    return "Supporting texture."
 
 
-def _signature_block(patterns: list[Pattern], *, limit: int, empty_message: str) -> str:
+def _interpret_for_section(pattern: Pattern, section: str) -> str:
+    if pattern.key == "composite.moon_uranus" and section == "central":
+        return "The emotional rhythm is electric, changeable, and hard to settle."
+    if pattern.key == "composite.moon_uranus" and section == "friction":
+        return (
+            "The Moon–Uranus square describes a rhythm problem: closeness and distance may alternate quickly, "
+            "and attempts to stabilize the bond can trigger the need for space. The repair is not to eliminate "
+            "the electricity, but to create agreements that let freedom and attachment coexist."
+        )
+    if section == "composite" and pattern.key.startswith("composite.stellium."):
+        return (
+            "In the composite layer, this concentration ties the listed bodies into one shared operating mode "
+            "rather than isolated contacts. Look for these sign themes to organize pacing, expectations, and repair."
+        )
+    if section == "composite" and pattern.key == "composite.conjunction_cluster":
+        return (
+            "This close chain works like a single circuit: one body activates the next, so the report treats the "
+            "cluster as a combined pattern rather than separate conjunctions."
+        )
+    return interpret_pattern(pattern)
+
+
+def _signature_block(patterns: list[Pattern], *, limit: int, empty_message: str, section: str = "general") -> str:
     if not patterns:
         return empty_message
 
@@ -75,7 +97,7 @@ def _signature_block(patterns: list[Pattern], *, limit: int, empty_message: str)
     for pattern in patterns[:limit]:
         lines.append(f"### {pattern.title}")
         lines.append("")
-        lines.append(f"{_strength_phrase(pattern)} {interpret_pattern(pattern)}")
+        lines.append(f"{_strength_phrase(pattern)} {_interpret_for_section(pattern, section)}")
         lines.append("")
     return "\n".join(lines).strip()
 
@@ -104,9 +126,25 @@ def _supporting_patterns(patterns: list[Pattern], central: list[Pattern]) -> lis
 
 
 def _composite_patterns(patterns: list[Pattern]) -> list[Pattern]:
-    aspects = [pattern for pattern in patterns if pattern.layer == "composite" and not pattern.key.startswith(("composite.sun.", "composite.moon."))]
+    synthesis_prefixes = (
+        "composite.nodes_on_",
+        "composite.planet_on_angle",
+        "composite.stellium.",
+        "composite.conjunction_cluster",
+        "composite.baseline",
+        "composite.grand_trine",
+        "composite.t_square",
+    )
+    synthesis = [pattern for pattern in patterns if pattern.layer == "composite" and pattern.key.startswith(synthesis_prefixes)]
+    hard_aspects = [
+        pattern for pattern in patterns
+        if pattern.layer == "composite"
+        and pattern.key not in {item.key for item in synthesis}
+        and pattern.category in {"emotional_variability", "emotional_structure", "bond_structure", "relationship_structure", "desire", "intensity"}
+        and (pattern.priority >= 84 or pattern.category in {"emotional_variability", "emotional_structure"})
+    ]
     sign_texture = [pattern for pattern in patterns if pattern.layer == "composite" and pattern.key.startswith(("composite.sun.", "composite.moon."))]
-    return (aspects + sign_texture)[:4]
+    return (synthesis + hard_aspects + sign_texture)[:7]
 
 
 def _context_note(context: RelationshipContext | None) -> str | None:
@@ -148,7 +186,7 @@ def _friction_loop(patterns: list[Pattern]) -> str:
     for pattern in selected[:3]:
         lines.append(f"### {pattern.title}")
         lines.append("")
-        lines.append(f"{_strength_phrase(pattern)} {interpret_pattern(pattern)}")
+        lines.append(f"{_strength_phrase(pattern)} {_interpret_for_section(pattern, 'friction')}")
         lines.append("")
     lines.append(_repair_path(patterns))
     return "\n".join(lines).strip()
@@ -188,15 +226,15 @@ def generate_relationship_report(
     sections = [
         ReportSection(
             title="Central Signatures",
-            body=_signature_block(central, limit=5, empty_message="No central signatures were selected from the available chart data."),
+            body=_signature_block(central, limit=5, empty_message="No central signatures were selected from the available chart data.", section="central"),
+        ),
+        ReportSection(
+            title="Composite Field",
+            body=_signature_block(composite, limit=7, empty_message="Composite patterns were not strong enough to lead this report.", section="composite"),
         ),
         ReportSection(
             title="Supporting Patterns",
             body=_signature_block(supporting, limit=5, empty_message="No supporting patterns were strong enough to include."),
-        ),
-        ReportSection(
-            title="Composite Field",
-            body=_signature_block(composite, limit=4, empty_message="Composite patterns were not strong enough to lead this report."),
         ),
         ReportSection(title="Friction and Repair", body=_friction_loop(patterns)),
     ]
