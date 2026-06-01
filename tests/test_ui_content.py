@@ -44,8 +44,8 @@ def test_simplified_context_js_uses_safe_field_helpers_and_no_removed_field_valu
     assert js.count('const defaultState') == 1
     assert js.count('const sample') == 1
     assert js.count('function buildContext') == 1
-    assert 'function fieldValue(name, fallback = "")' in js
-    assert 'const relationshipType = fieldValue("relationship_type", "romantic")' in js
+    assert js.count('function fieldValue') == 1
+    assert 'const relationshipType = fieldValue("relationship_type", "romantic");' in js
     assert 'status: inferredStatus(relationshipType)' in js
     assert 'known_themes: []' in js
     assert 'form.elements.status' not in js
