@@ -61,11 +61,11 @@ def boosts_for_context(context: RelationshipContext | None) -> dict[str, int]:
         return {}
 
     relationship_type = context.relationship_type
-    if relationship_type == "romantic" or relationship_type == "ex":
+    if relationship_type in {"romantic", "dating_exploring", "ex", "unresolved_connection"}:
         return ROMANTIC_BOOSTS
     if relationship_type == "long_term_partner":
         return LONG_TERM_PARTNER_BOOSTS
-    if relationship_type in {"parent", "child", "sibling"}:
+    if relationship_type in {"parent", "child", "sibling", "family_other"}:
         return FAMILY_BOOSTS
     if relationship_type in {"friend", "collaborator"}:
         return FRIEND_COLLABORATOR_BOOSTS
@@ -92,6 +92,12 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
             tier_boost += 6
         if pattern.layer == "house_overlay":
             tier_boost -= 14
+            if "node" in pattern.id:
+                tier_boost -= 18
+        if pattern.key.startswith("composite.nodes_on_"):
+            tier_boost += 10
+        if pattern.key.startswith(("composite.stellium.", "composite.conjunction_cluster")):
+            tier_boost += 6
 
         # Tier 2: mechanics
         if pattern.key in {"synastry.mercury_mars", "synastry.venus_saturn", "synastry.mars_pluto", "synastry.venus_pluto", "synastry.mars_saturn", "composite.sun_saturn", "composite.moon_uranus", "composite.moon_saturn"}:

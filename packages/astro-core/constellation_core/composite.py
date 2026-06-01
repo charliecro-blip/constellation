@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from .aspects import detect_aspects
 from .chart import chart_points
 from .schemas import Aspect, BirthData, Chart, Placement
 from .zodiac import midpoint_longitude, to_zodiac_position

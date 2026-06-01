@@ -136,7 +136,7 @@ def search_places(query: str) -> PlaceSearchResponse:
                     provider="geoapify",
                     provider_available=True,
                 )
-        except Exception as exc:  # pragma: no cover - network failure path
+        except Exception:  # pragma: no cover - network failure path
             preset_results = search_place_presets(query)
             return PlaceSearchResponse(
                 query=query,
