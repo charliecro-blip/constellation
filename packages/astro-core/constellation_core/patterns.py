@@ -7,9 +7,44 @@ user-facing emphasis.
 
 from __future__ import annotations
 
+from itertools import combinations
+
 from pydantic import BaseModel, Field
 
 from .schemas import Aspect, Chart, HouseOverlay, RelationshipCalculation
+from .zodiac import shortest_arc
+
+
+SIGN_ELEMENTS = {
+    "Aries": "fire",
+    "Leo": "fire",
+    "Sagittarius": "fire",
+    "Taurus": "earth",
+    "Virgo": "earth",
+    "Capricorn": "earth",
+    "Gemini": "air",
+    "Libra": "air",
+    "Aquarius": "air",
+    "Cancer": "water",
+    "Scorpio": "water",
+    "Pisces": "water",
+}
+
+SYNTHESIS_POINTS = {
+    "sun",
+    "moon",
+    "mercury",
+    "venus",
+    "mars",
+    "jupiter",
+    "saturn",
+    "uranus",
+    "neptune",
+    "pluto",
+    "north_node",
+    "south_node",
+    "ceres",
+}
 
 
 class Pattern(BaseModel):
@@ -299,7 +334,7 @@ def detect_house_overlay_patterns(relationship: RelationshipCalculation) -> list
         10: ("public_direction", 56),
         12: ("hidden_field", 58),
     }
-    important_bodies = {"sun", "moon", "mercury", "venus", "mars", "saturn", "pluto", "north_node", "south_node"}
+    important_bodies = {"sun", "moon", "mercury", "venus", "mars", "saturn", "pluto"}
 
     for overlay in relationship.house_overlays:
         if overlay.house not in important_houses or overlay.body not in important_bodies:
@@ -319,8 +354,207 @@ def detect_house_overlay_patterns(relationship: RelationshipCalculation) -> list
     return patterns
 
 
+def _placement_label(body: str) -> str:
+    return _display_point(body)
+
+
+def _format_body_list(bodies: list[str]) -> str:
+    labels = [_placement_label(body) for body in bodies]
+    if len(labels) == 1:
+        return labels[0]
+    if len(labels) == 2:
+        return f"{labels[0]} and {labels[1]}"
+    return f"{', '.join(labels[:-1])}, and {labels[-1]}"
+
+
+def _angle_axis(angle_name: str) -> str:
+    if angle_name in {"midheaven", "imum_coeli"}:
+        return "MC/IC"
+    return "Asc/Desc"
+
+
+def _angle_distance(placement_longitude: float, angle_longitude: float) -> tuple[str, float]:
+    direct = shortest_arc(placement_longitude, angle_longitude)
+    opposite = shortest_arc(placement_longitude, (angle_longitude + 180) % 360)
+    if direct <= opposite:
+        return "direct", direct
+    return "opposite", opposite
+
+
+def _detect_composite_baseline(composite: Chart) -> list[Pattern]:
+    sun = composite.placements.get("sun")
+    moon = composite.placements.get("moon")
+    asc = composite.angles.get("ascendant")
+    pieces: list[str] = []
+    if sun is not None:
+        house = f" in the {sun.house} house" if sun.house is not None else ""
+        pieces.append(f"Sun in {sun.sign}{house}")
+    if moon is not None:
+        house = f" in the {moon.house} house" if moon.house is not None else ""
+        pieces.append(f"Moon in {moon.sign}{house}")
+    if asc is not None:
+        pieces.append(f"Ascendant in {asc.sign}")
+    if not pieces:
+        return []
+    return [Pattern(
+        id="composite_baseline",
+        layer="composite",
+        category="composite_synthesis",
+        priority=76,
+        title="Composite Sun/Moon/Ascendant baseline",
+        evidence=pieces,
+        key="composite.baseline",
+        confidence="medium" if asc is None else "high",
+    )]
+
+
+def _detect_composite_stelliums(composite: Chart) -> list[Pattern]:
+    patterns: list[Pattern] = []
+    by_sign: dict[str, list[str]] = {}
+    for body, placement in composite.placements.items():
+        if body in SYNTHESIS_POINTS:
+            by_sign.setdefault(placement.sign, []).append(body)
+    for sign, bodies in by_sign.items():
+        if len(bodies) >= 3:
+            patterns.append(Pattern(
+                id=f"composite_stellium_{sign.lower()}",
+                layer="composite",
+                category="composite_concentration",
+                priority=90 if sign == "Capricorn" else 86,
+                title=f"Composite {sign} concentration",
+                evidence=[f"{_format_body_list(bodies)} in {sign}"],
+                key=f"composite.stellium.{sign.lower()}",
+                confidence="high",
+            ))
+
+    placements = sorted(
+        [(body, placement.longitude) for body, placement in composite.placements.items() if body in SYNTHESIS_POINTS],
+        key=lambda item: item[1],
+    )
+    chains: list[list[str]] = []
+    current: list[str] = []
+    previous_longitude: float | None = None
+    for body, longitude in placements:
+        if previous_longitude is None or abs(longitude - previous_longitude) <= 8:
+            current.append(body)
+        else:
+            if len(current) >= 3:
+                chains.append(current)
+            current = [body]
+        previous_longitude = longitude
+    if len(current) >= 3:
+        chains.append(current)
+    for index, bodies in enumerate(chains, start=1):
+        patterns.append(Pattern(
+            id=f"composite_conjunction_cluster_{index}",
+            layer="composite",
+            category="composite_concentration",
+            priority=88,
+            title=f"Composite conjunction cluster: {_format_body_list(bodies)}",
+            evidence=["Close conjunction chain in the composite chart"],
+            key="composite.conjunction_cluster",
+            confidence="medium",
+        ))
+    return patterns
+
+
+def _detect_composite_angle_contacts(composite: Chart) -> list[Pattern]:
+    patterns: list[Pattern] = []
+    if not composite.angles:
+        return patterns
+    angle_specs = [("ascendant", composite.angles.get("ascendant")), ("midheaven", composite.angles.get("midheaven"))]
+    seen_node_axes: set[str] = set()
+    for body, placement in composite.placements.items():
+        if body not in SYNTHESIS_POINTS:
+            continue
+        for angle_name, angle in angle_specs:
+            if angle is None:
+                continue
+            direction, distance = _angle_distance(placement.longitude, angle.longitude)
+            if distance > 3:
+                continue
+            axis = _angle_axis(angle_name)
+            if body in {"north_node", "south_node"}:
+                key = f"composite.nodes_on_{axis.lower().replace('/', '_')}"
+                if key in seen_node_axes:
+                    continue
+                seen_node_axes.add(key)
+                title = f"Composite nodal axis on {axis}"
+                priority = 98 if axis == "MC/IC" else 96
+                category = "fated_axis"
+            else:
+                contact = angle.name if direction == "direct" else ("Descendant" if angle_name == "ascendant" else "IC")
+                title = f"Composite {_display_point(body)} on {contact}"
+                priority = 92 if body in {"sun", "moon"} else 88
+                category = "composite_angular_contact"
+                key = "composite.planet_on_angle"
+            patterns.append(Pattern(
+                id=f"composite_{body}_on_{angle_name}_{direction}",
+                layer="composite",
+                category=category,
+                priority=priority,
+                title=title,
+                evidence=[f"{_display_point(body)} within {distance:.2f} degrees of composite {axis}"],
+                key=key,
+                confidence="high",
+            ))
+    return patterns
+
+
+def _aspect_lookup(composite_aspects: list[Aspect]) -> dict[tuple[str, str], Aspect]:
+    lookup: dict[tuple[str, str], Aspect] = {}
+    for aspect in composite_aspects:
+        lookup[tuple(sorted((aspect.point_a.lower(), aspect.point_b.lower())))] = aspect
+    return lookup
+
+
+def _detect_composite_aspect_patterns(composite: Chart, composite_aspects: list[Aspect]) -> list[Pattern]:
+    patterns: list[Pattern] = []
+    lookup = _aspect_lookup(composite_aspects)
+    bodies = [body for body in composite.placements if body in SYNTHESIS_POINTS and body not in {"north_node", "south_node"}]
+    for trio in combinations(sorted(bodies), 3):
+        aspects = [lookup.get(tuple(sorted(pair))) for pair in combinations(trio, 2)]
+        if all(aspect is not None and aspect.aspect == "trine" for aspect in aspects):
+            signs = [composite.placements[body].sign for body in trio]
+            elements = {SIGN_ELEMENTS.get(sign) for sign in signs}
+            element_note = f" in {elements.pop()} signs" if len(elements) == 1 and None not in elements else ""
+            patterns.append(Pattern(
+                id=f"composite_grand_trine_{'_'.join(trio)}",
+                layer="composite",
+                category="aspect_pattern",
+                priority=78,
+                title=f"Composite grand trine: {_format_body_list(list(trio))}",
+                evidence=[f"Three trines{element_note}"],
+                key="composite.grand_trine",
+                confidence="medium",
+            ))
+    for opposition in [aspect for aspect in composite_aspects if aspect.aspect == "opposition"]:
+        ends = {opposition.point_a.lower(), opposition.point_b.lower()}
+        for apex in bodies:
+            if apex in ends:
+                continue
+            square_aspects = [lookup.get(tuple(sorted((apex, end)))) for end in ends]
+            if all(aspect is not None and aspect.aspect == "square" for aspect in square_aspects):
+                trio = tuple(sorted([*ends, apex]))
+                patterns.append(Pattern(
+                    id=f"composite_t_square_{'_'.join(trio)}",
+                    layer="composite",
+                    category="aspect_pattern",
+                    priority=82,
+                    title=f"Composite T-square with {_display_point(apex)} as pressure point",
+                    evidence=[f"{_display_point(apex)} squares an opposition between {_format_body_list(sorted(ends))}"],
+                    key="composite.t_square",
+                    confidence="medium",
+                ))
+    return patterns
+
+
 def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect]) -> list[Pattern]:
     patterns: list[Pattern] = []
+    patterns.extend(_detect_composite_angle_contacts(composite))
+    patterns.extend(_detect_composite_stelliums(composite))
+    patterns.extend(_detect_composite_baseline(composite))
+    patterns.extend(_detect_composite_aspect_patterns(composite, composite_aspects))
 
     moon = composite.placements.get("moon")
     if moon is not None:
@@ -378,7 +612,6 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
         ))
 
     return patterns
-
 
 def detect_relationship_patterns(relationship: RelationshipCalculation) -> list[Pattern]:
     patterns = detect_synastry_patterns(relationship)

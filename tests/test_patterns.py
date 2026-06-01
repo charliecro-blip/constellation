@@ -25,8 +25,6 @@ def test_detect_relationship_patterns_returns_composite_moon_and_sun():
 
     relationship = calculate_relationship(person_a, person_b)
     patterns = detect_relationship_patterns(relationship)
-    ids = {pattern.id for pattern in patterns}
-
     assert any(pattern.layer == "composite" for pattern in patterns)
     assert any(pattern.id.startswith("composite_moon_") for pattern in patterns)
     assert any(pattern.id.startswith("composite_sun_") for pattern in patterns)
