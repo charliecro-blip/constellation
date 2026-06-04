@@ -52,6 +52,9 @@ def test_ai_enhancement_ui_copy_and_frontend_flow_are_present():
     html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
     source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
 
+    assert html.count('id="download"') == 1
+    assert html.count('id="enhance_ai"') == 1
+    assert '/static/app.js?v=ai-enhance-20260604' in html
     assert "Enhance with AI" in html
     assert "AI enhancement sends this report text to the AI provider to rewrite the prose." in html
     assert "The standard report works without AI." in html
