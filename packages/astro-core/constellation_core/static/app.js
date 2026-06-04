@@ -201,10 +201,19 @@ function markdownToHtml(md) {
   const lines = md.split("\n");
   let html = "";
   let inList = false;
+  let inDetails = false;
+  const defaultOpenSections = new Set(["Overview", "Composite Field"]);
   function closeList() {
     if (inList) {
       html += "</ul>";
       inList = false;
+    }
+  }
+  function closeDetails() {
+    closeList();
+    if (inDetails) {
+      html += "</details>";
+      inDetails = false;
     }
   }
   for (const rawLine of lines) {
@@ -214,11 +223,14 @@ function markdownToHtml(md) {
       continue;
     }
     if (line.startsWith("# ")) {
-      closeList();
+      closeDetails();
       html += `<h1>${inlineMarkdown(line.slice(2))}</h1>`;
     } else if (line.startsWith("## ")) {
-      closeList();
-      html += `<h2>${inlineMarkdown(line.slice(3))}</h2>`;
+      closeDetails();
+      const title = line.slice(3);
+      const openAttr = defaultOpenSections.has(title) ? " open" : "";
+      html += `<details class="report-section"${openAttr}><summary>${inlineMarkdown(title)}</summary>`;
+      inDetails = true;
     } else if (line.startsWith("### ")) {
       closeList();
       html += `<h3>${inlineMarkdown(line.slice(4))}</h3>`;
@@ -233,7 +245,7 @@ function markdownToHtml(md) {
       html += `<p>${inlineMarkdown(line)}</p>`;
     }
   }
-  closeList();
+  closeDetails();
   return html;
 }
 

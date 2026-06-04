@@ -117,8 +117,9 @@ def test_report_endpoint():
     assert response.status_code == 200
     markdown = response.json()["markdown"]
     assert "Relationship Field Map" in markdown
-    assert "Central Signatures" in markdown
-    assert "Supporting Patterns" in markdown
+    assert "Overview" in markdown
+    assert "How Person A Activates Person B" in markdown
+    assert "How Person B Activates Person A" in markdown
     assert "Composite Field" in markdown
     assert "Friction and Repair" in markdown
     assert "Context Notes" in markdown
