@@ -33,3 +33,13 @@ def test_primary_ui_has_single_relationship_type_dropdown_and_no_sample_or_curre
     assert 'name="status"' not in html
     assert 'What are you hoping to understand?' in html
     assert 'Anything important about this connection?' in html
+
+
+def test_preview_renderer_uses_details_but_markdown_export_stays_plain():
+    source = Path('packages/astro-core/constellation_core/static/app.js').read_text()
+    report_source = Path('packages/astro-core/constellation_core/report.py').read_text()
+    assert '<details class="report-section"' in source
+    assert '<summary>' in source
+    assert 'new Blob([markdownText], { type: "text/markdown" })' in source
+    assert '<details' not in report_source
+    assert '<summary>' not in report_source

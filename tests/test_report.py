@@ -33,8 +33,11 @@ def test_generate_report_markdown_contains_polished_sections_without_technical_d
 
     assert "Relationship Field Map" in markdown
     required_sections = [
-        "Central Signatures",
-        "Supporting Patterns",
+        "Overview",
+        "Person A Relationship Profile",
+        "Person B Relationship Profile",
+        "How Person A Activates Person B",
+        "How Person B Activates Person A",
         "Composite Field",
         "Friction and Repair",
     ]
@@ -44,7 +47,11 @@ def test_generate_report_markdown_contains_polished_sections_without_technical_d
     assert "Optional Technical Details" not in markdown
     assert "Prototype output" not in markdown
     assert "Generated at (UTC):" not in markdown
+    assert "Central Signatures" not in markdown.split("##", 2)[1]
     assert "orb " not in markdown.lower()
+    assert "compatibility score" not in markdown.lower()
+    assert "meant to be" not in markdown.lower()
+    assert markdown.count("Look for these sign themes") <= 1
     assert "Gift:" not in markdown
     assert "Care point:" not in markdown
 
@@ -98,20 +105,21 @@ def test_angle_luminary_signature_leads_house_overlay():
     )
 
     markdown = generate_relationship_report(relationship).to_markdown()
-    central = markdown.split("## Central Signatures")[1].split("## Composite Field")[0]
+    tess_to_charlie = markdown.split("## How Tess Activates Charlie")[1].split("## Composite Field")[0]
+    charlie_to_tess = markdown.split("## How Charlie Activates Tess")[1].split("## How Tess Activates Charlie")[0]
 
-    assert "Charlie's Ascendant conjunct Tess's Moon" in central
-    assert "Charlie’s Ascendant conjunct Tess’s Moon" not in central
-    assert "Charlie's Ascendant square Tess's Venus" in central
-    assert "Charlie's Sun opposite Tess's Moon" in central
-    assert "contact" not in central.lower()
+    assert "Charlie's Ascendant conjunct Tess's Moon" in tess_to_charlie
+    assert "Charlie’s Ascendant conjunct Tess’s Moon" not in tess_to_charlie
+    assert "Charlie's Ascendant square Tess's Venus" in tess_to_charlie
+    assert "Charlie's Sun opposite Tess's Moon" in charlie_to_tess
+    assert "contact" not in tess_to_charlie.lower()
 
 
 def test_top_signatures_are_limited_and_no_surface_engine_or_glossary_leakage():
     report = generate_report_from_birth_data(_person_a(), _person_b())
     markdown = report.to_markdown()
-    central_block = markdown.split("## Central Signatures")[1].split("## Composite Field")[0]
-    assert central_block.count("\n### ") <= 5
+    directional_block = markdown.split("## How Person A Activates Person B")[1].split("## How Person B Activates Person A")[0]
+    assert directional_block.count("\n### ") <= 5
     assert "Surface vs Engine" not in markdown
     assert "describes affection, attraction, aesthetics" not in markdown
 
@@ -157,9 +165,9 @@ def test_nodal_house_overlay_does_not_lead_or_show_background_label():
     )
 
     markdown = generate_relationship_report(relationship).to_markdown()
-    central = markdown.split("## Central Signatures")[1].split("## Composite Field")[0]
+    overview = markdown.split("## Overview")[1].split("## Charlie Relationship Profile")[0]
 
-    assert "South Node in Tess's 7th house" not in central
+    assert "South Node in Tess's 7th house" not in overview
     assert "Background." not in markdown
 
 
@@ -190,9 +198,11 @@ def test_composite_nodal_axis_on_mc_ic_is_central():
     )
 
     markdown = generate_relationship_report(relationship).to_markdown()
-    central = markdown.split("## Central Signatures")[1].split("## Composite Field")[0]
+    overview = markdown.split("## Overview")[1].split("## A Relationship Profile")[0]
+    composite = markdown.split("## Composite Field")[1].split("## Friction and Repair")[0]
 
-    assert "Composite nodal axis on MC/IC" in central
+    assert "Composite nodal axis on MC/IC" in overview
+    assert "Composite nodal axis on MC/IC" in composite
 
 
 def test_composite_stellium_and_conjunction_cluster_detection_work():
@@ -219,7 +229,7 @@ def test_composite_stellium_and_conjunction_cluster_detection_work():
     )
 
     markdown = generate_relationship_report(relationship).to_markdown()
-    composite_block = markdown.split("## Composite Field")[1].split("## Supporting Patterns")[0]
+    composite_block = markdown.split("## Composite Field")[1].split("## Friction and Repair")[0]
 
     assert "Composite Capricorn concentration" in composite_block
     assert "Composite conjunction cluster" in composite_block
@@ -248,10 +258,10 @@ def test_composite_moon_uranus_progresses_from_concise_to_repair_language_withou
     )
 
     markdown = generate_relationship_report(relationship).to_markdown()
-    central = markdown.split("## Central Signatures")[1].split("## Composite Field")[0]
+    composite = markdown.split("## Composite Field")[1].split("## Friction and Repair")[0]
     friction = markdown.split("## Friction and Repair")[1]
 
-    assert "The emotional rhythm is electric, changeable, and hard to settle." in central
+    assert "The relationship's emotional rhythm is electric, changeable, and hard to settle." in composite
     assert "The Moon–Uranus square describes a rhythm problem" in friction
-    assert central.strip() != friction.strip()
-    assert markdown.count("The emotional rhythm is electric, changeable, and hard to settle.") == 1
+    assert composite.strip() != friction.strip()
+    assert markdown.count("electric, changeable, and hard to settle") <= 2
