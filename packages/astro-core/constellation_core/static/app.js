@@ -9,6 +9,7 @@ const providerStatus = document.getElementById("provider-status");
 const downloadLink = document.getElementById("download");
 const saveRelationshipButton = document.getElementById("save_relationship");
 const refreshConstellationButton = document.getElementById("refresh_constellation");
+const enhanceButton = document.getElementById("enhance_ai");
 const constellationEl = document.getElementById("constellation");
 let currentMarkdown = "";
 let currentDownloadUrl = "";
@@ -257,6 +258,14 @@ function setTab(which) {
   markdownTab.classList.toggle("active", !showPreview);
 }
 
+function setReportMarkdown(markdownText) {
+  currentMarkdown = markdownText;
+  markdown.textContent = currentMarkdown;
+  preview.innerHTML = markdownToHtml(currentMarkdown);
+  updateDownload(currentMarkdown);
+  if (enhanceButton) enhanceButton.disabled = !currentMarkdown;
+}
+
 function updateDownload(markdownText) {
   if (currentDownloadUrl) URL.revokeObjectURL(currentDownloadUrl);
   const blob = new Blob([markdownText], { type: "text/markdown" });
@@ -291,11 +300,32 @@ async function generateSavedReport(relationshipId) {
   const response = await fetch(`/saved-relationships/${relationshipId}/report`, { method: "POST" });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "Could not generate saved report");
-  currentMarkdown = payload.markdown;
-  markdown.textContent = currentMarkdown;
-  preview.innerHTML = markdownToHtml(currentMarkdown);
-  updateDownload(currentMarkdown);
+  setReportMarkdown(payload.markdown);
   setTab("preview");
+}
+
+async function enhanceCurrentReport() {
+  if (!currentMarkdown) return;
+  const standardMarkdown = currentMarkdown;
+  statusEl.textContent = "Enhancing report…";
+  enhanceButton.disabled = true;
+  try {
+    const response = await fetch("/report/enhance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markdown: currentMarkdown, context: buildContext() }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "AI enhancement failed. The standard report is still available.");
+    setReportMarkdown(payload.markdown);
+    setTab("preview");
+    statusEl.textContent = "Enhanced report ready.";
+  } catch {
+    setReportMarkdown(standardMarkdown);
+    statusEl.textContent = "AI enhancement failed. The standard report is still available.";
+  } finally {
+    enhanceButton.disabled = !currentMarkdown;
+  }
 }
 
 function relationshipLabel(item) {
@@ -382,6 +412,7 @@ saveRelationshipButton.addEventListener("click", async () => {
   }
 });
 refreshConstellationButton.addEventListener("click", loadConstellation);
+if (enhanceButton) enhanceButton.addEventListener("click", enhanceCurrentReport);
 document.getElementById("save").addEventListener("click", () => { saveDraft(); statusEl.textContent = "Browser draft saved."; });
 document.getElementById("restore").addEventListener("click", restoreDraft);
 document.getElementById("sample").addEventListener("click", () => { setForm(sample); statusEl.textContent = "Sample relationship restored."; });
