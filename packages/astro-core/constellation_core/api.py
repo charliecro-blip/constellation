@@ -15,6 +15,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
+from .ai_enhancement import (
+    EnhancementProviderError,
+    EnhancementUnavailableError,
+    ReportEnhancementRequest,
+    enhance_report_markdown,
+)
 from .chart import calculate_chart
 from .context import RelationshipContext
 from .database import get_session, init_db
@@ -27,8 +33,6 @@ from .report import generate_relationship_report
 from .schemas import BirthData, Chart, RelationshipCalculation
 from .web import INDEX_PATH, STATIC_DIR
 from .weighting import weight_patterns
-
-
 
 
 class CreateBirthProfileRequest(BaseModel):
@@ -89,6 +93,7 @@ class SavedReportResponse(BaseModel):
     report_template_version: str
     generated_at: datetime
     created_at: datetime
+
 
 class RelationshipRequest(BaseModel):
     person_a: BirthData
@@ -173,8 +178,23 @@ def report_endpoint(request: RelationshipRequest) -> ReportResponse:
     return ReportResponse(markdown=report.to_markdown())
 
 
+@app.post("/report/enhance", response_model=ReportResponse)
+def enhance_report_endpoint(request: ReportEnhancementRequest) -> ReportResponse:
+    try:
+        enhanced_markdown = enhance_report_markdown(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except EnhancementUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except EnhancementProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return ReportResponse(markdown=enhanced_markdown)
+
+
 @app.post("/birth-profiles", response_model=BirthProfileResponse)
-def create_birth_profile(request: CreateBirthProfileRequest, session: Session = Depends(get_session)) -> BirthProfile:
+def create_birth_profile(
+    request: CreateBirthProfileRequest, session: Session = Depends(get_session)
+) -> BirthProfile:
     profile = BirthProfile.model_validate(request.model_dump())
     session.add(profile)
     session.commit()
@@ -188,7 +208,9 @@ def list_birth_profiles(session: Session = Depends(get_session)) -> list[BirthPr
 
 
 @app.get("/birth-profiles/{birth_profile_id}", response_model=BirthProfileResponse)
-def get_birth_profile(birth_profile_id: str, session: Session = Depends(get_session)) -> BirthProfile:
+def get_birth_profile(
+    birth_profile_id: str, session: Session = Depends(get_session)
+) -> BirthProfile:
     profile = session.get(BirthProfile, birth_profile_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Birth profile not found")
@@ -214,8 +236,13 @@ def _relationship_response(relationship: SavedRelationship) -> SavedRelationship
 
 
 @app.post("/saved-relationships", response_model=SavedRelationshipResponse)
-def create_saved_relationship(request: CreateSavedRelationshipRequest, session: Session = Depends(get_session)) -> SavedRelationshipResponse:
-    if session.get(BirthProfile, request.person_a_id) is None or session.get(BirthProfile, request.person_b_id) is None:
+def create_saved_relationship(
+    request: CreateSavedRelationshipRequest, session: Session = Depends(get_session)
+) -> SavedRelationshipResponse:
+    if (
+        session.get(BirthProfile, request.person_a_id) is None
+        or session.get(BirthProfile, request.person_b_id) is None
+    ):
         raise HTTPException(status_code=404, detail="Birth profile not found")
     relationship = SavedRelationship(
         user_id=request.user_id,
@@ -236,13 +263,19 @@ def create_saved_relationship(request: CreateSavedRelationshipRequest, session: 
 
 
 @app.get("/saved-relationships", response_model=list[SavedRelationshipResponse])
-def list_saved_relationships(session: Session = Depends(get_session)) -> list[SavedRelationshipResponse]:
-    relationships = list(session.exec(select(SavedRelationship).order_by(SavedRelationship.created_at.desc())))
+def list_saved_relationships(
+    session: Session = Depends(get_session),
+) -> list[SavedRelationshipResponse]:
+    relationships = list(
+        session.exec(select(SavedRelationship).order_by(SavedRelationship.created_at.desc()))
+    )
     return [_relationship_response(item) for item in relationships]
 
 
 @app.get("/saved-relationships/{relationship_id}", response_model=SavedRelationshipResponse)
-def get_saved_relationship(relationship_id: str, session: Session = Depends(get_session)) -> SavedRelationshipResponse:
+def get_saved_relationship(
+    relationship_id: str, session: Session = Depends(get_session)
+) -> SavedRelationshipResponse:
     relationship = session.get(SavedRelationship, relationship_id)
     if relationship is None:
         raise HTTPException(status_code=404, detail="Saved relationship not found")
@@ -250,7 +283,9 @@ def get_saved_relationship(relationship_id: str, session: Session = Depends(get_
 
 
 @app.post("/saved-relationships/{relationship_id}/report", response_model=SavedReportResponse)
-def generate_saved_relationship_report(relationship_id: str, session: Session = Depends(get_session)) -> SavedReport:
+def generate_saved_relationship_report(
+    relationship_id: str, session: Session = Depends(get_session)
+) -> SavedReport:
     relationship = session.get(SavedRelationship, relationship_id)
     if relationship is None:
         raise HTTPException(status_code=404, detail="Saved relationship not found")
@@ -269,8 +304,24 @@ def generate_saved_relationship_report(relationship_id: str, session: Session = 
     )
 
     calc = calculate_relationship(
-        BirthData(name=person_a.display_name, date=person_a.birth_date.isoformat(), time=person_a.birth_time.isoformat() if person_a.birth_time else None, time_known=person_a.time_known, latitude=person_a.latitude, longitude=person_a.longitude, timezone=person_a.timezone),
-        BirthData(name=person_b.display_name, date=person_b.birth_date.isoformat(), time=person_b.birth_time.isoformat() if person_b.birth_time else None, time_known=person_b.time_known, latitude=person_b.latitude, longitude=person_b.longitude, timezone=person_b.timezone),
+        BirthData(
+            name=person_a.display_name,
+            date=person_a.birth_date.isoformat(),
+            time=person_a.birth_time.isoformat() if person_a.birth_time else None,
+            time_known=person_a.time_known,
+            latitude=person_a.latitude,
+            longitude=person_a.longitude,
+            timezone=person_a.timezone,
+        ),
+        BirthData(
+            name=person_b.display_name,
+            date=person_b.birth_date.isoformat(),
+            time=person_b.birth_time.isoformat() if person_b.birth_time else None,
+            time_known=person_b.time_known,
+            latitude=person_b.latitude,
+            longitude=person_b.longitude,
+            timezone=person_b.timezone,
+        ),
         house_system=relationship.house_system,
     )
     report = generate_relationship_report(calc, context=context)
@@ -282,7 +333,15 @@ def generate_saved_relationship_report(relationship_id: str, session: Session = 
 
 
 @app.get("/saved-relationships/{relationship_id}/reports", response_model=list[SavedReportResponse])
-def list_saved_relationship_reports(relationship_id: str, session: Session = Depends(get_session)) -> list[SavedReport]:
+def list_saved_relationship_reports(
+    relationship_id: str, session: Session = Depends(get_session)
+) -> list[SavedReport]:
     if session.get(SavedRelationship, relationship_id) is None:
         raise HTTPException(status_code=404, detail="Saved relationship not found")
-    return list(session.exec(select(SavedReport).where(SavedReport.relationship_id == relationship_id).order_by(SavedReport.created_at.desc())))
+    return list(
+        session.exec(
+            select(SavedReport)
+            .where(SavedReport.relationship_id == relationship_id)
+            .order_by(SavedReport.created_at.desc())
+        )
+    )
