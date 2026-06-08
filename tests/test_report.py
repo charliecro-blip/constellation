@@ -293,6 +293,40 @@ def test_composite_moon_uranus_progresses_from_concise_to_repair_language_withou
     assert markdown.count("electric, changeable, and hard to settle") <= 2
 
 
+def test_ai_enhancement_provider_exception_uses_safe_error_message():
+    from types import SimpleNamespace
+
+    import pytest
+
+    from constellation_core.ai_enhancement import (
+        EnhancementProviderError,
+        PROVIDER_ERROR_MESSAGE,
+        ReportEnhancementRequest,
+        enhance_report_markdown,
+    )
+
+    secret_key = "sk-test-secret-key"
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            raise RuntimeError(f"provider failed with key {secret_key} and payload {kwargs}")
+
+    fake_client = SimpleNamespace(chat=SimpleNamespace(completions=FakeCompletions()))
+
+    with pytest.raises(EnhancementProviderError) as exc_info:
+        enhance_report_markdown(
+            ReportEnhancementRequest(markdown="# Relationship Field Map"),
+            client=fake_client,
+            api_key=secret_key,
+        )
+
+    message = str(exc_info.value)
+    assert message == PROVIDER_ERROR_MESSAGE
+    assert secret_key not in message
+    assert "payload" not in message
+    assert "RuntimeError" not in message
+
+
 def test_ai_enhancement_uses_mock_openai_client_and_returns_markdown(monkeypatch):
     from types import SimpleNamespace
 

@@ -54,12 +54,17 @@ def test_ai_enhancement_ui_copy_and_frontend_flow_are_present():
 
     assert html.count('id="download"') == 1
     assert html.count('id="enhance_ai"') == 1
-    assert '/static/app.js?v=ai-enhance-20260604' in html
+    assert '/static/app.js?v=ai-enhance-20260608' in html
     assert "Enhance with AI" in html
     assert "AI enhancement sends this report text to the AI provider to rewrite the prose." in html
     assert "The standard report works without AI." in html
     assert 'fetch("/report/enhance"' in source
     assert "AI enhancement failed. The standard report is still available." in source
+    assert "} catch (error) {" in source
+    assert (
+        'statusEl.textContent = error.message || "AI enhancement failed. The standard report is still available.";'
+        in source
+    )
     assert "const standardMarkdown = currentMarkdown" in source
     assert "setReportMarkdown(standardMarkdown)" in source
     assert 'new Blob([markdownText], { type: "text/markdown" })' in source

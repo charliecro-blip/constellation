@@ -178,6 +178,31 @@ def test_report_enhance_returns_markdown_shape(monkeypatch):
     }
 
 
+def test_report_enhance_provider_exception_returns_safe_502(monkeypatch):
+    from constellation_core import api
+    from constellation_core.ai_enhancement import (
+        EnhancementProviderError,
+        PROVIDER_ERROR_MESSAGE,
+    )
+
+    secret_key = "sk-test-secret-key"
+
+    def fake_enhance(request):
+        raise EnhancementProviderError(PROVIDER_ERROR_MESSAGE) from RuntimeError(
+            f"upstream leaked {secret_key}"
+        )
+
+    monkeypatch.setattr(api, "enhance_report_markdown", fake_enhance)
+
+    response = client.post("/report/enhance", json={"markdown": "# Relationship Field Map"})
+
+    assert response.status_code == 502
+    detail = response.json()["detail"]
+    assert detail == PROVIDER_ERROR_MESSAGE
+    assert secret_key not in detail
+    assert "RuntimeError" not in detail
+
+
 def test_report_enhance_prompt_guardrails():
     from constellation_core.ai_enhancement import AI_ENHANCEMENT_SYSTEM_PROMPT
 
@@ -188,3 +213,16 @@ def test_report_enhance_prompt_guardrails():
     assert "meant to be" in prompt
     assert "do not use raw orb numbers" in prompt
     assert "return only markdown" in prompt
+    assert "preserve astrology facts and section headings" in prompt
+    assert "rewrite the prose substantially" in prompt
+    assert "additional" in prompt
+    assert "central" in prompt
+    assert "moderate" in prompt
+    assert "exact" in prompt
+    assert "very close" in prompt
+    assert "close" in prompt
+    assert "supporting texture" in prompt
+    assert "the ascendant/descendant axis describes" in prompt
+    assert "the listed bodies operate less like separate details" in prompt
+    assert "the planet person may appear as" in prompt
+    assert "this is the basic weather" in prompt
