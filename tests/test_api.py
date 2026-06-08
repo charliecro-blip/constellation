@@ -30,7 +30,10 @@ PERSON_B = {
 def test_index_serves_prototype_ui():
     response = client.get("/")
     assert response.status_code == 200
-    assert "Map the people who shape your life through astrology, timing, and relational patterning." in response.text
+    assert (
+        "Map the people who shape your life through astrology, timing, and relational patterning."
+        in response.text
+    )
     assert "Start with you" in response.text
     assert "Add someone to your constellation" in response.text
     assert ("Your Constellation" in response.text) or ("Constellation View" in response.text)
@@ -86,16 +89,19 @@ def test_chart_endpoint():
 
 
 def test_relationship_endpoint():
-    response = client.post("/relationship", json={
-        "person_a": PERSON_A,
-        "person_b": PERSON_B,
-        "house_system": "whole_sign",
-        "context": {
-            "relationship_type": "romantic",
-            "status": "current",
-            "user_question": "What is this dynamic?",
+    response = client.post(
+        "/relationship",
+        json={
+            "person_a": PERSON_A,
+            "person_b": PERSON_B,
+            "house_system": "whole_sign",
+            "context": {
+                "relationship_type": "romantic",
+                "status": "current",
+                "user_question": "What is this dynamic?",
+            },
         },
-    })
+    )
     assert response.status_code == 200
     payload = response.json()
     assert "calculation" in payload
@@ -104,16 +110,19 @@ def test_relationship_endpoint():
 
 
 def test_report_endpoint():
-    response = client.post("/report", json={
-        "person_a": PERSON_A,
-        "person_b": PERSON_B,
-        "house_system": "whole_sign",
-        "context": {
-            "relationship_type": "romantic",
-            "status": "current",
-            "origin_story": "We met unexpectedly.",
+    response = client.post(
+        "/report",
+        json={
+            "person_a": PERSON_A,
+            "person_b": PERSON_B,
+            "house_system": "whole_sign",
+            "context": {
+                "relationship_type": "romantic",
+                "status": "current",
+                "origin_story": "We met unexpectedly.",
+            },
         },
-    })
+    )
     assert response.status_code == 200
     markdown = response.json()["markdown"]
     assert "Relationship Field Map" in markdown
@@ -125,3 +134,73 @@ def test_report_endpoint():
     assert "Context Notes" in markdown
     assert "Origin note" in markdown
     assert "Technical report details" not in markdown
+
+
+def test_report_enhance_unavailable_without_openai_key(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    response = client.post("/report/enhance", json={"markdown": "# Relationship Field Map"})
+
+    assert response.status_code == 503
+    assert "OPENAI_API_KEY" in response.json()["detail"]
+
+
+def test_report_enhance_validates_markdown_is_provided(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+    response = client.post("/report/enhance", json={"markdown": "   "})
+
+    assert response.status_code == 422
+    assert "markdown is required" in response.json()["detail"]
+
+
+def test_report_enhance_returns_markdown_shape(monkeypatch):
+    from constellation_core import api
+
+    def fake_enhance(request):
+        assert request.markdown == "# Relationship Field Map\n\n## Overview\nStandard report."
+        assert request.context.relationship_type == "ex"
+        return "# Relationship Field Map\n\n## Overview\nEnhanced report."
+
+    monkeypatch.setattr(api, "enhance_report_markdown", fake_enhance)
+
+    response = client.post(
+        "/report/enhance",
+        json={
+            "markdown": "# Relationship Field Map\n\n## Overview\nStandard report.",
+            "context": {"relationship_type": "ex", "status": "past"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "markdown": "# Relationship Field Map\n\n## Overview\nEnhanced report."
+    }
+
+
+def test_report_enhance_returns_502_for_provider_exception(monkeypatch):
+    from constellation_core import api
+    from constellation_core.ai_enhancement import EnhancementProviderError, PROVIDER_ERROR_MESSAGE
+
+    def fake_enhance(request):
+        raise EnhancementProviderError(PROVIDER_ERROR_MESSAGE)
+
+    monkeypatch.setattr(api, "enhance_report_markdown", fake_enhance)
+
+    response = client.post("/report/enhance", json={"markdown": "# Relationship Field Map"})
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == PROVIDER_ERROR_MESSAGE
+    assert "sk-" not in response.json()["detail"]
+
+
+def test_report_enhance_prompt_guardrails():
+    from constellation_core.ai_enhancement import AI_ENHANCEMENT_SYSTEM_PROMPT
+
+    prompt = AI_ENHANCEMENT_SYSTEM_PROMPT.lower()
+    assert "do not invent placements" in prompt
+    assert "keep the same main section headings" in prompt
+    assert "do not add compatibility scores" in prompt
+    assert "meant to be" in prompt
+    assert "do not use raw orb numbers" in prompt
+    assert "return only markdown" in prompt
