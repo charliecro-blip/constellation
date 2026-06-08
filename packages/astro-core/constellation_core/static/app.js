@@ -320,9 +320,9 @@ async function enhanceCurrentReport() {
     setReportMarkdown(payload.markdown);
     setTab("preview");
     statusEl.textContent = "Enhanced report ready.";
-  } catch {
+  } catch (error) {
     setReportMarkdown(standardMarkdown);
-    statusEl.textContent = "AI enhancement failed. The standard report is still available.";
+    statusEl.textContent = error.message || "AI enhancement failed. The standard report is still available.";
   } finally {
     enhanceButton.disabled = !currentMarkdown;
   }

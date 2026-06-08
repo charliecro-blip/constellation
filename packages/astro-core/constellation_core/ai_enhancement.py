@@ -11,6 +11,10 @@ from pydantic import BaseModel, Field
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_MODEL_ENV = "OPENAI_MODEL"
 OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
+PROVIDER_ERROR_MESSAGE = (
+    "AI enhancement provider error. Check OpenAI API key, billing, model access, "
+    "or provider availability."
+)
 
 AI_ENHANCEMENT_SYSTEM_PROMPT = """You are writing an astrology relationship report from a structured deterministic astrology report.
 
@@ -33,6 +37,12 @@ Rules:
 - Make the report feel like a skilled astrologer is interpreting the relationship field.
 - Keep the tone intimate but not melodramatic.
 - Keep Markdown headings intact.
+- Preserve astrology facts and section headings, but rewrite the prose substantially.
+- Remove or smooth visible deterministic labels and engine phrases, including:
+  Additional.; Central.; Moderate.; Exact.; Very close.; Close.; Supporting texture.;
+  "The Ascendant/Descendant axis describes";
+  "The listed bodies operate less like separate details";
+  "The planet person may appear as"; and "This is the basic weather".
 - Return only Markdown.
 
 Style target:
@@ -143,15 +153,18 @@ def enhance_report_markdown(
         )
 
     openai_client = client or _load_openai_client(key)
-    response = openai_client.chat.completions.create(
-        model=configured_model(),
-        messages=[
-            {"role": "system", "content": AI_ENHANCEMENT_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": build_enhancement_user_prompt(request.markdown, request.context),
-            },
-        ],
-        temperature=0.55,
-    )
+    try:
+        response = openai_client.chat.completions.create(
+            model=configured_model(),
+            messages=[
+                {"role": "system", "content": AI_ENHANCEMENT_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": build_enhancement_user_prompt(request.markdown, request.context),
+                },
+            ],
+            temperature=0.55,
+        )
+    except Exception as exc:
+        raise EnhancementProviderError(PROVIDER_ERROR_MESSAGE) from exc
     return _extract_markdown(response)
