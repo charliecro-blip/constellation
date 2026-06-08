@@ -6,14 +6,16 @@ const previewTab = document.getElementById("preview-tab");
 const markdownTab = document.getElementById("markdown-tab");
 const generateButton = document.getElementById("generate");
 const providerStatus = document.getElementById("provider-status");
+const reportStatusEl = document.getElementById("report_status");
 const downloadLink = document.getElementById("download");
 const saveRelationshipButton = document.getElementById("save_relationship");
 const refreshConstellationButton = document.getElementById("refresh_constellation");
-const enhanceButton = document.getElementById("enhance_ai");
+const enhanceProseCheckbox = document.getElementById("enhance_prose");
 const constellationEl = document.getElementById("constellation");
 let currentMarkdown = "";
 let currentDownloadUrl = "";
 let currentSavedRelationship = null;
+let enhancementRequestId = 0;
 let searchResults = { a: [], b: [] };
 const draftKey = "constellation.relationshipForm.v1";
 
@@ -263,7 +265,6 @@ function setReportMarkdown(markdownText) {
   markdown.textContent = currentMarkdown;
   preview.innerHTML = markdownToHtml(currentMarkdown);
   updateDownload(currentMarkdown);
-  if (enhanceButton) enhanceButton.disabled = !currentMarkdown;
 }
 
 function updateDownload(markdownText) {
@@ -296,35 +297,49 @@ async function createSavedRelationship() {
   return currentSavedRelationship;
 }
 
+function setReportStatus(message) {
+  if (reportStatusEl) reportStatusEl.textContent = message;
+}
+
+function shouldEnhanceReport() {
+  return enhanceProseCheckbox ? enhanceProseCheckbox.checked : true;
+}
+
 async function generateSavedReport(relationshipId) {
   const response = await fetch(`/saved-relationships/${relationshipId}/report`, { method: "POST" });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "Could not generate saved report");
-  setReportMarkdown(payload.markdown);
+  const standardMarkdown = payload.markdown;
+  setReportMarkdown(standardMarkdown);
   setTab("preview");
+  if (shouldEnhanceReport()) {
+    void enhanceReportMarkdown(standardMarkdown);
+  } else {
+    enhancementRequestId += 1;
+    setReportStatus("Standard report ready.");
+  }
 }
 
-async function enhanceCurrentReport() {
-  if (!currentMarkdown) return;
-  const standardMarkdown = currentMarkdown;
-  statusEl.textContent = "Enhancing report…";
-  enhanceButton.disabled = true;
+async function enhanceReportMarkdown(standardMarkdown) {
+  const requestId = enhancementRequestId + 1;
+  enhancementRequestId = requestId;
+  setReportStatus("Writing enhanced report…");
   try {
     const response = await fetch("/report/enhance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown: currentMarkdown, context: buildContext() }),
+      body: JSON.stringify({ markdown: standardMarkdown, context: buildContext() }),
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || "AI enhancement failed. The standard report is still available.");
+    if (!response.ok) throw new Error(payload.detail || "AI enhancement failed.");
+    if (requestId !== enhancementRequestId) return;
     setReportMarkdown(payload.markdown);
     setTab("preview");
-    statusEl.textContent = "Enhanced report ready.";
+    setReportStatus("Enhanced report ready.");
   } catch (error) {
+    if (requestId !== enhancementRequestId) return;
     setReportMarkdown(standardMarkdown);
-    statusEl.textContent = error.message || "AI enhancement failed. The standard report is still available.";
-  } finally {
-    enhanceButton.disabled = !currentMarkdown;
+    setReportStatus("Standard report ready. Enhanced prose unavailable.");
   }
 }
 
@@ -373,9 +388,10 @@ async function loadPlaces() {
 }
 
 async function loadProviderStatus() {
+  if (!providerStatus) return;
   try {
     await fetch("/geocoding/status");
-    providerStatus.textContent = "Search for the city where you were born.";
+    providerStatus.textContent = "Birthplace search is ready.";
     providerStatus.className = "hint";
   } catch {
     providerStatus.textContent = "Start typing a birthplace and choose the closest match.";
@@ -412,7 +428,6 @@ saveRelationshipButton.addEventListener("click", async () => {
   }
 });
 refreshConstellationButton.addEventListener("click", loadConstellation);
-if (enhanceButton) enhanceButton.addEventListener("click", enhanceCurrentReport);
 document.getElementById("save").addEventListener("click", () => { saveDraft(); statusEl.textContent = "Browser draft saved."; });
 document.getElementById("restore").addEventListener("click", restoreDraft);
 document.getElementById("sample").addEventListener("click", () => { setForm(sample); statusEl.textContent = "Sample relationship restored."; });

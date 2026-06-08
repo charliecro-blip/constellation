@@ -226,3 +226,13 @@ def test_report_enhance_prompt_guardrails():
     assert "the listed bodies operate less like separate details" in prompt
     assert "the planet person may appear as" in prompt
     assert "this is the basic weather" in prompt
+    assert "navigate the complexities" in prompt
+    assert "fosters" in prompt
+    assert "invites both" in prompt
+    assert "highlights" in prompt
+    assert "suggests" in prompt
+    assert "journey" in prompt
+    assert "direct relational language" in prompt
+    assert "first overview paragraph" in prompt
+    assert "do not over-soften difficult dynamics" in prompt
+    assert "precise, warm, and human" in prompt
