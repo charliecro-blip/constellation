@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Constellation</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=report-auto-enhance-20260608" />
 </head>
 <body>
 <main>
@@ -18,7 +18,6 @@
       <a href="#someone-section" class="quick-link">Add a relationship</a>
       <a href="#constellation-section" class="quick-link">View constellation (optional)</a>
     </div>
-    <p id="provider-status" class="hint">Start typing a birthplace and choose the closest match.</p>
   </header>
 
   <section class="grid">
@@ -79,6 +78,7 @@
 
       <div class="actions sticky-actions">
         <button id="generate" type="submit">Generate Relationship Map</button>
+        <label class="checkbox-control"><input id="enhance_prose" type="checkbox" checked /> Enhance prose with AI</label>
         <button class="secondary" id="save_relationship" type="button">Save without generating</button>
         <details class="advanced-place inline-advanced"><summary>More actions</summary><div class="actions"><button class="secondary" id="save" type="button">Save browser draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample data</button><button class="secondary" id="copy" type="button">Copy markdown</button></div></details>
       </div>
@@ -87,13 +87,15 @@
 
     <section id="report-section" class="card stack report-panel">
       <div class="actions" style="justify-content: space-between; gap: 12px;"><div><h2>Relationship Map</h2><p class="muted">Your generated relationship map appears here.</p></div><div class="tabs" role="tablist" aria-label="Output view"><button class="tab active" id="preview-tab" type="button">Preview</button><button class="tab" id="markdown-tab" type="button">Markdown</button></div></div>
-      <div class="actions"><button class="secondary" id="enhance_ai" type="button" disabled>Enhance with AI</button><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download markdown</a></div><p class="small-note">AI enhancement sends this report text to the AI provider to rewrite the prose. The standard report works without AI.</p>
+      <div class="actions"><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download markdown</a></div>
+      <p id="report_status" class="small-note" aria-live="polite"></p>
+      <p class="small-note">When enabled, AI enhancement rewrites this report's prose after the standard report is already visible. The standard report works without AI.</p>
       <div id="preview" class="output-html">Generate a relationship map to see the formatted reading.</div>
       <pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre>
     </section>
   </section>
 </main>
 
-<script src="/static/app.js?v=ai-enhance-20260608"></script>
+<script src="/static/app.js?v=report-auto-enhance-20260608"></script>
 </body>
 </html>

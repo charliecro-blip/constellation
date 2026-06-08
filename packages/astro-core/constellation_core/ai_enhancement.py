@@ -30,12 +30,16 @@ Rules:
 - Do not add medical, legal, financial, or crisis advice.
 - Do not use raw orb numbers.
 - Do not use generic astrology glossary language.
+- Avoid generic AI phrases and vague connective language, including: "navigate the complexities", "fosters", "invites both", "highlights", "suggests", and "journey".
+- Use direct relational language that names what each person tends to feel, provoke, protect, resist, or reveal.
+- Name the central relationship story in the first Overview paragraph.
+- Do not over-soften difficult dynamics; describe friction, avoidance, intensity, control, disappointment, or mismatch plainly when the source report supports it.
 - Do not overstate certainty.
 - Do not turn the report into therapy-speak.
 - Keep the report grounded, warm, precise, and emotionally intelligent.
 - Synthesize rather than list.
 - Make the report feel like a skilled astrologer is interpreting the relationship field.
-- Keep the tone intimate but not melodramatic.
+- Keep the tone precise, warm, and human; intimate but not melodramatic.
 - Keep Markdown headings intact.
 - Preserve astrology facts and section headings, but rewrite the prose substantially.
 - Remove or smooth visible deterministic labels and engine phrases, including:

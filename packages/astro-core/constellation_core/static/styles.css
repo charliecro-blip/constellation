@@ -1,15 +1,15 @@
 :root { color-scheme: dark; --bg: #09070f; --bg2: #130d1d; --panel: #181225; --panel-soft: #231932; --ink: #f7eef4; --muted: #c3b1bf; --line: #3a2a46; --button: #d07a46; --button-text: #1f0c14; --soft: #33243f; --accent: #d4845b; --gold: #e8bc73; --error: #efc0ca; --error-bg: #472430; --ok: #f2ddbf; --ok-bg: #382b23; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 * { box-sizing: border-box; }
 body { margin: 0; background: radial-gradient(circle at top left, rgba(152, 90, 124, 0.2), transparent 26rem), radial-gradient(circle at 80% 0, rgba(184, 110, 76, 0.14), transparent 28rem), var(--bg); color: var(--ink); }
-main { width: min(1220px, 100%); margin: 0 auto; padding: 28px; display: grid; gap: 22px; }
-header { display: grid; gap: 10px; padding: 30px; border: 1px solid var(--line); border-radius: 28px; background: linear-gradient(140deg, rgba(45, 24, 61, 0.96), rgba(20, 11, 32, 0.95)); box-shadow: 0 22px 60px rgba(0, 0, 0, 0.35); }
+main { width: min(1220px, 100%); margin: 0 auto; padding: 24px; display: grid; gap: 20px; overflow-x: hidden; }
+header { display: grid; gap: 8px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 24px; background: linear-gradient(140deg, rgba(45, 24, 61, 0.96), rgba(20, 11, 32, 0.95)); box-shadow: 0 18px 46px rgba(0, 0, 0, 0.32); overflow-wrap: anywhere; }
 h1,h2,h3 { margin: 0; line-height: 1.08; font-family: "Baar Sophia", "Baar Sophia Regular", Georgia, serif; }
-h1 { font-size: clamp(2rem, 6vw, 4rem); letter-spacing: -0.05em; }
+h1 { font-size: clamp(1.8rem, 4.2vw, 3rem); letter-spacing: -0.04em; max-width: 100%; }
 h2 { font-size: 1.15rem; letter-spacing: -0.02em; }
 p { line-height: 1.55; margin: 0; }
 .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.73rem; font-weight: 800; color: var(--gold); }
 .muted { color: var(--muted); }
-.tagline { font-size: 1.05rem; font-weight: 650; color: #ffd3b8; }
+.tagline { font-size: 1rem; font-weight: 650; color: #ffd3b8; }
 .start-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 4px; }
 .quick-link { text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; color: var(--ink); background: rgba(255,255,255,0.03); text-align: center; font-weight: 700; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
@@ -26,6 +26,8 @@ input:disabled { opacity: 0.64; background: #1e142d; }
 button,.download-link { border: 0; border-radius: 999px; padding: 12px 17px; font-weight: 850; cursor: pointer; background: var(--button); color: var(--button-text); box-shadow: 0 10px 22px rgba(129, 71, 92, 0.3); text-decoration: none; display: inline-flex; justify-content: center; align-items: center; }
 button,#generate { font-family: "Baar Sophia", "Baar Sophia Regular", Georgia, serif; }
 button.secondary,.download-link.secondary { background: var(--soft); color: var(--ink); box-shadow: none; }
+.checkbox-control { display: inline-flex; grid-template-columns: none; grid-auto-flow: column; align-items: center; gap: 8px; color: var(--ink); font-size: 0.86rem; font-weight: 800; border: 1px solid var(--line); border-radius: 999px; padding: 10px 13px; background: rgba(255,255,255,0.035); cursor: pointer; }
+.checkbox-control input { width: auto; accent-color: var(--button); }
 .tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 5px; background: #2c1b3d; border-radius: 999px; width: fit-content; }
 .tab { background: transparent; color: var(--muted); box-shadow: none; padding: 9px 13px; }
 .tab.active { background: rgba(255,255,255,0.08); color: var(--ink); }
@@ -49,4 +51,4 @@ pre { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, 
 .report-section > *:not(summary) { margin-top: 12px; }
 #relationship-form { order: 1; }
 #constellation-section { order: 2; }
-@media (max-width: 960px) { main { padding: 16px; } header { padding: 22px; border-radius: 24px; } .grid, .start-grid { grid-template-columns: 1fr; } .person-grid,.context-grid { grid-template-columns: 1fr; } pre,.output-html { min-height: 340px; } .tabs { width: 100%; } .tab { flex: 1; } .actions button,.actions .download-link { flex: 1; } }
+@media (max-width: 960px) { main { padding: 16px; } header { padding: 20px; border-radius: 22px; } .grid, .start-grid { grid-template-columns: 1fr; } .person-grid,.context-grid { grid-template-columns: 1fr; } pre,.output-html { min-height: 340px; } .tabs { width: 100%; } .tab { flex: 1; } .actions button,.actions .download-link { flex: 1; } }
