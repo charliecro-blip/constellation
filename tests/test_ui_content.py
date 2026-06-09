@@ -123,3 +123,19 @@ def test_header_styles_are_compact_and_prevent_overflow():
     assert "overflow-wrap: anywhere" in css
     assert "clamp(1.8rem, 4.2vw, 3rem)" in css
     assert "clamp(2rem, 6vw, 4rem)" not in css
+
+
+def test_constellation_patterns_ui_content_is_present_and_safe():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    assert "Constellation Patterns" in source
+    assert "Save two or more relationships to see recurring patterns across your constellation." in source
+    assert 'fetch("/constellation-patterns")' in source
+    assert "saved relationships analyzed" in source
+    assert "Relationship types" in source
+    assert "Recurring named themes" in source
+    assert "Repeated motifs" in source
+    pattern_source = source.split("function renderConstellationPatterns")[1].split("async function loadConstellation")[0]
+    assert "compatibility score" not in pattern_source.lower()
+    assert "meant to be" not in pattern_source.lower()
+    assert "deterministic fate" not in pattern_source.lower()
