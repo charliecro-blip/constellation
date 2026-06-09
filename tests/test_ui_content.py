@@ -78,6 +78,8 @@ def test_primary_report_flow_is_simplified_and_ai_runs_automatically():
         "enhanced report",
         "Enhanced prose",
         "AI enhancement",
+        "The standard report appears first",
+        "automatically tries to polish",
     ):
         assert forbidden not in html
         assert forbidden not in source
