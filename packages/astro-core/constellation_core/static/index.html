@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Constellation</title>
-  <link rel="stylesheet" href="/static/styles.css?v=report-auto-enhance-20260608" />
+  <link rel="stylesheet" href="/static/styles.css?v=simplified-report-flow-20260609" />
 </head>
 <body>
 <main>
@@ -39,7 +39,7 @@
           <label>Your birth time<input name="a_time" type="time" placeholder="HH:MM" /></label>
           <label>Is your birth time known?<select name="a_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
           <label>Where were you born?<input name="a_place_query" placeholder="Austin, TX" /></label>
-          <label>Choose birthplace<select name="a_place_result"><option value="">Search to see options</option></select></label>
+          <label id="a_place_result_label" class="place-result hidden">Select matching birthplace<select name="a_place_result"><option value="">Search to see options</option></select></label>
         </div>
         <div class="actions"><button class="secondary" type="button" id="a_search_button">Search city</button></div>
         <p class="hint">Search for the city where you were born. We'll use this to calculate the chart.</p>
@@ -57,7 +57,7 @@
           <label>Their birth time<input name="b_time" type="time" placeholder="HH:MM" /></label>
           <label>Is their birth time known?<select name="b_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
           <label>Where were they born?<input name="b_place_query" placeholder="London, UK" /></label>
-          <label>Choose birthplace<select name="b_place_result"><option value="">Search to see options</option></select></label>
+          <label id="b_place_result_label" class="place-result hidden">Select matching birthplace<select name="b_place_result"><option value="">Search to see options</option></select></label>
         </div>
         <div class="actions"><button class="secondary" type="button" id="b_search_button">Search city</button></div>
         <p class="hint">Search for their birth city so we can calculate this relationship map.</p>
@@ -76,26 +76,24 @@
         <details class="advanced-place"><summary>Advanced: chart settings</summary><label>House system<select name="house_system"><option value="whole_sign">Whole Sign</option><option value="placidus" selected>Placidus</option><option value="porphyry">Porphyry</option><option value="regiomontanus">Regiomontanus</option><option value="equal">Equal</option></select></label></details>
       </div>
 
-      <div class="actions sticky-actions">
+      <div class="actions sticky-actions primary-actions">
         <button id="generate" type="submit">Generate Relationship Map</button>
-        <label class="checkbox-control"><input id="enhance_prose" type="checkbox" checked /> Enhance prose with AI</label>
-        <button class="secondary" id="save_relationship" type="button">Save without generating</button>
-        <details class="advanced-place inline-advanced"><summary>More actions</summary><div class="actions"><button class="secondary" id="save" type="button">Save browser draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample data</button><button class="secondary" id="copy" type="button">Copy markdown</button></div></details>
       </div>
       <div id="status" class="status">Ready.</div>
+      <details class="advanced-place developer-actions"><summary>Developer/testing tools</summary><div class="actions"><button class="secondary" id="save" type="button">Save browser draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample data</button><button class="secondary" id="copy" type="button">Copy markdown</button></div></details>
     </form>
 
     <section id="report-section" class="card stack report-panel">
       <div class="actions" style="justify-content: space-between; gap: 12px;"><div><h2>Relationship Map</h2><p class="muted">Your generated relationship map appears here.</p></div><div class="tabs" role="tablist" aria-label="Output view"><button class="tab active" id="preview-tab" type="button">Preview</button><button class="tab" id="markdown-tab" type="button">Markdown</button></div></div>
       <div class="actions"><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download markdown</a></div>
       <p id="report_status" class="small-note" aria-live="polite"></p>
-      <p class="small-note">When enabled, AI enhancement rewrites this report's prose after the standard report is already visible. The standard report works without AI.</p>
+      <p class="small-note">The standard report appears first, then Constellation automatically tries to polish the prose when AI enhancement is available.</p>
       <div id="preview" class="output-html">Generate a relationship map to see the formatted reading.</div>
       <pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre>
     </section>
   </section>
 </main>
 
-<script src="/static/app.js?v=report-auto-enhance-20260608"></script>
+<script src="/static/app.js?v=simplified-report-flow-20260609"></script>
 </body>
 </html>

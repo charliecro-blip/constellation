@@ -8,9 +8,7 @@ const generateButton = document.getElementById("generate");
 const providerStatus = document.getElementById("provider-status");
 const reportStatusEl = document.getElementById("report_status");
 const downloadLink = document.getElementById("download");
-const saveRelationshipButton = document.getElementById("save_relationship");
 const refreshConstellationButton = document.getElementById("refresh_constellation");
-const enhanceProseCheckbox = document.getElementById("enhance_prose");
 const constellationEl = document.getElementById("constellation");
 let currentMarkdown = "";
 let currentDownloadUrl = "";
@@ -118,8 +116,10 @@ function applyPlace(prefix, place) {
 
 function populateSearchResults(prefix, results) {
   const select = form.elements[`${prefix}_place_result`];
+  const label = document.getElementById(`${prefix}_place_result_label`);
   select.innerHTML = '<option value="">Select the closest birthplace</option>';
   searchResults[prefix] = results;
+  label.classList.toggle("hidden", results.length === 0);
   for (let index = 0; index < results.length; index++) {
     const place = results[index];
     const option = document.createElement("option");
@@ -301,10 +301,6 @@ function setReportStatus(message) {
   if (reportStatusEl) reportStatusEl.textContent = message;
 }
 
-function shouldEnhanceReport() {
-  return enhanceProseCheckbox ? enhanceProseCheckbox.checked : true;
-}
-
 async function generateSavedReport(relationshipId) {
   const response = await fetch(`/saved-relationships/${relationshipId}/report`, { method: "POST" });
   const payload = await response.json();
@@ -312,12 +308,7 @@ async function generateSavedReport(relationshipId) {
   const standardMarkdown = payload.markdown;
   setReportMarkdown(standardMarkdown);
   setTab("preview");
-  if (shouldEnhanceReport()) {
-    void enhanceReportMarkdown(standardMarkdown);
-  } else {
-    enhancementRequestId += 1;
-    setReportStatus("Standard report ready.");
-  }
+  void enhanceReportMarkdown(standardMarkdown);
 }
 
 async function enhanceReportMarkdown(standardMarkdown) {
@@ -416,17 +407,6 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-saveRelationshipButton.addEventListener("click", async () => {
-  statusEl.textContent = "Saving relationship only…";
-  try {
-    await createSavedRelationship();
-    await loadConstellation();
-    saveDraft();
-    statusEl.textContent = "Relationship saved.";
-  } catch (error) {
-    statusEl.textContent = error.message;
-  }
-});
 refreshConstellationButton.addEventListener("click", loadConstellation);
 document.getElementById("save").addEventListener("click", () => { saveDraft(); statusEl.textContent = "Browser draft saved."; });
 document.getElementById("restore").addEventListener("click", restoreDraft);

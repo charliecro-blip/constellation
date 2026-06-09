@@ -48,33 +48,48 @@ def test_preview_renderer_uses_details_but_markdown_export_stays_plain():
     assert "<summary>" not in report_source
 
 
-def test_ai_enhancement_ui_copy_and_frontend_flow_are_present():
+def test_primary_report_flow_is_simplified_and_ai_runs_automatically():
     html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
     source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
 
     assert html.count('id="download"') == 1
-    assert html.count('id="enhance_prose"') == 1
     assert html.count('id="report_status"') == 1
     assert 'aria-live="polite"' in html
+    assert 'id="generate"' in html
+    assert "Generate Relationship Map" in html
+    assert 'id="enhance_prose"' not in html
     assert 'id="enhance_ai"' not in html
-    assert "/static/app.js?v=report-auto-enhance-20260608" in html
-    assert "/static/styles.css?v=report-auto-enhance-20260608" in html
-    assert "Enhance prose with AI" in html
+    assert "Enhance prose with AI" not in html
     assert "Enhance with AI" not in html
-    assert "standard report is already visible" in html
-    assert "The standard report works without AI." in html
+    assert "Save without generating" not in html
+    assert "/static/app.js?v=simplified-report-flow-20260609" in html
+    assert "/static/styles.css?v=simplified-report-flow-20260609" in html
+    assert "automatically tries to polish the prose" in html
     assert 'fetch("/report/enhance"' in source
     assert "void enhanceReportMarkdown(standardMarkdown)" in source
     assert "setReportMarkdown(standardMarkdown)" in source
     assert "Writing enhanced report…" in source
     assert "Enhanced report ready." in source
     assert "Standard report ready. Enhanced prose unavailable." in source
-    assert "Standard report ready." in source
     assert "const standardMarkdown = payload.markdown" in source
     assert 'body: JSON.stringify({ markdown: standardMarkdown, context: buildContext() })' in source
     assert 'new Blob([markdownText], { type: "text/markdown" })' in source
     assert "updateDownload(currentMarkdown)" in source
     assert '<details class="report-section"' in source
+
+
+def test_birthplace_select_is_hidden_until_results_can_render():
+    html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    assert "Choose birthplace" not in html
+    assert 'name="a_place_result"' in html
+    assert 'name="b_place_result"' in html
+    assert 'id="a_place_result_label" class="place-result hidden"' in html
+    assert 'id="b_place_result_label" class="place-result hidden"' in html
+    assert "Select matching birthplace" in html
+    assert 'label.classList.toggle("hidden", results.length === 0)' in source
+    assert 'select.appendChild(option)' in source
 
 
 def test_orphaned_birthplace_helper_removed_from_header():
