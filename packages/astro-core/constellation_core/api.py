@@ -23,6 +23,7 @@ from .ai_enhancement import (
 )
 from .chart import calculate_chart
 from .context import RelationshipContext
+from .constellation_patterns import RelationshipPatternInput, build_constellation_pattern_summary
 from .database import get_session, init_db
 from .models import BirthProfile, SavedRelationship, SavedReport
 from .geocoding import GeocodingStatus, PlaceSearchResponse, geocoding_status, search_places
@@ -82,6 +83,35 @@ class SavedRelationshipResponse(BaseModel):
     house_system: str
     created_at: datetime
     updated_at: datetime
+
+
+class PatternTypeCountResponse(BaseModel):
+    type: str
+    label: str
+    count: int
+
+
+class PatternKnownThemeResponse(BaseModel):
+    theme: str
+    count: int
+
+
+class PatternMotifResponse(BaseModel):
+    id: str
+    label: str
+    count: int
+    people: list[str]
+    summary_label: str
+
+
+class ConstellationPatternSummaryResponse(BaseModel):
+    relationship_count: int
+    has_enough_data: bool
+    empty_state: str | None
+    relationship_type_counts: list[PatternTypeCountResponse]
+    known_theme_counts: list[PatternKnownThemeResponse]
+    recurring_motifs: list[PatternMotifResponse]
+    plain_language_summary: str
 
 
 class SavedReportResponse(BaseModel):
@@ -260,6 +290,32 @@ def create_saved_relationship(
     session.commit()
     session.refresh(relationship)
     return _relationship_response(relationship)
+
+
+@app.get("/constellation-patterns", response_model=ConstellationPatternSummaryResponse)
+def constellation_patterns_endpoint(
+    session: Session = Depends(get_session),
+) -> dict[str, object]:
+    relationships = list(
+        session.exec(select(SavedRelationship).order_by(SavedRelationship.created_at.desc()))
+    )
+    inputs: list[RelationshipPatternInput] = []
+    for relationship in relationships:
+        person_b = session.get(BirthProfile, relationship.person_b_id)
+        latest_report = session.exec(
+            select(SavedReport)
+            .where(SavedReport.relationship_id == relationship.id)
+            .order_by(SavedReport.created_at.desc())
+        ).first()
+        inputs.append(
+            RelationshipPatternInput(
+                relationship_type=relationship.relationship_type,
+                person_name=person_b.display_name if person_b else "",
+                known_themes=json.loads(relationship.known_themes_json),
+                report_markdown=latest_report.markdown if latest_report else None,
+            )
+        )
+    return build_constellation_pattern_summary(inputs)
 
 
 @app.get("/saved-relationships", response_model=list[SavedRelationshipResponse])

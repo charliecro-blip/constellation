@@ -16,6 +16,7 @@ let currentSavedRelationship = null;
 let enhancementRequestId = 0;
 let searchResults = { a: [], b: [] };
 const draftKey = "constellation.relationshipForm.v1";
+const constellationPatternsEmptyState = "Save two or more relationships to see recurring patterns across your constellation.";
 
 const defaultState = {
   a_name: "",
@@ -339,19 +340,74 @@ function relationshipLabel(item) {
   return `${item.relationship_type} • ${item.status}`;
 }
 
+async function fetchConstellationPatterns() {
+  try {
+    const response = await fetch("/constellation-patterns");
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
+  }
+}
+
+function renderCountList(items, labelKey) {
+  if (!items.length) return '<p class="small-note">No repeated items are visible yet.</p>';
+  return `<ul class="pattern-list">${items.map((item) => `<li><span>${escapeHtml(item[labelKey])}</span><strong>${item.count}</strong></li>`).join("")}</ul>`;
+}
+
+function renderConstellationPatterns(summary) {
+  if (!summary) {
+    return `<section class="pattern-summary"><h3>Constellation Patterns</h3><p class="small-note">Pattern synthesis is unavailable right now. Saved relationship snapshots are still shown below.</p></section>`;
+  }
+  if (!summary.has_enough_data) {
+    return `<section class="pattern-summary"><h3>Constellation Patterns</h3><p class="small-note">${escapeHtml(summary.empty_state || constellationPatternsEmptyState)}</p></section>`;
+  }
+
+  const motifCards = summary.recurring_motifs.length
+    ? summary.recurring_motifs.map((motif) => `<div class="pattern-card"><strong>${escapeHtml(motif.label)}</strong><div class="small-note">Appears in: ${escapeHtml(motif.people.join(", "))}</div></div>`).join("")
+    : '<p class="small-note">No report motifs repeat across saved maps yet. As more relationships are added, this pattern may clarify.</p>';
+  const themeLine = summary.known_theme_counts.length
+    ? `<p class="small-note">Recurring named themes: ${escapeHtml(summary.known_theme_counts.map((item) => item.theme).join(", "))}.</p>`
+    : '<p class="small-note">No recurring named themes have been saved yet.</p>';
+
+  return `
+    <section class="pattern-summary">
+      <h3>Constellation Patterns</h3>
+      <p class="small-note">${summary.relationship_count} saved relationships analyzed.</p>
+      <p>${escapeHtml(summary.plain_language_summary)}</p>
+      <div class="pattern-grid">
+        <div>
+          <h4>Relationship types</h4>
+          ${renderCountList(summary.relationship_type_counts, "label")}
+        </div>
+        <div>
+          <h4>Recurring themes</h4>
+          ${themeLine}
+        </div>
+      </div>
+      <div>
+        <h4>Repeated motifs</h4>
+        <div class="pattern-card-list">${motifCards}</div>
+      </div>
+    </section>`;
+}
+
 async function loadConstellation() {
   constellationEl.innerHTML = "Loading saved relationships…";
-  const relResponse = await fetch("/saved-relationships");
+  const [relResponse, patternSummary] = await Promise.all([
+    fetch("/saved-relationships"),
+    fetchConstellationPatterns(),
+  ]);
   if (!relResponse.ok) {
     constellationEl.innerHTML = '<div class="error">Could not load constellation.</div>';
     return;
   }
   const relationships = await relResponse.json();
   if (!relationships.length) {
-    constellationEl.innerHTML = "No saved relationships yet. Save one to start your constellation.";
+    constellationEl.innerHTML = `${renderConstellationPatterns(patternSummary)}<p class="small-note">No saved relationships yet. Save one to start your constellation.</p>`;
     return;
   }
-  constellationEl.innerHTML = "";
+  constellationEl.innerHTML = renderConstellationPatterns(patternSummary);
   for (const rel of relationships.slice(0, 12)) {
     const node = document.createElement("div");
     node.className = "constellation-node";

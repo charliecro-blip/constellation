@@ -55,3 +55,13 @@ pre { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, 
 #relationship-form { order: 1; }
 #constellation-section { order: 2; }
 @media (max-width: 960px) { main { padding: 16px; } header { padding: 20px; border-radius: 22px; } .grid, .start-grid { grid-template-columns: 1fr; } .person-grid,.context-grid { grid-template-columns: 1fr; } pre,.output-html { min-height: 340px; } .tabs { width: 100%; } .tab { flex: 1; } .actions button,.actions .download-link { flex: 1; } }
+.pattern-summary { border: 1px solid rgba(246, 222, 177, 0.22); border-radius: 18px; padding: 14px; display: grid; gap: 12px; background: rgba(246, 222, 177, 0.04); }
+.pattern-summary h3,.pattern-summary h4 { margin: 0; font-family: "Baar Sophia", "Baar Sophia Regular", Georgia, serif; }
+.pattern-summary h3 { color: var(--gold); }
+.pattern-summary h4 { font-size: 0.9rem; color: #ffd3b8; }
+.pattern-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pattern-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pattern-list li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 6px; font-size: 0.86rem; }
+.pattern-card-list { display: grid; gap: 8px; }
+.pattern-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: rgba(255,255,255,0.025); }
+@media (max-width: 960px) { .pattern-grid { grid-template-columns: 1fr; } }
