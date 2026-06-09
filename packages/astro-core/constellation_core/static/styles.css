@@ -45,6 +45,9 @@ pre { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, 
 .advanced-place { border: 1px dashed #63407f; border-radius: 12px; padding: 8px 10px; background: rgba(255,255,255,0.02); }
 .advanced-place summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); font-weight: 700; }
 .inline-advanced { width: 100%; margin-top: 2px; }
+.primary-actions { justify-content: center; }
+.primary-actions #generate { width: min(100%, 360px); font-size: 1rem; padding: 14px 22px; }
+.developer-actions { opacity: 0.72; }
 .report-panel { border-color: #754a8f; box-shadow: 0 0 0 1px rgba(239,95,136,0.22), 0 18px 35px rgba(0,0,0,0.3); }
 .report-section { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: rgba(255,255,255,0.025); margin-bottom: 12px; }
 .report-section summary { cursor: pointer; font-family: "Baar Sophia", "Baar Sophia Regular", Georgia, serif; font-weight: 850; color: var(--gold); }
