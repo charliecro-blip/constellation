@@ -302,6 +302,7 @@ function setReportStatus(message) {
 }
 
 async function generateSavedReport(relationshipId) {
+  setReportStatus("Preparing your map…");
   const response = await fetch(`/saved-relationships/${relationshipId}/report`, { method: "POST" });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "Could not generate saved report");
@@ -314,7 +315,7 @@ async function generateSavedReport(relationshipId) {
 async function enhanceReportMarkdown(standardMarkdown) {
   const requestId = enhancementRequestId + 1;
   enhancementRequestId = requestId;
-  setReportStatus("Writing enhanced report…");
+  setReportStatus("Writing your reading…");
   try {
     const response = await fetch("/report/enhance", {
       method: "POST",
@@ -322,15 +323,15 @@ async function enhanceReportMarkdown(standardMarkdown) {
       body: JSON.stringify({ markdown: standardMarkdown, context: buildContext() }),
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || "AI enhancement failed.");
+    if (!response.ok) throw new Error(payload.detail || "Reading refinement failed.");
     if (requestId !== enhancementRequestId) return;
     setReportMarkdown(payload.markdown);
     setTab("preview");
-    setReportStatus("Enhanced report ready.");
+    setReportStatus("Relationship Map ready.");
   } catch (error) {
     if (requestId !== enhancementRequestId) return;
     setReportMarkdown(standardMarkdown);
-    setReportStatus("Standard report ready. Enhanced prose unavailable.");
+    setReportStatus("Relationship Map ready.");
   }
 }
 
@@ -358,7 +359,7 @@ async function loadConstellation() {
     const action = document.createElement("button");
     action.type = "button";
     action.className = "secondary";
-    action.textContent = "Generate Report";
+    action.textContent = "Generate Relationship Map";
     action.addEventListener("click", async () => {
       statusEl.textContent = "Generating report from saved relationship…";
       try {
