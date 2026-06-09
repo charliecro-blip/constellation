@@ -64,13 +64,26 @@ def test_primary_report_flow_is_simplified_and_ai_runs_automatically():
     assert "Save without generating" not in html
     assert "/static/app.js?v=simplified-report-flow-20260609" in html
     assert "/static/styles.css?v=simplified-report-flow-20260609" in html
-    assert "automatically tries to polish the prose" in html
+    assert "Interpretive prose may be refined using AI. Chart calculations remain deterministic." in html
+    assert "How readings are prepared" in html
+    assert "Preparing your map" in source
+    assert "Writing your reading" in source
+    assert "Relationship Map ready" in source
+    for forbidden in (
+        "Standard report",
+        "Enhanced report",
+        "Enhanced prose unavailable",
+        "Writing enhanced report",
+        "standard report",
+        "enhanced report",
+        "Enhanced prose",
+        "AI enhancement",
+    ):
+        assert forbidden not in html
+        assert forbidden not in source
     assert 'fetch("/report/enhance"' in source
     assert "void enhanceReportMarkdown(standardMarkdown)" in source
     assert "setReportMarkdown(standardMarkdown)" in source
-    assert "Writing enhanced report…" in source
-    assert "Enhanced report ready." in source
-    assert "Standard report ready. Enhanced prose unavailable." in source
     assert "const standardMarkdown = payload.markdown" in source
     assert 'body: JSON.stringify({ markdown: standardMarkdown, context: buildContext() })' in source
     assert 'new Blob([markdownText], { type: "text/markdown" })' in source
