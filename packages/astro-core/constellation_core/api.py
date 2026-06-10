@@ -369,6 +369,7 @@ def generate_saved_relationship_report(
             latitude=person_a.latitude,
             longitude=person_a.longitude,
             timezone=person_a.timezone,
+            birthplace_label=person_a.birthplace_label,
         ),
         BirthData(
             name=person_b.display_name,
@@ -378,6 +379,7 @@ def generate_saved_relationship_report(
             latitude=person_b.latitude,
             longitude=person_b.longitude,
             timezone=person_b.timezone,
+            birthplace_label=person_b.birthplace_label,
         ),
         house_system=relationship.house_system,
     )

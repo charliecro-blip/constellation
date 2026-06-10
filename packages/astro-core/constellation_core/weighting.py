@@ -13,6 +13,7 @@ from .patterns import Pattern
 
 
 CAREER_KEYWORDS = {"career", "work", "public", "vocation", "reputation", "visibility", "calling", "ambition"}
+COMMUNICATION_KEYWORDS = {"communication", "talk", "text", "words", "argue", "argument", "conversation", "message"}
 
 
 ROMANTIC_BOOSTS = {
@@ -77,19 +78,26 @@ def boosts_for_context(context: RelationshipContext | None) -> dict[str, int]:
     return {}
 
 
-def _career_context_requested(context: RelationshipContext | None) -> bool:
+def _context_text(context: RelationshipContext | None) -> str:
     if context is None:
-        return False
-    text = " ".join(
+        return ""
+    return " ".join(
         item
         for item in [context.user_question or "", context.origin_story or "", " ".join(context.known_themes)]
         if item
     ).lower()
-    return any(keyword in text for keyword in CAREER_KEYWORDS)
+
+
+def _career_context_requested(context: RelationshipContext | None) -> bool:
+    return any(keyword in _context_text(context) for keyword in CAREER_KEYWORDS)
 
 
 def _romantic_context(context: RelationshipContext | None) -> bool:
     return context is not None and context.relationship_type in {"romantic", "dating_exploring", "ex", "unresolved_connection"}
+
+
+def _communication_context_requested(context: RelationshipContext | None) -> bool:
+    return any(keyword in _context_text(context) for keyword in COMMUNICATION_KEYWORDS)
 
 
 def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None = None) -> list[Pattern]:
@@ -97,20 +105,26 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
     boosts = boosts_for_context(context)
     weighted: list[Pattern] = []
     career_context = _career_context_requested(context)
+    communication_context = _communication_context_requested(context)
     romantic_context = _romantic_context(context)
+    category_counts: dict[str, int] = {}
+    for pattern in patterns:
+        category_counts[pattern.category] = category_counts.get(pattern.category, 0) + 1
     for pattern in patterns:
         boost = boosts.get(pattern.category, 0)
         tier_boost = 0
         # Tier 1: central signatures
         is_mc_pattern = "midheaven" in pattern.key or "Midheaven" in pattern.title or "MC/IC" in pattern.title
         if pattern.category == "angle_luminary" and not (romantic_context and is_mc_pattern and not career_context):
-            tier_boost += 18
+            tier_boost += 24
         if pattern.key in {"synastry.venus_ascendant", "synastry.sun_moon", "synastry.moon_moon", "synastry.moon_venus"}:
-            tier_boost += 12
+            tier_boost += 20
+        if pattern.key.startswith("synastry.angle_ascendant_") or pattern.key.endswith("_ascendant"):
+            tier_boost += 14
         if pattern.category in {"fated_axis", "angle_structure"}:
             tier_boost += 8
-        if pattern.key in {"synastry.venus_mars", "synastry.moon_saturn"}:
-            tier_boost += 6
+        if pattern.key in {"synastry.venus_mars", "synastry.venus_pluto", "synastry.mars_pluto", "synastry.moon_saturn", "synastry.venus_saturn"}:
+            tier_boost += 10
         if pattern.layer == "house_overlay":
             tier_boost -= 14
             if "node" in pattern.id:
@@ -121,14 +135,16 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
             tier_boost += 6
 
         # Tier 2: mechanics
-        if pattern.key in {"synastry.mercury_mars", "synastry.venus_saturn", "synastry.mars_pluto", "synastry.venus_pluto", "synastry.mars_saturn", "composite.sun_saturn", "composite.moon_uranus", "composite.moon_saturn"}:
+        if pattern.key in {"synastry.venus_saturn", "synastry.mars_pluto", "synastry.venus_pluto", "synastry.mars_saturn", "composite.sun_saturn", "composite.moon_uranus", "composite.moon_saturn", "composite.venus_mars", "composite.venus_pluto", "composite.mars_pluto"}:
             tier_boost += 4
 
         # Tier 3 texture + down-rank exactness-only overclaims
         if pattern.key == "composite.mars_pluto":
             tier_boost -= 8
         if romantic_context and is_mc_pattern and not career_context:
-            tier_boost -= 16
+            tier_boost -= 24
+        if romantic_context and pattern.category == "communication" and not communication_context and category_counts.get("communication", 0) < 3 and "Ascendant" not in pattern.title and "Moon" not in pattern.title and "Sun" not in pattern.title:
+            tier_boost -= 26
 
         orb_adjustment = 0
         ev = " ".join(pattern.evidence)

@@ -42,7 +42,7 @@ def test_generate_report_markdown_contains_polished_sections_without_technical_d
     assert "Relationship Field Map" in markdown
     required_sections = [
         "Overview",
-        "Chart Check",
+        "Calculated chart check",
         "Person A Relationship Profile",
         "Person B Relationship Profile",
         "How Person A Activates Person B",
@@ -379,3 +379,120 @@ def test_ai_enhancement_uses_mock_openai_client_and_returns_markdown(monkeypatch
     assert "# Relationship Field Map" in user_prompt
     assert "Relationship type: ex" in user_prompt
     assert "House system: placidus" in user_prompt
+
+
+def test_chart_check_includes_birthplace_and_unknown_time_qualification():
+    known = _synthetic_chart("Known")
+    known.birth = known.birth.model_copy(update={"birthplace_label": "San Antonio, TX"})
+    known.placements = {
+        "sun": _placement("sun", 280, "Capricorn", house=7),
+        "moon": _placement("moon", 282, "Capricorn", house=7),
+        "mercury": _placement("mercury", 260, "Sagittarius", house=6),
+        "venus": _placement("venus", 255, "Sagittarius", house=6),
+        "mars": _placement("mars", 250, "Sagittarius", house=6),
+    }
+    known.angles = {"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)}
+    unknown = _synthetic_chart("Unknown")
+    unknown.birth = unknown.birth.model_copy(update={"time": None, "time_known": False})
+    unknown.house_system = "placidus"
+    unknown.placements = {"sun": _placement("sun", 160, "Virgo")}
+    unknown.angles = {}
+    relationship = RelationshipCalculation(
+        person_a=known,
+        person_b=unknown,
+        synastry_aspects=[],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+
+    markdown = generate_relationship_report(relationship).to_markdown()
+
+    assert "## Calculated chart check" in markdown
+    assert "- Ascendant: Cancer" in markdown
+    assert "- Mercury: Sagittarius, 6th house" in markdown
+    assert "- Birthplace: San Antonio, TX" in markdown
+    assert "houses and Ascendant unavailable or approximate without a known birth time" in markdown
+
+
+def test_mercury_mars_does_not_lead_romantic_report_over_luminary_signature():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("Charlie"),
+        person_b=_synthetic_chart("Ellis"),
+        synastry_aspects=[
+            Aspect(point_a="mars", point_b="mercury", aspect="square", exact_angle=90, orb=0.1),
+            Aspect(point_a="sun", point_b="moon", aspect="conjunction", exact_angle=0, orb=2.0),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    context = RelationshipContext(relationship_type="romantic", status="current")
+
+    overview = generate_relationship_report(relationship, context=context).to_markdown().split("## Overview")[1].split("## Calculated chart check")[0]
+
+    assert "Charlie's Sun conjunct Ellis's Moon" in overview
+    assert "Mars square Ellis's Mercury" not in overview.split(".", 1)[0]
+
+
+def test_midheaven_contact_does_not_lead_romantic_report_without_contextual_repetition():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("Charlie"),
+        person_b=_synthetic_chart("Ellis"),
+        synastry_aspects=[
+            Aspect(point_a="midheaven", point_b="moon", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="sun", point_b="moon", aspect="conjunction", exact_angle=0, orb=1.8),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    context = RelationshipContext(relationship_type="romantic", status="current")
+
+    overview = generate_relationship_report(relationship, context=context).to_markdown().split("## Overview")[1].split("## Calculated chart check")[0]
+
+    assert "Charlie's Sun conjunct Ellis's Moon" in overview
+    assert "Midheaven" not in overview.split(".", 1)[0]
+
+
+def test_direction_sections_are_limited_to_three_strongest_activations():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="sun", point_b="moon", aspect="conjunction", exact_angle=0, orb=0.5),
+            Aspect(point_a="venus", point_b="mars", aspect="conjunction", exact_angle=0, orb=0.6),
+            Aspect(point_a="venus", point_b="pluto", aspect="square", exact_angle=90, orb=0.7),
+            Aspect(point_a="moon", point_b="saturn", aspect="opposition", exact_angle=180, orb=0.8),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    block = generate_relationship_report(relationship).to_markdown().split("## How A Activates B")[1].split("## How B Activates A")[0]
+    assert block.count("\n### ") <= 3
+
+
+def test_generic_composite_sun_moon_texture_is_omitted_without_specific_anchor():
+    composite = Chart(
+        name="Composite",
+        birth=_person_a().model_copy(update={"name": "Composite"}),
+        julian_day_ut=None,
+        house_system="synthetic",
+        placements={
+            "sun": _placement("sun", 10, "Aries"),
+            "moon": _placement("moon", 50, "Taurus"),
+        },
+    )
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[],
+        house_overlays=[],
+        composite=composite,
+        composite_aspects=[],
+    )
+    composite_block = generate_relationship_report(relationship).to_markdown().split("## Composite Field")[1].split("## Friction and Repair")[0]
+    assert "Composite Sun in" not in composite_block
+    assert "Composite Moon in" not in composite_block
+    assert "baseline" not in composite_block.lower()

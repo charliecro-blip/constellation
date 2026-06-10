@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Constellation</title>
-  <link rel="stylesheet" href="/static/styles.css?v=simplified-report-flow-20260609" />
+  <link rel="stylesheet" href="/static/styles.css?v=report-flow-chart-check-20260610" />
 </head>
 <body>
 <main>
@@ -39,7 +39,7 @@
           <label>Your birth time<input name="a_time" type="time" placeholder="HH:MM" /></label>
           <label>Is your birth time known?<select name="a_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
           <label>Where were you born?<input name="a_place_query" placeholder="Austin, TX" /></label>
-          <label id="a_place_result_label" class="place-result hidden">Select matching birthplace<select name="a_place_result"><option value="">Search to see options</option></select></label>
+          <label id="a_place_result_label" class="place-result hidden">Select matching birthplace<select name="a_place_result"><option value="">Search to see options</option></select></label><p id="a_place_warning" class="small-note hidden" aria-live="polite"></p>
         </div>
         <div class="actions"><button class="secondary" type="button" id="a_search_button">Search city</button></div>
         <p class="hint">Search for the city where you were born. We'll use this to calculate the chart.</p>
@@ -57,7 +57,7 @@
           <label>Their birth time<input name="b_time" type="time" placeholder="HH:MM" /></label>
           <label>Is their birth time known?<select name="b_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
           <label>Where were they born?<input name="b_place_query" placeholder="London, UK" /></label>
-          <label id="b_place_result_label" class="place-result hidden">Select matching birthplace<select name="b_place_result"><option value="">Search to see options</option></select></label>
+          <label id="b_place_result_label" class="place-result hidden">Select matching birthplace<select name="b_place_result"><option value="">Search to see options</option></select></label><p id="b_place_warning" class="small-note hidden" aria-live="polite"></p>
         </div>
         <div class="actions"><button class="secondary" type="button" id="b_search_button">Search city</button></div>
         <p class="hint">Search for their birth city so we can calculate this relationship map.</p>
@@ -92,6 +92,6 @@
   </section>
 </main>
 
-<script src="/static/app.js?v=simplified-report-flow-20260609"></script>
+<script src="/static/app.js?v=report-flow-chart-check-20260610"></script>
 </body>
 </html>

@@ -62,8 +62,8 @@ def test_primary_report_flow_is_simplified_and_ai_runs_automatically():
     assert "Enhance prose with AI" not in html
     assert "Enhance with AI" not in html
     assert "Save without generating" not in html
-    assert "/static/app.js?v=simplified-report-flow-20260609" in html
-    assert "/static/styles.css?v=simplified-report-flow-20260609" in html
+    assert "/static/app.js?v=report-flow-chart-check-20260610" in html
+    assert "/static/styles.css?v=report-flow-chart-check-20260610" in html
     assert "Interpretive prose may be refined using AI. Chart calculations remain deterministic." in html
     assert "How readings are prepared" not in html
     assert "More / testing tools" in html
@@ -143,3 +143,30 @@ def test_constellation_patterns_ui_content_is_present_and_safe():
     assert "compatibility score" not in pattern_source.lower()
     assert "meant to be" not in pattern_source.lower()
     assert "deterministic fate" not in pattern_source.lower()
+
+
+def test_birthplace_edits_clear_stale_place_selection_and_warn_user():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+    html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
+
+    assert "function clearPlaceSelection(prefix)" in source
+    assert 'form.elements.b_place_query.addEventListener("input", () => clearPlaceSelection("b"))' in source
+    assert 'form.elements[`${prefix}_latitude`].value = ""' in source
+    assert 'form.elements[`${prefix}_longitude`].value = ""' in source
+    assert 'form.elements[`${prefix}_timezone`].value = ""' in source
+    assert "placeSelections[prefix] = null" in source
+    assert "Please search and select the birthplace" in source
+    assert "Please reselect the birthplace" in source
+    assert 'id="b_place_warning"' in html
+
+
+def test_report_scrolls_once_after_standard_report():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    assert "let shouldScrollToReport = false" in source
+    assert "function scrollReportIntoViewOnce()" in source
+    assert 'document.getElementById("report-section")?.scrollIntoView({ behavior: "smooth", block: "start" })' in source
+    standard_flow = source.split("async function generateSavedReport")[1].split("async function enhanceReportMarkdown")[0]
+    enhancement_flow = source.split("async function enhanceReportMarkdown")[1].split("function relationshipLabel")[0]
+    assert "scrollReportIntoViewOnce()" in standard_flow
+    assert "scrollReportIntoViewOnce()" not in enhancement_flow
