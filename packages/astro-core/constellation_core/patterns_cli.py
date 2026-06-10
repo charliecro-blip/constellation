@@ -19,7 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Calculate ranked relationship patterns.")
     parser.add_argument("--person-a", required=True)
     parser.add_argument("--person-b", required=True)
-    parser.add_argument("--house-system", default="whole_sign")
+    parser.add_argument("--house-system", default="placidus")
     parser.add_argument("--output", required=False)
     return parser
 

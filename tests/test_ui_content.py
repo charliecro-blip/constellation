@@ -65,7 +65,11 @@ def test_primary_report_flow_is_simplified_and_ai_runs_automatically():
     assert "/static/app.js?v=simplified-report-flow-20260609" in html
     assert "/static/styles.css?v=simplified-report-flow-20260609" in html
     assert "Interpretive prose may be refined using AI. Chart calculations remain deterministic." in html
-    assert "How readings are prepared" in html
+    assert "How readings are prepared" not in html
+    assert "More / testing tools" in html
+    report_panel = html.split('<section id="report-section"')[1].split("</section>")[0]
+    assert "Preview</button>" not in report_panel
+    assert "Download markdown" not in report_panel.split("More / testing tools")[0]
     assert "Preparing your map" in source
     assert "Writing your reading" in source
     assert "Relationship Map ready" in source

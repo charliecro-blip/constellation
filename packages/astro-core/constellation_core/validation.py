@@ -105,7 +105,7 @@ def load_validation_fixture(path: str | Path) -> ValidationFixture:
     return ValidationFixture(**json.loads(Path(path).read_text()))
 
 
-def validate_fixture(path: str | Path, house_system: str = "whole_sign") -> list[ValidationResult]:
+def validate_fixture(path: str | Path, house_system: str = "placidus") -> list[ValidationResult]:
     fixture = load_validation_fixture(path)
     chart = calculate_chart(fixture.birth, house_system=house_system)
     return validate_chart_against_fixture(chart, fixture)

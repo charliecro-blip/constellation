@@ -68,8 +68,8 @@ def _strength_phrase(pattern: Pattern) -> str:
 
 
 def _interpret_for_section(pattern: Pattern, section: str) -> str:
-    if pattern.key == "composite.moon_uranus" and section == "central":
-        return "The emotional rhythm is electric, changeable, and hard to settle."
+    if pattern.key == "composite.moon_uranus" and section in {"central", "overview"}:
+        return "The emotional rhythm alternates between closeness and space, so stability has to be chosen rather than assumed."
     if pattern.key == "composite.moon_uranus" and section == "friction":
         return (
             "The Moon–Uranus square describes a rhythm problem: closeness and distance may alternate quickly, "
@@ -166,9 +166,9 @@ def _profile_body(chart: Chart, patterns: list[Pattern]) -> str:
     if sun:
         lines.append(f"- **What gets protected:** {sun} points to the selfhood {chart.name} is trying to keep intact inside intimacy, especially when a bond asks for compromise.")
 
-    devotion_markers = [item for item in (_placement_phrase(chart, body) for body in ["chiron", "juno", "vesta"]) if item]
+    devotion_markers = [item for item in (_placement_phrase(chart, body) for body in ["chiron", "juno", "ceres", "vesta", "psyche", "eros"]) if item and any(f" {_ordinal(house)} house" in item for house in [1, 5, 7, 8, 12])]
     if devotion_markers:
-        lines.append(f"- **Devotion and vulnerability markers:** {', '.join(devotion_markers)} adds texture around commitment, tenderness, service, or old wounds that may surface in attachment.")
+        lines.append(f"- **Devotion and vulnerability markers:** {', '.join(devotion_markers)} adds specific texture around commitment, care, tenderness, private focus, or erotic-psychic pull.")
 
     if houses:
         lines.append(f"- **Repeated relationship terrain:** The 5th/7th/8th-house emphasis ({', '.join(houses)}) can repeat themes around romance, partnership, intimacy, trust, and shared vulnerability.")
@@ -250,7 +250,7 @@ def _overview(relationship: RelationshipCalculation, central: list[Pattern], com
 
     if composite:
         comp = composite[0]
-        paragraphs.append(f"The composite field is anchored by {comp.title}. {_interpret_for_section(comp, 'composite')} This describes the relationship as its own container, not just a sum of two personalities.")
+        paragraphs.append(f"The composite field is anchored by {comp.title}. {_interpret_for_section(comp, 'composite')} This describes what the bond repeatedly produces when the two charts are read together.")
 
     if friction:
         repair = friction[0]
@@ -293,7 +293,6 @@ def _composite_patterns(patterns: list[Pattern]) -> list[Pattern]:
         "composite.planet_on_angle",
         "composite.stellium.",
         "composite.conjunction_cluster",
-        "composite.baseline",
         "composite.grand_trine",
         "composite.t_square",
     )
@@ -322,6 +321,37 @@ def _context_note(context: RelationshipContext | None) -> str | None:
         lines.append(f"Named themes: {', '.join(context.known_themes)}.")
     return "\n\n".join(lines)
 
+
+
+def _format_house(house: int | None) -> str:
+    return f", {_ordinal(house)} house" if house is not None else ", house unavailable"
+
+
+def _chart_check_body(relationship: RelationshipCalculation) -> str:
+    lines: list[str] = []
+    for chart in [relationship.person_a, relationship.person_b]:
+        lines.append(f"### {chart.name} — calculated chart")
+        lines.append("")
+        asc = chart.angles.get("ascendant")
+        if asc is None:
+            lines.append("- Ascendant: unavailable because birth time is unknown or incomplete.")
+        else:
+            lines.append(f"- Ascendant: {asc.sign}")
+        for body in ["sun", "moon", "venus", "mars"]:
+            placement = chart.placements.get(body)
+            if placement is None:
+                lines.append(f"- {_display_body(body)}: unavailable")
+                continue
+            lines.append(f"- {_display_body(body)}: {placement.sign}{_format_house(placement.house)}")
+        house_label = chart.house_system.replace("_", " ").title()
+        if chart.angles:
+            lines.append(f"- House system: {house_label}")
+        else:
+            lines.append(f"- House system: {house_label}; houses and Ascendant unavailable or approximate without a known birth time.")
+        if chart.warnings:
+            lines.append(f"- Calculation note: {' '.join(chart.warnings)}")
+        lines.append("")
+    return "\n".join(lines).strip()
 
 def _friction_loop(patterns: list[Pattern]) -> str:
     grouped = _patterns_by_category(patterns)
@@ -394,6 +424,10 @@ def generate_relationship_report(
         ReportSection(
             title="Overview",
             body=_overview(relationship, central, composite, patterns),
+        ),
+        ReportSection(
+            title="Chart Check",
+            body=_chart_check_body(relationship),
         ),
         ReportSection(
             title=f"{person_a_name} Relationship Profile",

@@ -22,6 +22,7 @@ Rules:
 - Do not invent placements, aspects, houses, signs, timing, asteroids, or biographical facts.
 - Only interpret patterns that appear in the provided report.
 - Keep the same main section headings.
+- Preserve the Chart Check section as concise factual bullet points; do not turn it into interpretive prose.
 - Preserve the two people's names.
 - Do not add compatibility scores.
 - Do not say "meant to be."
@@ -30,7 +31,7 @@ Rules:
 - Do not add medical, legal, financial, or crisis advice.
 - Do not use raw orb numbers.
 - Do not use generic astrology glossary language.
-- Avoid generic AI phrases and vague connective language, including: "navigate the complexities", "fosters", "invites both", "highlights", "suggests", and "journey".
+- Avoid generic AI phrases and vague connective language, including: "navigate the complexities", "provide a baseline", "unique entity", "thrives on", "fosters", "invites both", "highlighting how", "highlights", "suggests", and "journey".
 - Use direct relational language that names what each person tends to feel, provoke, protect, resist, or reveal.
 - Name the central relationship story in the first Overview paragraph.
 - Do not over-soften difficult dynamics; describe friction, avoidance, intensity, control, disappointment, or mismatch plainly when the source report supports it.

@@ -12,7 +12,7 @@ from .validation import validate_fixture
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Validate a chart fixture against calculated output.")
     parser.add_argument("fixture", help="Path to validation fixture JSON")
-    parser.add_argument("--house-system", default="whole_sign")
+    parser.add_argument("--house-system", default="placidus")
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON output")
     return parser
 

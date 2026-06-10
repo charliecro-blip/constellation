@@ -80,12 +80,22 @@ def test_places_search_endpoint_without_provider(monkeypatch):
     assert payload["results"][0]["timezone"] == "America/Chicago"
 
 
-def test_chart_endpoint():
+def test_chart_endpoint_defaults_to_placidus():
     response = client.post("/chart", json=PERSON_A)
     assert response.status_code == 200
     payload = response.json()
+    assert payload["house_system"] == "placidus"
+    assert payload["houses"]["system"] == "placidus"
     assert payload["placements"]["sun"]["sign"] == "Capricorn"
     assert "ascendant" in payload["angles"]
+
+
+def test_chart_endpoint_keeps_whole_sign_selectable():
+    response = client.post("/chart?house_system=whole_sign", json=PERSON_A)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["house_system"] == "whole_sign"
+    assert payload["houses"]["system"] == "whole_sign"
 
 
 def test_relationship_endpoint():
@@ -107,6 +117,7 @@ def test_relationship_endpoint():
     assert "calculation" in payload
     assert "patterns" in payload
     assert payload["calculation"]["composite"] is not None
+    assert payload["calculation"]["person_a"]["house_system"] == "whole_sign"
 
 
 def test_report_endpoint():
@@ -131,6 +142,10 @@ def test_report_endpoint():
     assert "How Person B Activates Person A" in markdown
     assert "Composite Field" in markdown
     assert "Friction and Repair" in markdown
+    assert "Chart Check" in markdown
+    assert "Ascendant:" in markdown
+    assert "Sun: Capricorn" in markdown
+    assert "House system: Whole Sign" in markdown
     assert "Context Notes" in markdown
     assert "Origin note" in markdown
     assert "Technical report details" not in markdown
@@ -225,7 +240,9 @@ def test_report_enhance_prompt_guardrails():
     assert "the ascendant/descendant axis describes" in prompt
     assert "the listed bodies operate less like separate details" in prompt
     assert "the planet person may appear as" in prompt
-    assert "this is the basic weather" in prompt
+    assert "provide a baseline" in prompt
+    assert "unique entity" in prompt
+    assert "thrives on" in prompt
     assert "navigate the complexities" in prompt
     assert "fosters" in prompt
     assert "invites both" in prompt

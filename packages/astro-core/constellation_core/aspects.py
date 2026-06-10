@@ -26,6 +26,7 @@ MAJOR_ASPECTS = [
 LUMINARIES = {"sun", "moon"}
 PERSONAL = {"sun", "moon", "mercury", "venus", "mars"}
 ANGLES = {"ascendant", "midheaven", "asc", "mc"}
+ASTEROIDS = {"chiron", "juno", "ceres", "vesta", "psyche", "eros"}
 
 
 def orb_for_points(point_a: str, point_b: str, aspect: AspectDefinition) -> float:
@@ -36,6 +37,8 @@ def orb_for_points(point_a: str, point_b: str, aspect: AspectDefinition) -> floa
     a = point_a.lower()
     b = point_b.lower()
 
+    if a in ASTEROIDS or b in ASTEROIDS:
+        return min(aspect.default_orb, 2.0)
     if a in ANGLES or b in ANGLES:
         return min(aspect.default_orb, 5.0)
     if a in LUMINARIES and b in LUMINARIES:

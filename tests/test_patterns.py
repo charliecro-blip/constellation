@@ -4,7 +4,7 @@ from constellation_core.constellation_patterns import (
 )
 from constellation_core.patterns import detect_relationship_patterns
 from constellation_core.relationship import calculate_relationship
-from constellation_core.schemas import BirthData
+from constellation_core.schemas import Aspect, BirthData, Chart, Placement, RelationshipCalculation
 
 
 def test_detect_relationship_patterns_returns_composite_moon_and_sun():
@@ -122,3 +122,50 @@ def test_constellation_patterns_avoid_forbidden_language():
     assert "compatibility score" not in rendered_text
     assert "meant to be" not in rendered_text
     assert "deterministic fate" not in rendered_text
+
+
+def _placement(body: str, longitude: float) -> Placement:
+    return Placement(
+        body=body,
+        longitude=longitude,
+        sign="Aries",
+        sign_index=0,
+        degree=longitude % 30,
+    )
+
+
+def test_asteroid_synastry_patterns_require_tight_relevance():
+    chart_a = Chart(
+        name="A",
+        birth=BirthData(
+            name="A",
+            date="1992-01-03",
+            time="17:37",
+            time_known=True,
+            latitude=29.4252,
+            longitude=-98.4946,
+            timezone="America/Chicago",
+        ),
+        julian_day_ut=None,
+        house_system="placidus",
+        placements={"juno": _placement("juno", 10), "ceres": _placement("ceres", 20)},
+    )
+    chart_b = chart_a.model_copy(
+        update={"name": "B", "placements": {"venus": _placement("venus", 11)}}
+    )
+    relationship = RelationshipCalculation(
+        person_a=chart_a,
+        person_b=chart_b,
+        synastry_aspects=[
+            Aspect(point_a="juno", point_b="venus", aspect="conjunction", exact_angle=0, orb=1.0),
+            Aspect(point_a="ceres", point_b="venus", aspect="conjunction", exact_angle=0, orb=2.5),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+
+    patterns = detect_relationship_patterns(relationship)
+    titles = [pattern.title for pattern in patterns]
+    assert any("Juno" in title and "Venus" in title for title in titles)
+    assert not any("Ceres" in title and "Venus" in title for title in titles)

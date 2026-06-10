@@ -43,7 +43,23 @@ SYNTHESIS_POINTS = {
     "pluto",
     "north_node",
     "south_node",
+    "chiron",
+    "juno",
     "ceres",
+    "vesta",
+    "psyche",
+    "eros",
+}
+
+ASTEROID_POINTS = {"chiron", "juno", "ceres", "vesta", "psyche", "eros"}
+PERSONAL_POINTS = {"sun", "moon", "mercury", "venus", "mars"}
+RELATIONSHIP_ASTEROID_MEANINGS = {
+    "juno": "commitment terms",
+    "chiron": "tender wound/healing point",
+    "ceres": "care and nourishment",
+    "vesta": "devotion and private focus",
+    "psyche": "psychic fascination",
+    "eros": "erotic fascination",
 }
 
 
@@ -118,9 +134,9 @@ def _angle_priority(angle: str, body: str) -> int:
     if angle == "ascendant" and body in {"mars", "saturn", "north_node", "south_node"}:
         return 86
     if angle == "midheaven" and body in {"sun", "moon"}:
-        return 88
+        return 82
     if angle == "midheaven" and body in {"venus", "saturn", "north_node", "south_node"}:
-        return 84
+        return 78
     return 80
 
 
@@ -170,6 +186,24 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 confidence="high",
             ))
             continue
+
+
+        asteroid_points = pts & ASTEROID_POINTS
+        non_asteroid_points = pts - ASTEROID_POINTS
+        if asteroid_points and non_asteroid_points and aspect.orb <= 2.0:
+            asteroid = next(iter(asteroid_points))
+            other = next(iter(non_asteroid_points))
+            if other in PERSONAL_POINTS or other in {"ascendant", "midheaven"}:
+                meaning = RELATIONSHIP_ASTEROID_MEANINGS[asteroid]
+                patterns.append(_synastry_pattern(
+                    aspect,
+                    relationship,
+                    pattern_id=f"synastry_{asteroid}_{other}",
+                    category="asteroid_support",
+                    priority=58 if other == "midheaven" else 64,
+                    key=f"synastry.asteroid.{asteroid}.{other}",
+                    confidence="medium",
+                ).model_copy(update={"evidence": [f"{_evidence(aspect, relationship)}; {meaning}"]}))
 
         if pair == "mars_venus":
             patterns.append(_synastry_pattern(
@@ -334,12 +368,15 @@ def detect_house_overlay_patterns(relationship: RelationshipCalculation) -> list
         10: ("public_direction", 56),
         12: ("hidden_field", 58),
     }
-    important_bodies = {"sun", "moon", "mercury", "venus", "mars", "saturn", "pluto"}
+    important_bodies = {"sun", "moon", "mercury", "venus", "mars", "saturn", "pluto", "juno", "chiron", "ceres", "vesta", "psyche", "eros"}
 
     for overlay in relationship.house_overlays:
         if overlay.house not in important_houses or overlay.body not in important_bodies:
             continue
         category, priority = important_houses[overlay.house]
+        if overlay.body in ASTEROID_POINTS:
+            priority -= 12
+            category = "asteroid_overlay"
         patterns.append(Pattern(
             id=f"overlay_{overlay.planet_owner}_{overlay.body}_in_{overlay.house_owner}_house_{overlay.house}",
             layer="house_overlay",
@@ -379,33 +416,6 @@ def _angle_distance(placement_longitude: float, angle_longitude: float) -> tuple
     if direct <= opposite:
         return "direct", direct
     return "opposite", opposite
-
-
-def _detect_composite_baseline(composite: Chart) -> list[Pattern]:
-    sun = composite.placements.get("sun")
-    moon = composite.placements.get("moon")
-    asc = composite.angles.get("ascendant")
-    pieces: list[str] = []
-    if sun is not None:
-        house = f" in the {sun.house} house" if sun.house is not None else ""
-        pieces.append(f"Sun in {sun.sign}{house}")
-    if moon is not None:
-        house = f" in the {moon.house} house" if moon.house is not None else ""
-        pieces.append(f"Moon in {moon.sign}{house}")
-    if asc is not None:
-        pieces.append(f"Ascendant in {asc.sign}")
-    if not pieces:
-        return []
-    return [Pattern(
-        id="composite_baseline",
-        layer="composite",
-        category="composite_synthesis",
-        priority=76,
-        title="Composite Sun/Moon/Ascendant baseline",
-        evidence=pieces,
-        key="composite.baseline",
-        confidence="medium" if asc is None else "high",
-    )]
 
 
 def _detect_composite_stelliums(composite: Chart) -> list[Pattern]:
@@ -553,7 +563,6 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
     patterns: list[Pattern] = []
     patterns.extend(_detect_composite_angle_contacts(composite))
     patterns.extend(_detect_composite_stelliums(composite))
-    patterns.extend(_detect_composite_baseline(composite))
     patterns.extend(_detect_composite_aspect_patterns(composite, composite_aspects))
 
     moon = composite.placements.get("moon")
@@ -584,6 +593,24 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
 
     hard_aspects = {"conjunction", "opposition", "square"}
     for aspect in composite_aspects:
+
+        asteroid_points = {aspect.point_a.lower(), aspect.point_b.lower()} & ASTEROID_POINTS
+        personal_points = {aspect.point_a.lower(), aspect.point_b.lower()} & PERSONAL_POINTS
+        if asteroid_points and personal_points and aspect.aspect == "conjunction" and aspect.orb <= 2.0:
+            asteroid = next(iter(asteroid_points))
+            meaning = RELATIONSHIP_ASTEROID_MEANINGS[asteroid]
+            patterns.append(Pattern(
+                id=f"composite_{asteroid}_personal_conjunction",
+                layer="composite",
+                category="asteroid_support",
+                priority=68 + _bonus(aspect),
+                title=_composite_title(aspect),
+                evidence=[f"{_composite_evidence(aspect)}; {meaning}"],
+                key=f"composite.asteroid.{asteroid}",
+                confidence="medium",
+            ))
+            continue
+
         pair = _pair_key(aspect.point_a, aspect.point_b)
         bonus = _bonus(aspect)
         hard_bonus = 6 if aspect.aspect in hard_aspects else 0

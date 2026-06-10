@@ -116,9 +116,6 @@ INTERPRETATION_BLOCKS: dict[str, str] = {
     "composite.moon_uranus": (
         "The relationship's emotional rhythm is electric, changeable, and hard to settle. Space is necessary; inconsistency can become the wound."
     ),
-    "composite.baseline": (
-        "This is the basic weather of the relationship field: identity, emotional rhythm, and visible style. Use it as the fallback center when no sharper configuration dominates."
-    ),
     "composite.conjunction_cluster": (
         "Several composite points gather close together, so the relationship behaves less like separate traits and more like one concentrated circuit."
     ),
@@ -210,4 +207,7 @@ def interpret_pattern(pattern: Pattern) -> str:
         sign = key.split(".")[-1]
         return COMPOSITE_SUN_BLOCKS.get(sign, "Composite Sun describes the identity and life-force of the relationship.")
 
-    return "This pattern has been detected, but its interpretive block has not been written yet."
+    if key.startswith("synastry.asteroid.") or key.startswith("composite.asteroid."):
+        return "A relationship asteroid is tightly tied into a personal point, adding a supporting note of commitment, care, vulnerability, devotion, or erotic-psychic pull without replacing the main planetary story."
+
+    return "This detected pattern needs a written interpretation before it should lead the reading."
