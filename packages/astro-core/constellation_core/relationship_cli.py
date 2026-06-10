@@ -19,7 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Calculate relationship JSON for two birth data files.")
     parser.add_argument("--person-a", required=True, help="Path to Person A birth JSON")
     parser.add_argument("--person-b", required=True, help="Path to Person B birth JSON")
-    parser.add_argument("--house-system", default="whole_sign")
+    parser.add_argument("--house-system", default="placidus")
     parser.add_argument("--output", required=False, help="Optional path for output JSON")
     return parser
 

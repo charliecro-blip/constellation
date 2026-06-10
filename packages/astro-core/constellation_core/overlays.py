@@ -2,38 +2,41 @@
 
 from __future__ import annotations
 
-from .chart import whole_sign_house
+from .chart import house_for_longitude
 from .schemas import Chart, HouseOverlay
 
 
 def calculate_house_overlays(person_a: Chart, person_b: Chart) -> list[HouseOverlay]:
     """Calculate where each person's planets land in the other person's houses.
 
-    Phase 1 uses whole-sign house logic based on the house owner's Ascendant.
-    If either birth time is unknown and Ascendant is unavailable, that direction
-    of overlays is omitted.
+    The house owner's selected house system is used. If a birth time is unknown
+    and Ascendant/houses are unavailable, that direction of overlays is omitted.
     """
     overlays: list[HouseOverlay] = []
 
     if "ascendant" in person_b.angles:
-        b_asc = person_b.angles["ascendant"].longitude
         for body, placement in person_a.placements.items():
+            house = house_for_longitude(person_b, placement.longitude)
+            if house is None:
+                continue
             overlays.append(HouseOverlay(
                 planet_owner="person_a",
                 house_owner="person_b",
                 body=body,
-                house=whole_sign_house(placement.longitude, b_asc),
+                house=house,
                 body_longitude=placement.longitude,
             ))
 
     if "ascendant" in person_a.angles:
-        a_asc = person_a.angles["ascendant"].longitude
         for body, placement in person_b.placements.items():
+            house = house_for_longitude(person_a, placement.longitude)
+            if house is None:
+                continue
             overlays.append(HouseOverlay(
                 planet_owner="person_b",
                 house_owner="person_a",
                 body=body,
-                house=whole_sign_house(placement.longitude, a_asc),
+                house=house,
                 body_longitude=placement.longitude,
             ))
 

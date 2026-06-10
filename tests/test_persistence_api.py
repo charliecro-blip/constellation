@@ -60,6 +60,7 @@ def test_birth_profile_relationship_and_saved_report_flow():
         "origin_story": "We met unexpectedly.",
     })
     assert rel.status_code == 200
+    assert rel.json()["house_system"] == "whole_sign"
     relationship_id = rel.json()["id"]
 
     report = client.post(f"/saved-relationships/{relationship_id}/report")
@@ -72,6 +73,36 @@ def test_birth_profile_relationship_and_saved_report_flow():
     reports = client.get(f"/saved-relationships/{relationship_id}/reports")
     assert reports.status_code == 200
     assert len(reports.json()) >= 1
+
+
+def test_saved_relationship_defaults_to_placidus():
+    client = TestClient(api.app)
+    res_a = client.post("/birth-profiles", json={
+        "display_name": "Default A",
+        "birth_date": "1992-01-03",
+        "birth_time": "17:37:00",
+        "time_known": True,
+        "latitude": 29.4252,
+        "longitude": -98.4946,
+        "timezone": "America/Chicago",
+    })
+    res_b = client.post("/birth-profiles", json={
+        "display_name": "Default B",
+        "birth_date": "1990-07-15",
+        "birth_time": "09:15:00",
+        "time_known": True,
+        "latitude": 40.7128,
+        "longitude": -74.0060,
+        "timezone": "America/New_York",
+    })
+    rel = client.post("/saved-relationships", json={
+        "person_a_id": res_a.json()["id"],
+        "person_b_id": res_b.json()["id"],
+        "relationship_type": "romantic",
+        "status": "current",
+    })
+    assert rel.status_code == 200
+    assert rel.json()["house_system"] == "placidus"
 
 
 def test_stateless_report_still_works():

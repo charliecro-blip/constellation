@@ -26,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--person-a", required=True)
     parser.add_argument("--person-b", required=True)
     parser.add_argument("--context", required=False, help="Optional relationship context JSON")
-    parser.add_argument("--house-system", default="whole_sign")
+    parser.add_argument("--house-system", default="placidus")
     parser.add_argument("--output", required=False)
     return parser
 

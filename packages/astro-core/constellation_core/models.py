@@ -43,7 +43,7 @@ class SavedRelationship(SQLModel, table=True):
     user_question: str | None = None
     origin_story: str | None = None
     known_themes_json: str = "[]"
-    house_system: str = "whole_sign"
+    house_system: str = "placidus"
 
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)

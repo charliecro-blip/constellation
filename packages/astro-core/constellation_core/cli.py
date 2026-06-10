@@ -18,7 +18,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lat", type=float, required=True)
     parser.add_argument("--lon", type=float, required=True)
     parser.add_argument("--timezone", required=True, help="IANA timezone, e.g. America/Chicago")
-    parser.add_argument("--house-system", default="whole_sign")
+    parser.add_argument("--house-system", default="placidus")
     return parser
 
 

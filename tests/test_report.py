@@ -42,6 +42,7 @@ def test_generate_report_markdown_contains_polished_sections_without_technical_d
     assert "Relationship Field Map" in markdown
     required_sections = [
         "Overview",
+        "Chart Check",
         "Person A Relationship Profile",
         "Person B Relationship Profile",
         "How Person A Activates Person B",
@@ -51,6 +52,14 @@ def test_generate_report_markdown_contains_polished_sections_without_technical_d
     ]
     for section in required_sections:
         assert section in markdown
+    assert "Ascendant:" in markdown
+    assert "Sun: Capricorn" in markdown
+    assert "Moon:" in markdown
+    assert "Venus:" in markdown
+    assert "Mars:" in markdown
+    assert "House system: Placidus" in markdown
+    assert "Composite Sun/Moon/Ascendant baseline" not in markdown
+    assert "provide a baseline" not in markdown.lower()
     assert "Relationship Map Summary" not in markdown
     assert "Optional Technical Details" not in markdown
     assert "Prototype output" not in markdown

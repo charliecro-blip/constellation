@@ -66,7 +66,7 @@ class CreateSavedRelationshipRequest(BaseModel):
     user_question: str | None = None
     origin_story: str | None = None
     known_themes: list[str] = Field(default_factory=list)
-    house_system: str = "whole_sign"
+    house_system: str = "placidus"
 
 
 class SavedRelationshipResponse(BaseModel):
@@ -128,7 +128,7 @@ class SavedReportResponse(BaseModel):
 class RelationshipRequest(BaseModel):
     person_a: BirthData
     person_b: BirthData
-    house_system: str = "whole_sign"
+    house_system: str = "placidus"
     context: RelationshipContext | None = None
 
 
@@ -181,7 +181,7 @@ def place_search_endpoint(q: str) -> PlaceSearchResponse:
 
 
 @app.post("/chart", response_model=Chart)
-def chart_endpoint(birth: BirthData, house_system: str = "whole_sign") -> Chart:
+def chart_endpoint(birth: BirthData, house_system: str = "placidus") -> Chart:
     return calculate_chart(birth, house_system=house_system)
 
 
@@ -357,6 +357,7 @@ def generate_saved_relationship_report(
         user_question=relationship.user_question,
         origin_story=relationship.origin_story,
         known_themes=json.loads(relationship.known_themes_json),
+        house_system=relationship.house_system,
     )
 
     calc = calculate_relationship(

@@ -24,6 +24,15 @@ PLANET_IDS: dict[str, int] = {
     "north_node": swe.TRUE_NODE,
 }
 
+ASTEROID_IDS: dict[str, int] = {
+    "chiron": swe.CHIRON,
+    "juno": swe.JUNO,
+    "ceres": swe.CERES,
+    "vesta": swe.VESTA,
+    "psyche": swe.AST_OFFSET + 16,
+    "eros": swe.AST_OFFSET + 433,
+}
+
 HOUSE_SYSTEMS: dict[str, bytes] = {
     "placidus": b"P",
     "koch": b"K",
@@ -59,15 +68,29 @@ def julian_day_ut_from_birth(birth: BirthData) -> float | None:
     return swe.julday(utc_dt.year, utc_dt.month, utc_dt.day, hour)
 
 
-def calculate_planet_longitudes(julian_day_ut: float) -> dict[str, float]:
-    """Calculate tropical ecliptic longitudes for required planets."""
+def calculate_planet_longitudes(julian_day_ut: float) -> tuple[dict[str, float], list[str]]:
+    """Calculate tropical ecliptic longitudes for required planets and supported asteroids."""
     longitudes: dict[str, float] = {}
+    warnings: list[str] = []
     for name, planet_id in PLANET_IDS.items():
         result, _flags = swe.calc_ut(julian_day_ut, planet_id, swe.FLG_SWIEPH)
         longitudes[name] = result[0] % 360.0
 
     longitudes["south_node"] = opposite_longitude(longitudes["north_node"])
-    return longitudes
+
+    omitted_asteroids: list[str] = []
+    for name, asteroid_id in ASTEROID_IDS.items():
+        try:
+            result, _flags = swe.calc_ut(julian_day_ut, asteroid_id, swe.FLG_SWIEPH)
+        except swe.Error:
+            omitted_asteroids.append(name.title())
+            continue
+        longitudes[name] = result[0] % 360.0
+    if omitted_asteroids:
+        warnings.append(
+            f"Asteroid ephemeris unavailable for {', '.join(omitted_asteroids)}; omitted from relationship asteroid checks."
+        )
+    return longitudes, warnings
 
 
 def calculate_houses(
@@ -112,6 +135,31 @@ def whole_sign_house(planet_longitude: float, asc_longitude: float) -> int:
     return ((planet_sign - asc_sign) % 12) + 1
 
 
+def quadrant_house(planet_longitude: float, cusps: dict[int, float]) -> int | None:
+    """Return the house containing a longitude for systems with explicit cusps."""
+    if len(cusps) < 12:
+        return None
+    longitude = planet_longitude % 360.0
+    for house in range(1, 13):
+        start = cusps[house] % 360.0
+        end = cusps[1 if house == 12 else house + 1] % 360.0
+        adjusted_end = end + (360.0 if end <= start else 0.0)
+        adjusted_longitude = longitude + (360.0 if longitude < start else 0.0)
+        if start <= adjusted_longitude < adjusted_end:
+            return house
+    return None
+
+
+def house_for_longitude(chart: Chart, planet_longitude: float) -> int | None:
+    """Calculate a placement/overlay house using the chart's configured house system."""
+    asc = chart.angles.get("ascendant")
+    if asc is None:
+        return None
+    if chart.house_system == "whole_sign" or chart.houses is None:
+        return whole_sign_house(planet_longitude, asc.longitude)
+    return quadrant_house(planet_longitude, chart.houses.cusps)
+
+
 def chart_points(chart: Chart, include_angles: bool = True) -> dict[str, float]:
     """Return chart points as name -> longitude."""
     points = {name: placement.longitude for name, placement in chart.placements.items()}
@@ -123,7 +171,7 @@ def chart_points(chart: Chart, include_angles: bool = True) -> dict[str, float]:
     return points
 
 
-def calculate_chart(birth: BirthData, house_system: str = "whole_sign") -> Chart:
+def calculate_chart(birth: BirthData, house_system: str = "placidus") -> Chart:
     """Calculate a natal chart from normalized birth data."""
     warnings: list[str] = []
     julian_day_ut = julian_day_ut_from_birth(birth)
@@ -136,7 +184,8 @@ def calculate_chart(birth: BirthData, house_system: str = "whole_sign") -> Chart
         warnings.append("Birth time unknown: calculated planetary placements for local noon; houses and angles omitted.")
 
     assert julian_day_ut is not None
-    longitudes = calculate_planet_longitudes(julian_day_ut)
+    longitudes, asteroid_warnings = calculate_planet_longitudes(julian_day_ut)
+    warnings.extend(asteroid_warnings)
 
     houses = None
     angles: dict[str, Angle] = {}
@@ -145,16 +194,25 @@ def calculate_chart(birth: BirthData, house_system: str = "whole_sign") -> Chart
             julian_day_ut=julian_day_ut,
             latitude=birth.latitude,
             longitude=birth.longitude,
-            house_system=house_system,
+            house_system=house_system.lower(),
         )
     else:
         warnings.append("Angles and houses require a known birth time.")
 
-    asc_longitude = angles["ascendant"].longitude if "ascendant" in angles else None
+    chart_shell = Chart(
+        name=birth.name,
+        birth=birth,
+        julian_day_ut=round(julian_day_ut, 8),
+        house_system=house_system.lower(),
+        placements={},
+        angles=angles,
+        houses=houses,
+        warnings=[],
+    )
     placements: dict[str, Placement] = {}
     for body, longitude in longitudes.items():
         position = to_zodiac_position(longitude)
-        house = whole_sign_house(longitude, asc_longitude) if asc_longitude is not None else None
+        house = house_for_longitude(chart_shell, longitude)
         placements[body] = Placement(
             body=body,
             longitude=position.longitude,
@@ -168,7 +226,7 @@ def calculate_chart(birth: BirthData, house_system: str = "whole_sign") -> Chart
         name=birth.name,
         birth=birth,
         julian_day_ut=round(julian_day_ut, 8),
-        house_system=house_system,
+        house_system=house_system.lower(),
         placements=placements,
         angles=angles,
         houses=houses,

@@ -12,6 +12,9 @@ from .context import RelationshipContext
 from .patterns import Pattern
 
 
+CAREER_KEYWORDS = {"career", "work", "public", "vocation", "reputation", "visibility", "calling", "ambition"}
+
+
 ROMANTIC_BOOSTS = {
     "attraction": 8,
     "desire": 8,
@@ -74,15 +77,33 @@ def boosts_for_context(context: RelationshipContext | None) -> dict[str, int]:
     return {}
 
 
+def _career_context_requested(context: RelationshipContext | None) -> bool:
+    if context is None:
+        return False
+    text = " ".join(
+        item
+        for item in [context.user_question or "", context.origin_story or "", " ".join(context.known_themes)]
+        if item
+    ).lower()
+    return any(keyword in text for keyword in CAREER_KEYWORDS)
+
+
+def _romantic_context(context: RelationshipContext | None) -> bool:
+    return context is not None and context.relationship_type in {"romantic", "dating_exploring", "ex", "unresolved_connection"}
+
+
 def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None = None) -> list[Pattern]:
     """Return patterns with relationship-type priority adjustments applied."""
     boosts = boosts_for_context(context)
     weighted: list[Pattern] = []
+    career_context = _career_context_requested(context)
+    romantic_context = _romantic_context(context)
     for pattern in patterns:
         boost = boosts.get(pattern.category, 0)
         tier_boost = 0
         # Tier 1: central signatures
-        if pattern.category == "angle_luminary":
+        is_mc_pattern = "midheaven" in pattern.key or "Midheaven" in pattern.title or "MC/IC" in pattern.title
+        if pattern.category == "angle_luminary" and not (romantic_context and is_mc_pattern and not career_context):
             tier_boost += 18
         if pattern.key in {"synastry.venus_ascendant", "synastry.sun_moon", "synastry.moon_moon", "synastry.moon_venus"}:
             tier_boost += 12
@@ -106,6 +127,8 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
         # Tier 3 texture + down-rank exactness-only overclaims
         if pattern.key == "composite.mars_pluto":
             tier_boost -= 8
+        if romantic_context and is_mc_pattern and not career_context:
+            tier_boost -= 16
 
         orb_adjustment = 0
         ev = " ".join(pattern.evidence)

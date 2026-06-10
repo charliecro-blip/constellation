@@ -46,6 +46,7 @@ class RelationshipContext(BaseModel):
         description="Meaningful story, object, place, timing, dream, coincidence, or remembered beginning.",
     )
     known_themes: list[str] = Field(default_factory=list)
+    house_system: str = "placidus"
 
     def has_origin_story(self) -> bool:
         return bool(self.origin_story and self.origin_story.strip())

@@ -20,6 +20,12 @@ COMPOSITE_BODY_ORDER = [
     "pluto",
     "north_node",
     "south_node",
+    "chiron",
+    "juno",
+    "ceres",
+    "vesta",
+    "psyche",
+    "eros",
 ]
 
 
