@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
+from .natal_profile import SIGN_ELEMENTS, SIGN_MODES
 from .patterns import Pattern, detect_relationship_patterns
 from .relationship import calculate_relationship
 from .schemas import Aspect, BirthData, Chart, RelationshipCalculation
@@ -96,14 +97,40 @@ def _signature_block(patterns: list[Pattern], *, limit: int, empty_message: str,
     return "\n".join(lines).strip()
 
 
+MINOR_COMMUNICATION_KEYS = {"synastry.mercury_mars", "synastry.mercury_mercury"}
+
+
+def _is_minor_communication(pattern: Pattern) -> bool:
+    return pattern.category == "communication" or pattern.key in MINOR_COMMUNICATION_KEYS
+
+
 def _central_patterns(patterns: list[Pattern]) -> list[Pattern]:
-    selected = [
-        pattern for pattern in patterns
-        if pattern.layer != "house_overlay" and pattern.priority >= 86
-    ]
-    if len(selected) < 3:
-        selected = [pattern for pattern in patterns if pattern.layer != "house_overlay"]
-    return selected[:5]
+    candidates = [pattern for pattern in patterns if pattern.layer != "house_overlay"]
+    stronger_relational = any(
+        not _is_minor_communication(pattern)
+        and (
+            pattern.priority >= 84
+            or pattern.category
+            in {
+                "recognition",
+                "angle_luminary",
+                "attraction",
+                "desire",
+                "attraction_intensity",
+                "emotional_structure",
+                "bond_structure",
+                "composite_concentration",
+                "emotional_variability",
+            }
+        )
+        for pattern in candidates
+    )
+    if stronger_relational:
+        candidates = [pattern for pattern in candidates if not _is_minor_communication(pattern)]
+    selected = [pattern for pattern in candidates if pattern.priority >= 84]
+    if len(selected) < 2:
+        selected = candidates
+    return selected[:4]
 
 
 
@@ -224,39 +251,128 @@ def _directional_patterns(relationship: RelationshipCalculation, patterns: list[
         if wants_a or wants_b:
             selected.append(pattern)
             seen.add(pattern.id)
-    return sorted(selected, key=lambda item: item.priority, reverse=True)[:5]
+    return sorted(selected, key=lambda item: item.priority, reverse=True)[:3]
+
+
+def _element(chart: Chart, body: str) -> str | None:
+    placement = chart.placements.get(body)
+    return SIGN_ELEMENTS.get(placement.sign) if placement else None
+
+
+def _mode(chart: Chart, body: str) -> str | None:
+    placement = chart.placements.get(body)
+    return SIGN_MODES.get(placement.sign) if placement else None
+
+
+def _comparison_notes(relationship: RelationshipCalculation) -> list[str]:
+    a_chart = relationship.person_a
+    b_chart = relationship.person_b
+    notes: list[str] = []
+    a_moon = a_chart.placements.get("moon")
+    b_moon = b_chart.placements.get("moon")
+    if a_moon and b_moon:
+        if a_moon.sign == b_moon.sign:
+            notes.append("emotionally familiar")
+        elif _element(a_chart, "moon") == _element(b_chart, "moon"):
+            notes.append("emotionally legible")
+        else:
+            notes.append("emotionally mismatched enough to need translation")
+    for body, label in [("venus", "affection"), ("mars", "desire")]:
+        a_place = a_chart.placements.get(body)
+        b_place = b_chart.placements.get(body)
+        if not a_place or not b_place:
+            continue
+        if a_place.sign == b_place.sign:
+            notes.append(f"shared {label} language")
+        elif _element(a_chart, body) == _element(b_chart, body):
+            notes.append(f"compatible {label} pacing")
+    a_sun = a_chart.placements.get("sun")
+    b_sun = b_chart.placements.get("sun")
+    if a_sun and b_moon and a_sun.sign == b_moon.sign:
+        notes.append(f"{b_chart.name}'s Moon recognizes {a_chart.name}'s Sun tone")
+    if b_sun and a_moon and b_sun.sign == a_moon.sign:
+        notes.append(f"{a_chart.name}'s Moon recognizes {b_chart.name}'s Sun tone")
+    modes = [_mode(chart, body) for chart in [a_chart, b_chart] for body in ["sun", "moon", "venus", "mars"]]
+    mode_counts = {mode: modes.count(mode) for mode in set(modes) if mode}
+    if mode_counts:
+        mode, count = max(mode_counts.items(), key=lambda item: item[1])
+        if count >= 4:
+            notes.append(f"shared {mode} emphasis")
+    return notes[:3]
 
 
 def _overview(relationship: RelationshipCalculation, central: list[Pattern], composite: list[Pattern], patterns: list[Pattern]) -> str:
     a = relationship.person_a.name
     b = relationship.person_b.name
     synastry = [pattern for pattern in central if pattern.layer == "synastry"]
-    overlays = [pattern for pattern in patterns if pattern.layer == "house_overlay"]
-    friction = [pattern for pattern in patterns if pattern.category in {"communication", "emotional_structure", "angle_structure", "emotional_intensity", "emotional_activation", "embodied_activation", "intensity", "action_structure", "emotional_variability"}]
+    overlays = [pattern for pattern in patterns if pattern.layer == "house_overlay" and pattern.priority >= 56]
+    friction = [
+        pattern
+        for pattern in patterns
+        if pattern.category
+        in {
+            "communication",
+            "emotional_structure",
+            "angle_structure",
+            "emotional_intensity",
+            "emotional_activation",
+            "embodied_activation",
+            "intensity",
+            "action_structure",
+            "emotional_variability",
+        }
+    ]
+    comparison_notes = _comparison_notes(relationship)
 
     paragraphs: list[str] = []
     if synastry:
         primary = synastry[0]
-        supporting = f" A second signature, {synastry[1].title}, adds another layer of recognition." if len(synastry) > 1 else ""
-        paragraphs.append(f"The dominant attraction and recognition signature is carried by {primary.title}. {_interpret_for_section(primary, 'overview')}{supporting} This makes the connection feel less abstract than informational: each person is responding to a specific pressure point in the other's field.")
-    else:
-        paragraphs.append(f"The strongest organizing themes between {a} and {b} come less from one spectacular synastry hit and more from the way the selected patterns gather into rhythm, attention, and repeated contact over time.")
-
-    rhythm = next((pattern for pattern in patterns if pattern.category in {"emotional_activation", "emotional_intensity", "emotional_structure", "emotional_variability", "emotional_translation", "affection"}), None)
-    if rhythm:
-        paragraphs.append(f"The main emotional rhythm is described by {rhythm.title}. {_interpret_for_section(rhythm, 'overview')} The repair question is how quickly feeling should be acted on, named, slowed down, or given space before it becomes the whole atmosphere.")
-    elif overlays:
-        paragraphs.append(f"The emotional rhythm is quieter but still relationally specific: house overlays such as {overlays[0].title} show where one person's presence repeatedly lands in the other's lived experience.")
-
-    if composite:
+        supporting = f" {synastry[1].title} repeats the relational pull." if len(synastry) > 1 else ""
+        paragraphs.append(
+            f"The central story between {a} and {b} is carried by {primary.title}. "
+            f"{_interpret_for_section(primary, 'overview')}{supporting} "
+            "This is the signature to read first; tighter but more mechanical contacts should serve this story, not replace it."
+        )
+    elif composite:
         comp = composite[0]
-        paragraphs.append(f"The composite field is anchored by {comp.title}. {_interpret_for_section(comp, 'composite')} This describes what the bond repeatedly produces when the two charts are read together.")
-
-    if friction:
-        repair = friction[0]
-        paragraphs.append(f"The main friction-and-repair theme begins with {repair.title}. {_interpret_for_section(repair, 'friction')} The practical task is to give the activation a clean form before it turns into pressure, withdrawal, or escalation.")
+        paragraphs.append(
+            f"The relationship organizes itself around {comp.title}. {_interpret_for_section(comp, 'composite')} "
+            "The bond is easier to understand through the field it creates than through one isolated contact."
+        )
     else:
-        paragraphs.append("No single friction signature dominates, so repair should stay practical: name the strongest activation, agree on pace, and let consistency matter as much as chemistry.")
+        paragraphs.append(
+            f"The strongest organizing themes between {a} and {b} come from repeated contact patterns rather than one spectacular signature."
+        )
+
+    if comparison_notes:
+        paragraphs.append(
+            "Chart-to-chart comparison makes the field feel "
+            + ", ".join(comparison_notes)
+            + ". Use this as synthesis support, not as a score."
+        )
+    elif overlays:
+        paragraphs.append(
+            f"House overlays such as {overlays[0].title} show where one person's presence repeatedly lands in ordinary life, memory, attraction, or vulnerability."
+        )
+
+    if composite and (not paragraphs[0].startswith("The relationship organizes")):
+        comp = composite[0]
+        paragraphs.append(
+            f"The composite field adds {comp.title}. {_interpret_for_section(comp, 'composite')} "
+            "This describes what the bond tends to produce when both charts are read as one shared weather system."
+        )
+
+    repair = next((pattern for pattern in friction if not (_is_minor_communication(pattern) and synastry)), None)
+    if repair:
+        paragraphs.append(
+            f"The main repair theme is {repair.title}. {_interpret_for_section(repair, 'friction')} "
+            "Give the activation a clean form before it turns into pressure, withdrawal, or escalation."
+        )
+    elif friction:
+        repair = friction[0]
+        paragraphs.append(
+            f"Communication is part of the repair work through {repair.title}, but it should not define the whole bond by itself."
+        )
 
     return "\n\n".join(paragraphs[:4])
 
@@ -304,8 +420,13 @@ def _composite_patterns(patterns: list[Pattern]) -> list[Pattern]:
         and pattern.category in {"emotional_variability", "emotional_structure", "bond_structure", "relationship_structure", "desire", "intensity"}
         and (pattern.priority >= 84 or pattern.category in {"emotional_variability", "emotional_structure"})
     ]
-    sign_texture = [pattern for pattern in patterns if pattern.layer == "composite" and pattern.key.startswith(("composite.sun.", "composite.moon."))]
-    return (synthesis + hard_aspects + sign_texture)[:7]
+    specific_sign_texture = [
+        pattern for pattern in patterns
+        if pattern.layer == "composite"
+        and pattern.key.startswith(("composite.sun.", "composite.moon."))
+        and pattern.priority >= 82
+    ]
+    return (synthesis + hard_aspects + specific_sign_texture)[:5]
 
 
 def _context_note(context: RelationshipContext | None) -> str | None:
@@ -337,7 +458,7 @@ def _chart_check_body(relationship: RelationshipCalculation) -> str:
             lines.append("- Ascendant: unavailable because birth time is unknown or incomplete.")
         else:
             lines.append(f"- Ascendant: {asc.sign}")
-        for body in ["sun", "moon", "venus", "mars"]:
+        for body in ["sun", "moon", "mercury", "venus", "mars"]:
             placement = chart.placements.get(body)
             if placement is None:
                 lines.append(f"- {_display_body(body)}: unavailable")
@@ -348,6 +469,10 @@ def _chart_check_body(relationship: RelationshipCalculation) -> str:
             lines.append(f"- House system: {house_label}")
         else:
             lines.append(f"- House system: {house_label}; houses and Ascendant unavailable or approximate without a known birth time.")
+        birthplace = chart.birth.birthplace_label or "manual coordinates"
+        lines.append(
+            f"- Birthplace: {birthplace} — {chart.birth.latitude:.4f}, {chart.birth.longitude:.4f} — {chart.birth.timezone}"
+        )
         if chart.warnings:
             lines.append(f"- Calculation note: {' '.join(chart.warnings)}")
         lines.append("")
@@ -426,7 +551,7 @@ def generate_relationship_report(
             body=_overview(relationship, central, composite, patterns),
         ),
         ReportSection(
-            title="Chart Check",
+            title="Calculated chart check",
             body=_chart_check_body(relationship),
         ),
         ReportSection(
@@ -439,15 +564,15 @@ def generate_relationship_report(
         ),
         ReportSection(
             title=f"How {person_a_name} Activates {person_b_name}",
-            body=_signature_block(a_to_b, limit=5, empty_message=f"No strong directional synastry patterns show {person_a_name} specifically activating {person_b_name} in the current selection."),
+            body=_signature_block(a_to_b, limit=3, empty_message=f"No strong directional synastry patterns show {person_a_name} specifically activating {person_b_name} in the current selection."),
         ),
         ReportSection(
             title=f"How {person_b_name} Activates {person_a_name}",
-            body=_signature_block(b_to_a, limit=5, empty_message=f"No strong directional synastry patterns show {person_b_name} specifically activating {person_a_name} in the current selection."),
+            body=_signature_block(b_to_a, limit=3, empty_message=f"No strong directional synastry patterns show {person_b_name} specifically activating {person_a_name} in the current selection."),
         ),
         ReportSection(
             title="Composite Field",
-            body=_signature_block(composite, limit=7, empty_message="Composite patterns were not strong enough to lead this report.", section="composite"),
+            body=_signature_block(composite, limit=5, empty_message="Composite patterns were not strong enough to lead this report.", section="composite"),
         ),
         ReportSection(title="Friction and Repair", body=_friction_loop(patterns)),
     ]

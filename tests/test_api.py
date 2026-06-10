@@ -142,7 +142,7 @@ def test_report_endpoint():
     assert "How Person B Activates Person A" in markdown
     assert "Composite Field" in markdown
     assert "Friction and Repair" in markdown
-    assert "Chart Check" in markdown
+    assert "Calculated chart check" in markdown
     assert "Ascendant:" in markdown
     assert "Sun: Capricorn" in markdown
     assert "House system: Whole Sign" in markdown
@@ -253,3 +253,67 @@ def test_report_enhance_prompt_guardrails():
     assert "first overview paragraph" in prompt
     assert "do not over-soften difficult dynamics" in prompt
     assert "precise, warm, and human" in prompt
+
+
+def test_report_endpoint_defaults_to_placidus_when_omitted():
+    response = client.post(
+        "/report",
+        json={
+            "person_a": PERSON_A,
+            "person_b": PERSON_B,
+            "context": {"relationship_type": "romantic", "status": "current"},
+        },
+    )
+
+    assert response.status_code == 200
+    markdown = response.json()["markdown"]
+    assert "House system: Placidus" in markdown
+
+
+def test_saved_relationship_preserves_selected_house_system_in_report():
+    from constellation_core.database import init_db
+
+    init_db()
+    res_a = client.post(
+        "/birth-profiles",
+        json={
+            "display_name": "Saved A",
+            "birth_date": "1992-01-03",
+            "birth_time": "17:37:00",
+            "time_known": True,
+            "latitude": 29.4252,
+            "longitude": -98.4946,
+            "timezone": "America/Chicago",
+            "birthplace_label": "San Antonio, TX",
+        },
+    )
+    res_b = client.post(
+        "/birth-profiles",
+        json={
+            "display_name": "Saved B",
+            "birth_date": "1990-07-15",
+            "birth_time": "09:15:00",
+            "time_known": True,
+            "latitude": 40.7128,
+            "longitude": -74.0060,
+            "timezone": "America/New_York",
+            "birthplace_label": "New York, NY",
+        },
+    )
+    rel = client.post(
+        "/saved-relationships",
+        json={
+            "person_a_id": res_a.json()["id"],
+            "person_b_id": res_b.json()["id"],
+            "relationship_type": "romantic",
+            "status": "current",
+            "house_system": "whole_sign",
+        },
+    )
+
+    assert rel.status_code == 200
+    assert rel.json()["house_system"] == "whole_sign"
+    report = client.post(f"/saved-relationships/{rel.json()['id']}/report")
+    assert report.status_code == 200
+    assert "House system: Whole Sign" in report.json()["markdown"]
+    assert "Birthplace: San Antonio, TX" in report.json()["markdown"]

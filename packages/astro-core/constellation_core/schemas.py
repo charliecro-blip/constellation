@@ -24,6 +24,7 @@ class BirthData(BaseModel):
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
     timezone: str = Field(..., description="IANA timezone, e.g. America/Chicago")
+    birthplace_label: str | None = None
 
     @field_validator("date")
     @classmethod

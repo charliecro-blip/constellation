@@ -15,6 +15,8 @@ let currentDownloadUrl = "";
 let currentSavedRelationship = null;
 let enhancementRequestId = 0;
 let searchResults = { a: [], b: [] };
+let placeSelections = { a: null, b: null };
+let shouldScrollToReport = false;
 const draftKey = "constellation.relationshipForm.v1";
 const constellationPatternsEmptyState = "Save two or more relationships to see recurring patterns across your constellation.";
 
@@ -108,11 +110,33 @@ function updateTimeKnown(prefix) {
   if (!known) timeField.value = "";
 }
 
+function setPlaceWarning(prefix, message) {
+  const warning = document.getElementById(`${prefix}_place_warning`);
+  if (!warning) return;
+  warning.textContent = message;
+  warning.classList.toggle("hidden", !message);
+}
+
+function clearPlaceSelection(prefix) {
+  form.elements[`${prefix}_latitude`].value = "";
+  form.elements[`${prefix}_longitude`].value = "";
+  form.elements[`${prefix}_timezone`].value = "";
+  const select = form.elements[`${prefix}_place_result`];
+  const label = document.getElementById(`${prefix}_place_result_label`);
+  if (select) select.innerHTML = '<option value="">Search to see options</option>';
+  if (label) label.classList.add("hidden");
+  searchResults[prefix] = [];
+  placeSelections[prefix] = null;
+  setPlaceWarning(prefix, "Birthplace changed. Search again and select a result before generating.");
+}
+
 function applyPlace(prefix, place) {
   form.elements[`${prefix}_latitude`].value = Number(place.latitude).toFixed(4);
   form.elements[`${prefix}_longitude`].value = Number(place.longitude).toFixed(4);
   form.elements[`${prefix}_timezone`].value = place.timezone;
   form.elements[`${prefix}_place_query`].value = place.label;
+  placeSelections[prefix] = { label: place.label, latitude: Number(place.latitude), longitude: Number(place.longitude), timezone: place.timezone };
+  setPlaceWarning(prefix, "");
 }
 
 function populateSearchResults(prefix, results) {
@@ -120,6 +144,7 @@ function populateSearchResults(prefix, results) {
   const label = document.getElementById(`${prefix}_place_result_label`);
   select.innerHTML = '<option value="">Select the closest birthplace</option>';
   searchResults[prefix] = results;
+  select.value = "";
   label.classList.toggle("hidden", results.length === 0);
   for (let index = 0; index < results.length; index++) {
     const place = results[index];
@@ -136,6 +161,7 @@ async function searchPlace(prefix) {
     statusEl.textContent = "Enter a birthplace search first.";
     return;
   }
+  searchResults[prefix] = [];
   statusEl.textContent = `Searching for \"${query}\"…`;
   try {
     const response = await fetch(`/places/search?q=${encodeURIComponent(query)}`);
@@ -155,9 +181,27 @@ async function searchPlace(prefix) {
   }
 }
 
+function hasCompletePlaceDetails(prefix) {
+  return fieldValue(`${prefix}_latitude`) && fieldValue(`${prefix}_longitude`) && fieldValue(`${prefix}_timezone`);
+}
+
+function placeSelectionIsStale(prefix) {
+  const query = fieldValue(`${prefix}_place_query`).trim();
+  const selection = placeSelections[prefix];
+  return query && hasCompletePlaceDetails(prefix) && selection && selection.label !== query;
+}
+
 function person(prefix) {
   const timeKnown = fieldValue(`${prefix}_time_known`, "true") === "true";
   const timeValue = fieldValue(`${prefix}_time`);
+  if (fieldValue(`${prefix}_place_query`).trim() && !hasCompletePlaceDetails(prefix)) {
+    setPlaceWarning(prefix, "Birthplace changed. Search again and select a result before generating.");
+    throw new Error("Please search and select the birthplace before generating.");
+  }
+  if (placeSelectionIsStale(prefix)) {
+    setPlaceWarning(prefix, "Birthplace details may be stale. Search again and select the matching result.");
+    throw new Error("Please reselect the birthplace that matches the visible city text.");
+  }
   return {
     display_name: fieldValue(`${prefix}_name`),
     birth_date: fieldValue(`${prefix}_date`),
@@ -268,6 +312,12 @@ function setReportMarkdown(markdownText) {
   updateDownload(currentMarkdown);
 }
 
+function scrollReportIntoViewOnce() {
+  if (!shouldScrollToReport) return;
+  shouldScrollToReport = false;
+  document.getElementById("report-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function updateDownload(markdownText) {
   if (currentDownloadUrl) URL.revokeObjectURL(currentDownloadUrl);
   const blob = new Blob([markdownText], { type: "text/markdown" });
@@ -310,6 +360,8 @@ async function generateSavedReport(relationshipId) {
   const standardMarkdown = payload.markdown;
   setReportMarkdown(standardMarkdown);
   setTab("preview");
+  setReportStatus("Relationship Map ready.");
+  scrollReportIntoViewOnce();
   void enhanceReportMarkdown(standardMarkdown);
 }
 
@@ -449,6 +501,8 @@ async function loadProviderStatus() {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  shouldScrollToReport = true;
+  setReportStatus("Preparing your map…");
   statusEl.textContent = "Saving relationship and generating report…";
   generateButton.disabled = true;
   try {
@@ -473,6 +527,8 @@ previewTab.addEventListener("click", () => setTab("preview"));
 markdownTab.addEventListener("click", () => setTab("markdown"));
 form.elements.a_time_known.addEventListener("change", () => updateTimeKnown("a"));
 form.elements.b_time_known.addEventListener("change", () => updateTimeKnown("b"));
+form.elements.a_place_query.addEventListener("input", () => clearPlaceSelection("a"));
+form.elements.b_place_query.addEventListener("input", () => clearPlaceSelection("b"));
 form.elements.a_place_result.addEventListener("change", (event) => { const place = searchResults.a[Number(event.target.value)]; if (place) applyPlace("a", place); });
 form.elements.b_place_result.addEventListener("change", (event) => { const place = searchResults.b[Number(event.target.value)]; if (place) applyPlace("b", place); });
 document.getElementById("a_search_button").addEventListener("click", () => searchPlace("a"));
