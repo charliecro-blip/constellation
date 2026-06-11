@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from .chart import calculate_chart
+from .chart import DEFAULT_HOUSE_SYSTEM, calculate_chart
 from .schemas import BirthData, Chart
 
 
@@ -105,7 +105,7 @@ def load_validation_fixture(path: str | Path) -> ValidationFixture:
     return ValidationFixture(**json.loads(Path(path).read_text()))
 
 
-def validate_fixture(path: str | Path, house_system: str = "placidus") -> list[ValidationResult]:
+def validate_fixture(path: str | Path, house_system: str = DEFAULT_HOUSE_SYSTEM) -> list[ValidationResult]:
     fixture = load_validation_fixture(path)
     chart = calculate_chart(fixture.birth, house_system=house_system)
     return validate_chart_against_fixture(chart, fixture)

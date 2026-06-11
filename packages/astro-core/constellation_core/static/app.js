@@ -2,7 +2,6 @@ const form = document.getElementById("relationship-form");
 const statusEl = document.getElementById("status");
 const preview = document.getElementById("preview");
 const markdown = document.getElementById("markdown");
-const previewTab = document.getElementById("preview-tab");
 const markdownTab = document.getElementById("markdown-tab");
 const generateButton = document.getElementById("generate");
 const providerStatus = document.getElementById("provider-status");
@@ -298,11 +297,11 @@ function markdownToHtml(md) {
 }
 
 function setTab(which) {
-  const showPreview = which === "preview";
-  preview.classList.toggle("hidden", !showPreview);
-  markdown.classList.toggle("hidden", showPreview);
-  previewTab.classList.toggle("active", showPreview);
-  markdownTab.classList.toggle("active", !showPreview);
+  const showMarkdown = which === "markdown";
+  preview.classList.remove("hidden");
+  markdown.classList.toggle("hidden", !showMarkdown);
+  markdownTab.classList.toggle("active", showMarkdown);
+  markdownTab.textContent = showMarkdown ? "Hide Markdown" : "View Markdown";
 }
 
 function setReportMarkdown(markdownText) {
@@ -523,8 +522,7 @@ document.getElementById("save").addEventListener("click", () => { saveDraft(); s
 document.getElementById("restore").addEventListener("click", restoreDraft);
 document.getElementById("sample").addEventListener("click", () => { setForm(sample); statusEl.textContent = "Sample relationship restored."; });
 document.getElementById("copy").addEventListener("click", async () => { if (!currentMarkdown) return; await navigator.clipboard.writeText(currentMarkdown); statusEl.textContent = "Markdown copied."; });
-previewTab.addEventListener("click", () => setTab("preview"));
-markdownTab.addEventListener("click", () => setTab("markdown"));
+markdownTab.addEventListener("click", () => setTab(markdown.classList.contains("hidden") ? "markdown" : "preview"));
 form.elements.a_time_known.addEventListener("change", () => updateTimeKnown("a"));
 form.elements.b_time_known.addEventListener("change", () => updateTimeKnown("b"));
 form.elements.a_place_query.addEventListener("input", () => clearPlaceSelection("a"));

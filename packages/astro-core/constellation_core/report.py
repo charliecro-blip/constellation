@@ -11,6 +11,7 @@ from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .natal_profile import SIGN_ELEMENTS, SIGN_MODES
 from .patterns import Pattern, detect_relationship_patterns
+from .chart import DEFAULT_HOUSE_SYSTEM
 from .relationship import calculate_relationship
 from .schemas import Aspect, BirthData, Chart, RelationshipCalculation
 from .weighting import weight_patterns
@@ -586,7 +587,7 @@ def generate_relationship_report(
 def generate_report_from_birth_data(
     person_a: BirthData,
     person_b: BirthData,
-    house_system: str = "placidus",
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
     context: RelationshipContext | None = None,
 ) -> RelationshipReport:
     relationship = calculate_relationship(person_a, person_b, house_system=house_system)

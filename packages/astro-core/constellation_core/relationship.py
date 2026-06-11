@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .aspects import detect_aspects
-from .chart import calculate_chart, chart_points
+from .chart import DEFAULT_HOUSE_SYSTEM, calculate_chart, chart_points
 from .composite import calculate_midpoint_composite, composite_aspects
 from .overlays import calculate_house_overlays
 from .schemas import BirthData, RelationshipCalculation
@@ -12,7 +12,7 @@ from .schemas import BirthData, RelationshipCalculation
 def calculate_relationship(
     person_a: BirthData,
     person_b: BirthData,
-    house_system: str = "placidus",
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
 ) -> RelationshipCalculation:
     """Calculate natal charts, synastry aspects, house overlays, and midpoint composite."""
     chart_a = calculate_chart(person_a, house_system=house_system)

@@ -66,10 +66,12 @@ def test_primary_report_flow_is_simplified_and_ai_runs_automatically():
     assert "/static/styles.css?v=report-flow-chart-check-20260610" in html
     assert "Interpretive prose may be refined using AI. Chart calculations remain deterministic." in html
     assert "How readings are prepared" not in html
-    assert "More / testing tools" in html
+    assert "Export / developer tools" in html
     report_panel = html.split('<section id="report-section"')[1].split("</section>")[0]
     assert "Preview</button>" not in report_panel
-    assert "Download markdown" not in report_panel.split("More / testing tools")[0]
+    assert "View Markdown" in report_panel
+    assert "Copy Markdown" in report_panel
+    assert "Download Markdown" not in report_panel.split("Export / developer tools")[0]
     assert "Preparing your map" in source
     assert "Writing your reading" in source
     assert "Relationship Map ready" in source
