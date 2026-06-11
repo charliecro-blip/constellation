@@ -454,6 +454,147 @@ def test_midheaven_contact_does_not_lead_romantic_report_without_contextual_repe
     assert "Charlie's Sun conjunct Ellis's Moon" in overview
     assert "Midheaven" not in overview.split(".", 1)[0]
 
+def _overview_block(markdown: str) -> str:
+    return markdown.split("## Overview")[1].split("## Calculated chart check")[0]
+
+
+def _first_overview_sentence(markdown: str) -> str:
+    return _overview_block(markdown).strip().split(".", 1)[0]
+
+
+def test_overview_opens_with_lead_eligible_theme_over_higher_mercury_mars():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="mercury", point_b="mars", aspect="square", exact_angle=90, orb=0.1),
+            Aspect(point_a="moon", point_b="venus", aspect="trine", exact_angle=120, orb=1.5),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    context = RelationshipContext(relationship_type="romantic", status="current")
+
+    markdown = generate_relationship_report(relationship, context=context).to_markdown()
+    first_sentence = _first_overview_sentence(markdown)
+
+    assert "Moon trine B's Venus" in first_sentence
+    assert "Mercury square B's Mars" not in first_sentence
+    assert "Mercury square B's Mars" in markdown
+
+
+def test_isolated_mercury_mars_does_not_open_romantic_report():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="mercury", point_b="mars", aspect="square", exact_angle=90, orb=0.1),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    context = RelationshipContext(relationship_type="romantic", status="current")
+
+    markdown = generate_relationship_report(relationship, context=context).to_markdown()
+
+    assert "Mercury square B's Mars" not in _first_overview_sentence(markdown)
+    assert "Mercury square B's Mars" in markdown
+
+
+def test_mercury_mars_can_open_when_communication_context_is_requested():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="mercury", point_b="mars", aspect="square", exact_angle=90, orb=0.1),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    context = RelationshipContext(
+        relationship_type="romantic",
+        status="current",
+        user_question="Why do communication and arguments escalate?",
+    )
+
+    markdown = generate_relationship_report(relationship, context=context).to_markdown()
+
+    assert "Mercury square B's Mars" in _first_overview_sentence(markdown)
+
+
+def test_isolated_public_life_signature_does_not_open_romantic_report():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="midheaven", point_b="moon", aspect="conjunction", exact_angle=0, orb=0.1),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    context = RelationshipContext(relationship_type="romantic", status="current")
+
+    markdown = generate_relationship_report(relationship, context=context).to_markdown()
+
+    assert "Midheaven conjunct B's Moon" not in _first_overview_sentence(markdown)
+
+
+def test_public_life_signature_can_open_when_work_context_is_requested():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="midheaven", point_b="moon", aspect="conjunction", exact_angle=0, orb=0.1),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    context = RelationshipContext(
+        relationship_type="romantic",
+        status="current",
+        user_question="Can this work as a professional collaboration or creative project?",
+    )
+
+    markdown = generate_relationship_report(relationship, context=context).to_markdown()
+
+    assert "Midheaven conjunct B's Moon" in _first_overview_sentence(markdown)
+
+
+def test_composite_only_generic_baseline_does_not_open_overview():
+    composite = Chart(
+        name="Composite",
+        birth=_person_a().model_copy(update={"name": "Composite"}),
+        julian_day_ut=None,
+        house_system="synthetic",
+        placements={
+            "sun": _placement("sun", 10, "Aries"),
+            "moon": _placement("moon", 50, "Taurus"),
+        },
+    )
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[],
+        house_overlays=[],
+        composite=composite,
+        composite_aspects=[],
+    )
+
+    markdown = generate_relationship_report(relationship).to_markdown()
+    overview = _overview_block(markdown)
+
+    assert "Composite Sun" not in overview
+    assert "Composite Moon" not in overview
+    assert "baseline" not in overview.lower()
+    assert "compatibility score" not in markdown.lower()
+    assert "meant to be" not in markdown.lower()
+    assert "destined" not in markdown.lower()
+
 
 def test_direction_sections_are_limited_to_three_strongest_activations():
     relationship = RelationshipCalculation(

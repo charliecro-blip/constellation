@@ -14,8 +14,30 @@ from .scoring_weights import CONVERGENCE_MULTIPLIERS
 from .patterns import Pattern
 
 
-CAREER_KEYWORDS = {"career", "work", "public", "vocation", "reputation", "visibility", "calling", "ambition"}
-COMMUNICATION_KEYWORDS = {"communication", "talk", "text", "words", "argue", "argument", "conversation", "message"}
+CAREER_KEYWORDS = {
+    "career",
+    "work",
+    "public",
+    "vocation",
+    "reputation",
+    "visibility",
+    "calling",
+    "ambition",
+    "collaboration",
+    "business",
+    "professional",
+    "creative project",
+}
+COMMUNICATION_KEYWORDS = {
+    "communication",
+    "conflict",
+    "argument",
+    "talking",
+    "texting",
+    "conversation",
+    "misunderstanding",
+    "mental connection",
+}
 
 
 ROMANTIC_BOOSTS = {
@@ -90,8 +112,12 @@ def _context_text(context: RelationshipContext | None) -> str:
     ).lower()
 
 
-def _career_context_requested(context: RelationshipContext | None) -> bool:
+def public_life_context_requested(context: RelationshipContext | None) -> bool:
     return any(keyword in _context_text(context) for keyword in CAREER_KEYWORDS)
+
+
+def _career_context_requested(context: RelationshipContext | None) -> bool:
+    return public_life_context_requested(context)
 
 
 def _romantic_context(context: RelationshipContext | None) -> bool:
