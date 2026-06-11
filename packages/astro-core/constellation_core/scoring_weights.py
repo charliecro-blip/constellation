@@ -69,7 +69,10 @@ HOUSE_BONUSES = {
 }
 
 CONVERGENCE_MULTIPLIERS = {
-    "repeated_theme": 1.15,
-    "cross_layer_echo": 1.20,
-    "context_requested": 1.10,
+    "same_category_once": 1.12,
+    "same_category_twice": 1.25,
+    "synastry_plus_composite": 1.25,
+    "double_whammy": 1.30,
+    "natal_echo": 1.15,
+    "cap": 1.60,
 }

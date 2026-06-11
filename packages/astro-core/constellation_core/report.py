@@ -15,7 +15,7 @@ from .patterns import Pattern, detect_relationship_patterns
 from .chart import DEFAULT_HOUSE_SYSTEM
 from .relationship import calculate_relationship
 from .schemas import Aspect, BirthData, Chart, RelationshipCalculation
-from .weighting import weight_patterns
+from .weighting import communication_context_requested, weight_patterns
 
 
 class ReportSection(BaseModel):
@@ -111,8 +111,16 @@ def _is_minor_communication(pattern: Pattern) -> bool:
     )
 
 
-def _central_patterns(patterns: list[Pattern]) -> list[Pattern]:
-    candidates = [pattern for pattern in patterns if pattern.layer != "house_overlay"]
+def _central_patterns(
+    patterns: list[Pattern], context: RelationshipContext | None = None
+) -> list[Pattern]:
+    communication_context = communication_context_requested(context)
+    candidates = [
+        pattern
+        for pattern in patterns
+        if pattern.layer != "house_overlay"
+        and (communication_context or not _is_minor_communication(pattern))
+    ]
     stronger_relational = any(
         not _is_minor_communication(pattern)
         and (
@@ -544,7 +552,7 @@ def generate_relationship_report(
 ) -> RelationshipReport:
     raw_patterns = detect_relationship_patterns(relationship)
     patterns = weight_patterns(raw_patterns, context)
-    central = _central_patterns(patterns)
+    central = _central_patterns(patterns, context)
     composite = _composite_patterns(patterns)
     a_to_b = _directional_patterns(relationship, patterns, "person_a")
     b_to_a = _directional_patterns(relationship, patterns, "person_b")
