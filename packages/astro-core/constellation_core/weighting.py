@@ -10,10 +10,91 @@ import re
 
 from .context import RelationshipContext
 from .patterns import Pattern
+from .pattern_registry import convergence_category_for, planet_pair_for
 
 
 CAREER_KEYWORDS = {"career", "work", "public", "vocation", "reputation", "visibility", "calling", "ambition"}
 COMMUNICATION_KEYWORDS = {"communication", "talk", "text", "words", "argue", "argument", "conversation", "message"}
+
+
+CONVERGENCE_MULTIPLIERS = {
+    "same_category_once": 1.12,
+    "same_category_twice": 1.25,
+    "synastry_plus_composite": 1.25,
+    "double_whammy": 1.30,
+    "natal_echo": 1.15,
+    "cap": 1.60,
+}
+
+
+def _synastry_direction(pattern: Pattern) -> str | None:
+    if pattern.layer != "synastry":
+        return None
+    match = re.match(
+        r"^(?P<left>.+)'s .+? (?:conjunct|opposite|square|trine|sextile|quincunx) (?P<right>.+)'s .+$",
+        pattern.title,
+    )
+    if match is None:
+        return None
+    return f"{match.group('left').strip()}->{match.group('right').strip()}"
+
+
+def _has_double_whammy(pattern: Pattern, all_patterns: list[Pattern]) -> bool:
+    pair = planet_pair_for(pattern.key)
+    direction = _synastry_direction(pattern)
+    if pair is None or direction is None:
+        return False
+    left, right = direction.split("->", 1)
+    reciprocal = f"{right}->{left}"
+    return any(
+        other is not pattern
+        and other.layer == "synastry"
+        and planet_pair_for(other.key) == pair
+        and _synastry_direction(other) == reciprocal
+        for other in all_patterns
+    )
+
+
+def _has_natal_echo(pattern: Pattern, all_patterns: list[Pattern]) -> bool:
+    category = convergence_category_for(pattern.key, pattern.category)
+    return any(
+        other is not pattern
+        and other.layer == "natal"
+        and convergence_category_for(other.key, other.category) == category
+        for other in all_patterns
+    )
+
+
+def convergence_multiplier(pattern: Pattern, all_patterns: list[Pattern]) -> float:
+    """Return a conservative multiplier for themes repeated across layers.
+
+    Isolated patterns stay at 1.0. Echoes are based on registry convergence
+    categories rather than raw detector categories, so a synastry Venus/Pluto
+    pattern can echo a composite Scorpio concentration as trust-depth material.
+    """
+    category = convergence_category_for(pattern.key, pattern.category)
+    echoes = [
+        other
+        for other in all_patterns
+        if other is not pattern and convergence_category_for(other.key, other.category) == category
+    ]
+
+    multiplier = 1.0
+    if len(echoes) >= 2:
+        multiplier *= CONVERGENCE_MULTIPLIERS["same_category_twice"]
+    elif len(echoes) == 1:
+        multiplier *= CONVERGENCE_MULTIPLIERS["same_category_once"]
+
+    if pattern.layer == "synastry" and any(other.layer == "composite" for other in echoes):
+        multiplier *= CONVERGENCE_MULTIPLIERS["synastry_plus_composite"]
+
+    if _has_double_whammy(pattern, all_patterns):
+        multiplier *= CONVERGENCE_MULTIPLIERS["double_whammy"]
+
+    if _has_natal_echo(pattern, all_patterns):
+        multiplier *= CONVERGENCE_MULTIPLIERS["natal_echo"]
+
+    return min(multiplier, CONVERGENCE_MULTIPLIERS["cap"])
 
 
 ROMANTIC_BOOSTS = {
@@ -158,6 +239,8 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
             elif orb >= 5.0:
                 orb_adjustment -= 2
 
-        new_priority = min(100, max(0, pattern.priority + boost + tier_boost + orb_adjustment))
+        adjusted_priority = pattern.priority + boost + tier_boost + orb_adjustment
+        multiplier = convergence_multiplier(pattern, patterns)
+        new_priority = max(0, min(100, round(adjusted_priority * multiplier)))
         weighted.append(pattern.model_copy(update={"priority": new_priority}))
     return sorted(weighted, key=lambda pattern: pattern.priority, reverse=True)
