@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 from .context import RelationshipContext
+from .pattern_registry import get_pattern_metadata
 from .patterns import Pattern
 
 
@@ -112,9 +113,15 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
         category_counts[pattern.category] = category_counts.get(pattern.category, 0) + 1
     for pattern in patterns:
         boost = boosts.get(pattern.category, 0)
+        metadata = get_pattern_metadata(pattern.key)
         tier_boost = 0
         # Tier 1: central signatures
-        is_mc_pattern = "midheaven" in pattern.key or "Midheaven" in pattern.title or "MC/IC" in pattern.title
+        is_mc_pattern = (
+            metadata.category == "public_life"
+            or "midheaven" in pattern.key
+            or "Midheaven" in pattern.title
+            or "MC/IC" in pattern.title
+        )
         if pattern.category == "angle_luminary" and not (romantic_context and is_mc_pattern and not career_context):
             tier_boost += 24
         if pattern.key in {"synastry.venus_ascendant", "synastry.sun_moon", "synastry.moon_moon", "synastry.moon_venus"}:

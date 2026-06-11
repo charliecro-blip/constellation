@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .natal_profile import SIGN_ELEMENTS, SIGN_MODES
+from .pattern_registry import get_pattern_metadata
 from .patterns import Pattern, detect_relationship_patterns
 from .chart import DEFAULT_HOUSE_SYSTEM
 from .relationship import calculate_relationship
@@ -102,7 +103,12 @@ MINOR_COMMUNICATION_KEYS = {"synastry.mercury_mars", "synastry.mercury_mercury"}
 
 
 def _is_minor_communication(pattern: Pattern) -> bool:
-    return pattern.category == "communication" or pattern.key in MINOR_COMMUNICATION_KEYS
+    metadata = get_pattern_metadata(pattern.key)
+    return (
+        metadata.category == "communication_heat"
+        or pattern.category == "communication"
+        or pattern.key in MINOR_COMMUNICATION_KEYS
+    )
 
 
 def _central_patterns(patterns: list[Pattern]) -> list[Pattern]:

@@ -169,3 +169,85 @@ def test_asteroid_synastry_patterns_require_tight_relevance():
     titles = [pattern.title for pattern in patterns]
     assert any("Juno" in title and "Venus" in title for title in titles)
     assert not any("Ceres" in title and "Venus" in title for title in titles)
+
+
+def test_pattern_registry_covers_major_existing_keys():
+    from constellation_core.pattern_registry import get_pattern_metadata
+
+    major_keys = [
+        "sun_moon",
+        "moon_moon",
+        "venus_mars",
+        "moon_venus",
+        "moon_mars",
+        "venus_pluto",
+        "mars_pluto",
+        "moon_saturn",
+        "venus_saturn",
+        "mars_saturn",
+        "mercury_mars",
+        "mercury_mercury",
+        "moon_pluto",
+        "venus_ascendant",
+        "sun_ascendant",
+        "moon_ascendant",
+        "house_overlay",
+        "composite.stellium.taurus",
+        "composite.conjunction_cluster",
+        "composite.mars_venus",
+        "composite.mars_pluto",
+        "composite.saturn_venus",
+        "composite.saturn_sun",
+        "composite.moon_saturn",
+        "composite.moon_uranus",
+    ]
+
+    for key in major_keys:
+        metadata = get_pattern_metadata(key)
+        assert metadata.tier in {1, 2, 3, 4}
+        assert metadata.category != "supporting_texture"
+        assert metadata.description
+
+
+def test_pattern_registry_tier_one_relationship_signatures():
+    from constellation_core.pattern_registry import get_pattern_metadata
+
+    tier_one_keys = [
+        "sun_moon",
+        "moon_moon",
+        "venus_mars",
+        "moon_saturn",
+        "venus_saturn",
+        "mars_saturn",
+    ]
+
+    assert {get_pattern_metadata(key).tier for key in tier_one_keys} == {1}
+
+
+def test_pattern_registry_lead_eligibility_defaults():
+    from constellation_core.pattern_registry import get_pattern_metadata
+    from constellation_core.scoring_weights import LEAD_ELIGIBLE_CATEGORIES
+
+    assert get_pattern_metadata("mercury_mars").lead_eligible is False
+    assert get_pattern_metadata("overlay.house_10").category == "public_life"
+    assert get_pattern_metadata("overlay.house_10").lead_eligible is False
+    assert get_pattern_metadata("synastry.angle_midheaven_sun").lead_eligible is False
+    assert LEAD_ELIGIBLE_CATEGORIES == {
+        "emotional_recognition",
+        "erotic_charge",
+        "stability_container",
+        "devotion_contract",
+    }
+
+
+def test_scoring_weight_constants_are_report_prioritization_only():
+    from constellation_core import pattern_registry, scoring_weights
+
+    assert scoring_weights.SUPPRESSION_THRESHOLDS == {
+        "omit": 25,
+        "supporting": 45,
+        "brief": 70,
+    }
+    module_text = f"{pattern_registry.PATTERN_REGISTRY} {scoring_weights.__dict__}".lower()
+    assert "compatibility score" not in module_text
+    assert "meant to be" not in module_text
