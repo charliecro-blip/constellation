@@ -10,12 +10,12 @@ from pydantic import BaseModel
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .natal_profile import SIGN_ELEMENTS, SIGN_MODES
-from .pattern_registry import get_pattern_metadata
+from .pattern_registry import convergence_category_for, get_pattern_metadata
 from .patterns import Pattern, detect_relationship_patterns
 from .chart import DEFAULT_HOUSE_SYSTEM
 from .relationship import calculate_relationship
 from .schemas import Aspect, BirthData, Chart, RelationshipCalculation
-from .weighting import communication_context_requested, weight_patterns
+from .weighting import communication_context_requested, public_life_context_requested, weight_patterns
 
 
 class ReportSection(BaseModel):
@@ -111,42 +111,88 @@ def _is_minor_communication(pattern: Pattern) -> bool:
     )
 
 
+def _is_public_life_pattern(pattern: Pattern) -> bool:
+    metadata = get_pattern_metadata(pattern.key)
+    return (
+        metadata.category == "public_life"
+        or "midheaven" in pattern.key.lower()
+        or "midheaven" in pattern.title.lower()
+        or "mc/ic" in pattern.title.lower()
+    )
+
+
+def _is_generic_composite_baseline(pattern: Pattern) -> bool:
+    return pattern.layer == "composite" and pattern.key.startswith(("composite.sun.", "composite.moon."))
+
+
+def _has_synastry_convergence(pattern: Pattern, patterns: list[Pattern]) -> bool:
+    category = convergence_category_for(pattern)
+    return any(
+        other.layer == "synastry"
+        and other.id != pattern.id
+        and other.priority >= 70
+        and convergence_category_for(other) == category
+        for other in patterns
+    )
+
+
+def _is_major_composite_concentration(pattern: Pattern) -> bool:
+    if pattern.layer != "composite" or pattern.priority < 88:
+        return False
+    if not pattern.key.startswith(("composite.stellium.", "composite.conjunction_cluster")):
+        return False
+    evidence_text = " ".join(pattern.evidence).lower()
+    return any(body in evidence_text for body in ["sun", "moon", "venus", "mars", "saturn", "pluto"])
+
+
+def is_lead_eligible(
+    pattern: Pattern, context: RelationshipContext | None = None, patterns: list[Pattern] | None = None
+) -> bool:
+    metadata = get_pattern_metadata(pattern.key)
+    all_patterns = patterns or [pattern]
+
+    if pattern.layer == "house_overlay" or _is_generic_composite_baseline(pattern):
+        return False
+    if _is_minor_communication(pattern):
+        return communication_context_requested(context)
+    if _is_public_life_pattern(pattern):
+        return public_life_context_requested(context)
+    if pattern.layer == "composite":
+        if _is_major_composite_concentration(pattern):
+            return True
+        return metadata.lead_eligible and _has_synastry_convergence(pattern, all_patterns)
+    return metadata.lead_eligible
+
+
+def _is_major_fallback_pattern(pattern: Pattern, context: RelationshipContext | None = None) -> bool:
+    metadata = get_pattern_metadata(pattern.key)
+    if pattern.layer == "house_overlay" or _is_generic_composite_baseline(pattern):
+        return False
+    if _is_minor_communication(pattern):
+        return False
+    if _is_public_life_pattern(pattern) and not public_life_context_requested(context):
+        return context is None and pattern.priority >= 84
+    return metadata.tier <= 2 or pattern.priority >= 84
+
+
 def _central_patterns(
     patterns: list[Pattern], context: RelationshipContext | None = None
 ) -> list[Pattern]:
-    communication_context = communication_context_requested(context)
-    candidates = [
-        pattern
-        for pattern in patterns
-        if pattern.layer != "house_overlay"
-        and (communication_context or not _is_minor_communication(pattern))
-    ]
-    stronger_relational = any(
-        not _is_minor_communication(pattern)
-        and (
-            pattern.priority >= 84
-            or pattern.category
-            in {
-                "recognition",
-                "angle_luminary",
-                "attraction",
-                "desire",
-                "attraction_intensity",
-                "emotional_structure",
-                "bond_structure",
-                "composite_concentration",
-                "emotional_variability",
-            }
-        )
-        for pattern in candidates
+    candidates = [pattern for pattern in patterns if pattern.layer != "house_overlay"]
+    lead_candidates = [pattern for pattern in candidates if is_lead_eligible(pattern, context, patterns)]
+    primary = lead_candidates[0] if lead_candidates else next(
+        (pattern for pattern in candidates if _is_major_fallback_pattern(pattern, context)),
+        None,
     )
-    if stronger_relational:
-        candidates = [pattern for pattern in candidates if not _is_minor_communication(pattern)]
-    selected = [pattern for pattern in candidates if pattern.priority >= 84]
-    if len(selected) < 2:
-        selected = candidates
-    return selected[:4]
+    if primary is None:
+        return []
 
+    supporting = [
+        pattern
+        for pattern in candidates
+        if pattern.id != primary.id and not _is_generic_composite_baseline(pattern)
+    ]
+    return [primary, *supporting][:4]
 
 
 def _display_body(body: str) -> str:
@@ -340,20 +386,26 @@ def _overview(relationship: RelationshipCalculation, central: list[Pattern], com
     comparison_notes = _comparison_notes(relationship)
 
     paragraphs: list[str] = []
-    if synastry:
-        primary = synastry[0]
-        supporting = f" {synastry[1].title} repeats the relational pull." if len(synastry) > 1 else ""
-        paragraphs.append(
-            f"The central story between {a} and {b} is carried by {primary.title}. "
-            f"{_interpret_for_section(primary, 'overview')}{supporting} "
-            "This is the signature to read first; tighter but more mechanical contacts should serve this story, not replace it."
+    if central:
+        primary = central[0]
+        supporting_pattern = next((pattern for pattern in central[1:] if pattern.layer == primary.layer), None)
+        supporting = (
+            f" {supporting_pattern.title} repeats the relational pull."
+            if supporting_pattern is not None
+            else ""
         )
-    elif composite:
-        comp = composite[0]
-        paragraphs.append(
-            f"The relationship organizes itself around {comp.title}. {_interpret_for_section(comp, 'composite')} "
-            "The bond is easier to understand through the field it creates than through one isolated contact."
-        )
+        if primary.layer == "composite":
+            paragraphs.append(
+                f"The relationship organizes itself around {primary.title}. "
+                f"{_interpret_for_section(primary, 'composite')}{supporting} "
+                "The bond is easier to understand through this specific shared field than through generic composite texture."
+            )
+        else:
+            paragraphs.append(
+                f"The central story between {a} and {b} is carried by {primary.title}. "
+                f"{_interpret_for_section(primary, 'overview')}{supporting} "
+                "This is the signature to read first; tighter but more mechanical contacts should serve this story, not replace it."
+            )
     else:
         paragraphs.append(
             f"The strongest organizing themes between {a} and {b} come from repeated contact patterns rather than one spectacular signature."
