@@ -354,3 +354,58 @@ def get_pattern_metadata(pattern_key: str) -> PatternMetadata:
     if canonical_key.startswith("overlay.house_"):
         return PATTERN_REGISTRY.get(canonical_key, PATTERN_REGISTRY["house_overlay"])
     return replace(FALLBACK_PATTERN_METADATA, key=pattern_key)
+
+
+def convergence_category_for(pattern) -> str:
+    """Return the report-prioritization theme used for convergence checks."""
+    key = getattr(pattern, "key", str(pattern))
+    metadata = get_pattern_metadata(key)
+    title = getattr(pattern, "title", "").lower()
+    evidence = " ".join(getattr(pattern, "evidence", [])).lower()
+    text = f"{title} {evidence}"
+
+    if key in {"synastry.venus_pluto", "synastry.mars_pluto", "synastry.moon_pluto", "composite.mars_pluto"}:
+        return "trust_depth"
+    if key.startswith("composite.stellium."):
+        if ".scorpio" in key or " scorpio" in text or "pluto" in text:
+            return "trust_depth"
+        if "venus" in text and "mars" in text:
+            return "erotic_charge"
+        if "moon" in text and "saturn" in text:
+            return "stability_container"
+    if key == "composite.conjunction_cluster":
+        if "pluto" in text or "scorpio" in text:
+            return "trust_depth"
+        if "venus" in text and "mars" in text:
+            return "erotic_charge"
+        if "moon" in text and "saturn" in text:
+            return "stability_container"
+    return metadata.category
+
+
+def planet_pair_for(pattern) -> tuple[str, str] | None:
+    """Return the normalized planet pair for aspect-like relationship patterns."""
+    key = getattr(pattern, "key", str(pattern))
+    canonical_key = ALIASES.get(key, key)
+    pair_by_key = {
+        "synastry.sun_moon": ("moon", "sun"),
+        "synastry.moon_moon": ("moon", "moon"),
+        "synastry.venus_mars": ("mars", "venus"),
+        "synastry.moon_venus": ("moon", "venus"),
+        "synastry.moon_mars": ("mars", "moon"),
+        "synastry.mercury_mars": ("mars", "mercury"),
+        "synastry.mercury_mercury": ("mercury", "mercury"),
+        "synastry.moon_saturn": ("moon", "saturn"),
+        "synastry.moon_pluto": ("moon", "pluto"),
+        "synastry.venus_pluto": ("pluto", "venus"),
+        "synastry.mars_pluto": ("mars", "pluto"),
+        "synastry.venus_saturn": ("saturn", "venus"),
+        "synastry.mars_saturn": ("mars", "saturn"),
+        "composite.venus_mars": ("mars", "venus"),
+        "composite.mars_pluto": ("mars", "pluto"),
+        "composite.venus_saturn": ("saturn", "venus"),
+        "composite.sun_saturn": ("saturn", "sun"),
+        "composite.moon_saturn": ("moon", "saturn"),
+        "composite.moon_uranus": ("moon", "uranus"),
+    }
+    return pair_by_key.get(canonical_key)

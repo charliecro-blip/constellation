@@ -9,7 +9,8 @@ from __future__ import annotations
 import re
 
 from .context import RelationshipContext
-from .pattern_registry import get_pattern_metadata
+from .pattern_registry import convergence_category_for, get_pattern_metadata, planet_pair_for
+from .scoring_weights import CONVERGENCE_MULTIPLIERS
 from .patterns import Pattern
 
 
@@ -97,8 +98,76 @@ def _romantic_context(context: RelationshipContext | None) -> bool:
     return context is not None and context.relationship_type in {"romantic", "dating_exploring", "ex", "unresolved_connection"}
 
 
-def _communication_context_requested(context: RelationshipContext | None) -> bool:
+def communication_context_requested(context: RelationshipContext | None) -> bool:
     return any(keyword in _context_text(context) for keyword in COMMUNICATION_KEYWORDS)
+
+
+def _directional_pair(pattern: Pattern) -> tuple[str, str, str, str] | None:
+    if pattern.layer != "synastry":
+        return None
+    match = re.match(
+        r"^(?P<left_owner>.+?)'s (?P<left_body>[A-Za-z ]+) .+ (?P<right_owner>.+?)'s (?P<right_body>[A-Za-z ]+)$",
+        pattern.title,
+    )
+    if match is None:
+        return None
+    return (
+        match.group("left_owner").strip().lower(),
+        match.group("left_body").strip().lower().replace(" ", "_"),
+        match.group("right_owner").strip().lower(),
+        match.group("right_body").strip().lower().replace(" ", "_"),
+    )
+
+
+def _has_double_whammy(pattern: Pattern, patterns: list[Pattern]) -> bool:
+    pair = planet_pair_for(pattern)
+    directional = _directional_pair(pattern)
+    if pair is None or directional is None:
+        return False
+    left_owner, left_body, right_owner, right_body = directional
+    for other in patterns:
+        if other.id == pattern.id or other.layer != "synastry":
+            continue
+        if planet_pair_for(other) != pair:
+            continue
+        other_directional = _directional_pair(other)
+        if other_directional is None:
+            continue
+        other_left_owner, other_left_body, other_right_owner, other_right_body = other_directional
+        if (
+            other_left_owner == right_owner
+            and other_right_owner == left_owner
+            and other_left_body == left_body
+            and other_right_body == right_body
+        ):
+            return True
+    return False
+
+
+def convergence_multiplier_for(pattern: Pattern, patterns: list[Pattern]) -> float:
+    """Return the report-prioritization multiplier earned by repeated themes."""
+    category = convergence_category_for(pattern)
+    category_count = sum(1 for item in patterns if convergence_category_for(item) == category)
+    multiplier = 1.0
+    if category_count >= 3:
+        multiplier *= CONVERGENCE_MULTIPLIERS["same_category_twice"]
+    elif category_count == 2:
+        multiplier *= CONVERGENCE_MULTIPLIERS["same_category_once"]
+
+    if pattern.layer == "synastry" and any(
+        item.layer == "composite" and convergence_category_for(item) == category for item in patterns
+    ):
+        multiplier *= CONVERGENCE_MULTIPLIERS["synastry_plus_composite"]
+
+    if _has_double_whammy(pattern, patterns):
+        multiplier *= CONVERGENCE_MULTIPLIERS["double_whammy"]
+
+    if pattern.layer != "natal" and any(
+        item.layer == "natal" and convergence_category_for(item) == category for item in patterns
+    ):
+        multiplier *= CONVERGENCE_MULTIPLIERS["natal_echo"]
+
+    return min(multiplier, CONVERGENCE_MULTIPLIERS["cap"])
 
 
 def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None = None) -> list[Pattern]:
@@ -106,7 +175,7 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
     boosts = boosts_for_context(context)
     weighted: list[Pattern] = []
     career_context = _career_context_requested(context)
-    communication_context = _communication_context_requested(context)
+    communication_context = communication_context_requested(context)
     romantic_context = _romantic_context(context)
     category_counts: dict[str, int] = {}
     for pattern in patterns:
@@ -165,6 +234,8 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
             elif orb >= 5.0:
                 orb_adjustment -= 2
 
-        new_priority = min(100, max(0, pattern.priority + boost + tier_boost + orb_adjustment))
+        adjusted_priority = max(0, pattern.priority + boost + tier_boost + orb_adjustment)
+        convergence_multiplier = convergence_multiplier_for(pattern, patterns)
+        new_priority = min(100, round(adjusted_priority * convergence_multiplier))
         weighted.append(pattern.model_copy(update={"priority": new_priority}))
     return sorted(weighted, key=lambda pattern: pattern.priority, reverse=True)
