@@ -80,14 +80,14 @@
         <button id="generate" type="submit">Generate Relationship Map</button>
       </div>
       <div id="status" class="status">Ready.</div>
-      <details class="advanced-place developer-actions"><summary>Developer/testing tools</summary><div class="actions"><button class="secondary" id="save" type="button">Save browser draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample data</button><button class="secondary" id="copy" type="button">Copy markdown</button></div></details>
+      <details class="advanced-place developer-actions"><summary>Developer/testing tools</summary><div class="actions"><button class="secondary" id="save" type="button">Save browser draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample data</button></div></details>
     </form>
 
     <section id="report-section" class="card stack report-panel">
       <h2>Relationship Map</h2>
       <p id="report_status" class="small-note" aria-live="polite"></p>
       <div id="preview" class="output-html">Generate a relationship map to see the formatted reading.</div>
-      <details class="advanced-place developer-actions"><summary>More / testing tools</summary><div class="actions" role="tablist" aria-label="Output view"><button class="tab active" id="preview-tab" type="button">Formatted report</button><button class="tab" id="markdown-tab" type="button">Markdown source</button><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download markdown</a></div><p class="small-note">Interpretive prose may be refined using AI. Chart calculations remain deterministic.</p><pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre></details>
+      <details class="advanced-place developer-actions"><summary>Export / developer tools</summary><div class="actions" aria-label="Markdown export tools"><button class="secondary" id="markdown-tab" type="button">View Markdown</button><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download Markdown</a><button class="secondary" id="copy" type="button">Copy Markdown</button></div><p class="small-note">Interpretive prose may be refined using AI. Chart calculations remain deterministic.</p><pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre></details>
     </section>
   </section>
 </main>

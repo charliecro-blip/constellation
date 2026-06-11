@@ -7,6 +7,8 @@ from uuid import uuid4
 
 from sqlmodel import Field, SQLModel
 
+from .chart import DEFAULT_HOUSE_SYSTEM
+
 
 def _utcnow() -> datetime:
     return datetime.utcnow()
@@ -43,7 +45,7 @@ class SavedRelationship(SQLModel, table=True):
     user_question: str | None = None
     origin_story: str | None = None
     known_themes_json: str = "[]"
-    house_system: str = "placidus"
+    house_system: str = DEFAULT_HOUSE_SYSTEM
 
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)

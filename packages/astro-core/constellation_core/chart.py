@@ -33,6 +33,8 @@ ASTEROID_IDS: dict[str, int] = {
     "eros": swe.AST_OFFSET + 433,
 }
 
+DEFAULT_HOUSE_SYSTEM = "placidus"
+
 HOUSE_SYSTEMS: dict[str, bytes] = {
     "placidus": b"P",
     "koch": b"K",
@@ -171,7 +173,7 @@ def chart_points(chart: Chart, include_angles: bool = True) -> dict[str, float]:
     return points
 
 
-def calculate_chart(birth: BirthData, house_system: str = "placidus") -> Chart:
+def calculate_chart(birth: BirthData, house_system: str = DEFAULT_HOUSE_SYSTEM) -> Chart:
     """Calculate a natal chart from normalized birth data."""
     warnings: list[str] = []
     julian_day_ut = julian_day_ut_from_birth(birth)

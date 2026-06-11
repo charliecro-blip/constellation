@@ -21,7 +21,7 @@ from .ai_enhancement import (
     ReportEnhancementRequest,
     enhance_report_markdown,
 )
-from .chart import calculate_chart
+from .chart import DEFAULT_HOUSE_SYSTEM, calculate_chart
 from .context import RelationshipContext
 from .constellation_patterns import RelationshipPatternInput, build_constellation_pattern_summary
 from .database import get_session, init_db
@@ -66,7 +66,7 @@ class CreateSavedRelationshipRequest(BaseModel):
     user_question: str | None = None
     origin_story: str | None = None
     known_themes: list[str] = Field(default_factory=list)
-    house_system: str = "placidus"
+    house_system: str = DEFAULT_HOUSE_SYSTEM
 
 
 class SavedRelationshipResponse(BaseModel):
@@ -128,7 +128,7 @@ class SavedReportResponse(BaseModel):
 class RelationshipRequest(BaseModel):
     person_a: BirthData
     person_b: BirthData
-    house_system: str = "placidus"
+    house_system: str = DEFAULT_HOUSE_SYSTEM
     context: RelationshipContext | None = None
 
 
@@ -181,7 +181,7 @@ def place_search_endpoint(q: str) -> PlaceSearchResponse:
 
 
 @app.post("/chart", response_model=Chart)
-def chart_endpoint(birth: BirthData, house_system: str = "placidus") -> Chart:
+def chart_endpoint(birth: BirthData, house_system: str = DEFAULT_HOUSE_SYSTEM) -> Chart:
     return calculate_chart(birth, house_system=house_system)
 
 
