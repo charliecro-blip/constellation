@@ -941,3 +941,94 @@ def test_saved_motif_selector_excludes_suppressed_and_asteroid_patterns():
 
     keys = [item.key for item in selected]
     assert keys == ["synastry.sun_moon", "composite.moon_saturn"]
+
+
+def test_relationship_map_affirmative_lead_overlays_and_chart_specific_repair():
+    chart_a = _synthetic_chart("Charlie").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 250, "Sagittarius", house=6),
+                "moon": _placement("moon", 285, "Capricorn", house=8),
+                "mercury": _placement("mercury", 252, "Sagittarius", house=6),
+                "venus": _placement("venus", 182, "Libra", house=5),
+                "mars": _placement("mars", 215, "Scorpio", house=5),
+            }
+        }
+    )
+    chart_b = _synthetic_chart("Ellis").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 160, "Virgo", house=5),
+                "moon": _placement("moon", 44, "Taurus", house=12),
+                "mercury": _placement("mercury", 165, "Virgo", house=5),
+                "venus": _placement("venus", 150, "Virgo", house=5),
+                "mars": _placement("mars", 185, "Libra", house=6),
+            },
+            "angles": {
+                "ascendant": Angle(name="Ascendant", longitude=2, sign="Aries", sign_index=0, degree=2),
+            },
+        }
+    )
+    composite = _synthetic_chart("Composite").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 10, "Aries"),
+                "moon": _placement("moon", 100, "Cancer"),
+                "mars": _placement("mars", 280, "Capricorn"),
+                "pluto": _placement("pluto", 281, "Capricorn"),
+                "saturn": _placement("saturn", 190, "Libra"),
+            }
+        }
+    )
+    relationship = RelationshipCalculation(
+        person_a=chart_a,
+        person_b=chart_b,
+        synastry_aspects=[
+            Aspect(point_a="venus", point_b="ascendant", aspect="opposition", exact_angle=180, orb=0.4),
+            Aspect(point_a="mercury", point_b="mercury", aspect="square", exact_angle=90, orb=0.6),
+        ],
+        house_overlays=[
+            HouseOverlay(planet_owner="person_a", house_owner="person_b", body="venus", house=7, body_longitude=182),
+            HouseOverlay(planet_owner="person_a", house_owner="person_b", body="sun", house=7, body_longitude=250),
+            HouseOverlay(planet_owner="person_b", house_owner="person_a", body="moon", house=5, body_longitude=44),
+        ],
+        composite=composite,
+        composite_aspects=[
+            Aspect(point_a="sun", point_b="saturn", aspect="opposition", exact_angle=180, orb=0.3),
+            Aspect(point_a="mars", point_b="pluto", aspect="conjunction", exact_angle=0, orb=0.2),
+            Aspect(point_a="moon", point_b="sun", aspect="square", exact_angle=90, orb=0.5),
+            Aspect(point_a="moon", point_b="saturn", aspect="square", exact_angle=90, orb=0.5),
+        ],
+    )
+
+    markdown = generate_relationship_report(relationship).to_markdown()
+    section_titles = [line.removeprefix("## ") for line in markdown.splitlines() if line.startswith("## ")]
+    overview = markdown.split("## Overview", maxsplit=1)[1].split("## Charlie Relationship Profile", maxsplit=1)[0]
+    charlie_to_ellis = markdown.split("## How Charlie Activates Ellis", maxsplit=1)[1].split("## How Ellis Activates Charlie", maxsplit=1)[0]
+    ellis_to_charlie = markdown.split("## How Ellis Activates Charlie", maxsplit=1)[1].split("## Composite Field", maxsplit=1)[0]
+    profiles = markdown.split("## Charlie Relationship Profile", maxsplit=1)[1].split("## How Charlie Activates Ellis", maxsplit=1)[0]
+    composite_block = markdown.split("## Composite Field", maxsplit=1)[1].split("## Friction and Repair", maxsplit=1)[0]
+    friction = markdown.split("## Friction and Repair", maxsplit=1)[1]
+
+    assert section_titles.index("Calculated chart check") > section_titles.index("Friction and Repair")
+    assert "Venus opposite Ellis's Ascendant" in overview.split(".", 1)[0]
+    assert "Composite Sun opposite Saturn" not in overview.split(".", 1)[0]
+    assert "Charlie's Venus in Ellis's 7th house" in overview
+    assert "Charlie's Venus in Ellis's 7th house" in charlie_to_ellis
+    assert "Charlie's Libra Venus in the 5th house" in charlie_to_ellis
+    assert "Sagittarius Mercury in the 6th house" in charlie_to_ellis
+    assert "Virgo Mercury in the 5th house" in charlie_to_ellis
+    assert "Ellis's Moon in Charlie's 5th house" in ellis_to_charlie
+    assert "5th/7th/8th-house emphasis" not in profiles
+    assert "sensitivity protected by self-control" in profiles
+    assert "Moon squares an opposition between Saturn and Sun" in composite_block
+    assert "apex/pressure point" in composite_block
+    assert "Consent, pacing, trust" in composite_block
+    assert "With Mars/Pluto carrying so much charge" in friction
+    assert "With Mercury/Mercury friction" in friction
+    assert "compatibility score" not in markdown.lower()
+    assert "soulmate" not in markdown.lower()
+    assert "twin flame" not in markdown.lower()
+    assert "destined" not in markdown.lower()
+    assert "fated" not in markdown.lower()
+    assert "meant to be" not in markdown.lower()

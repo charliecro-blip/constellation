@@ -230,7 +230,15 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
         if pattern.key in {"synastry.venus_mars", "synastry.venus_pluto", "synastry.mars_pluto", "synastry.moon_saturn", "synastry.venus_saturn"}:
             tier_boost += 10
         if pattern.layer == "house_overlay":
-            tier_boost -= 14
+            tier_boost -= 6
+            if pattern.key == "overlay.house_7":
+                tier_boost += 18
+                if "Venus" in pattern.title or "Sun" in pattern.title or "Moon" in pattern.title or "Mars" in pattern.title:
+                    tier_boost += 8
+            if pattern.key == "overlay.house_5":
+                tier_boost += 12
+            if pattern.key == "overlay.house_8":
+                tier_boost += 8
             if "node" in pattern.id:
                 tier_boost -= 18
         if pattern.key.startswith("composite.nodes_on_"):
