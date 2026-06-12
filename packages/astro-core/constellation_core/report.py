@@ -1,4 +1,9 @@
-"""Markdown relationship report generation."""
+"""Markdown relationship report generation.
+
+See docs/astrology_doctrine/report_prioritization.md and
+docs/astrology_doctrine/report_voice_guide.md for lead selection and voice
+doctrine.
+"""
 
 from __future__ import annotations
 

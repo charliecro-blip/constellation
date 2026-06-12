@@ -2,7 +2,8 @@
 
 These values describe report emphasis, not relationship quality. They are kept
 separate from the current weighting implementation so future ranking work can
-be tuned without hunting through detector and report code.
+be tuned without hunting through detector and report code. See
+docs/astrology_doctrine/report_prioritization.md for the ranking doctrine.
 """
 
 from __future__ import annotations

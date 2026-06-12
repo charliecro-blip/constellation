@@ -15,13 +15,25 @@ The current prototype is a calculation-first pipeline:
 
 ## Product Doctrine
 
-- No compatibility scores.
-- No verdicts.
-- No fatalism.
-- Synastry describes mutual activation.
-- Composite describes the relationship as its own living field.
-- Strong contact is not the same as healthy contact.
-- Every friction point should eventually produce a repair path.
+Constellation is not a compatibility-score app. It ranks relationship signatures to decide report narrative priority: what should be opened, developed, briefly noted, or omitted. A high-ranking signature is an editorial signal for the Relationship Field Map, not a verdict about whether a relationship is good, bad, fated, or doomed.
+
+Astrology calculations remain deterministic. The calculation layer produces natal placements, synastry, overlays, composites, detected patterns, diagnostics, and synthesis packets. Optional AI enhancement may rewrite or synthesize report prose from those deterministic inputs, but it must not calculate astrology, invent placements, add aspects, or change the underlying ranking.
+
+Reports should be non-fatalistic, psychologically precise, and agency-preserving. The writing should name concrete relational dynamics, describe likely felt experience and shadow, and offer repair principles without implying certainty or removing choice.
+
+The doctrine flows through:
+
+- Pattern registry categories, tiers, and lead eligibility.
+- Scoring weights, thresholds, and convergence constants.
+- Context-aware convergence weighting and ranked pattern selection.
+- Report opening rules that prioritize lead-eligible relationship themes.
+- Voice and repair guidance for deterministic and AI-enhanced prose.
+- Asteroid gating that keeps minor points supporting by default.
+- Synthesis packets that carry deterministic priorities into report generation.
+- Motif persistence for compact recurring relationship themes.
+- Diagnostics that expose ranked, surfaced, and suppressed report material.
+
+See [docs/astrology_doctrine/](docs/astrology_doctrine/) for the implementation-oriented doctrine map.
 
 ## Setup
 
