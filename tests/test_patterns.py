@@ -304,3 +304,67 @@ def test_asteroid_to_asteroid_contacts_do_not_create_default_patterns():
     assert "Chiron" not in text
     assert "Eros" not in text
     assert "Psyche" not in text
+
+
+def test_constellation_patterns_prefer_structured_motifs_and_group_people_by_category():
+    summary = build_constellation_pattern_summary([
+        RelationshipPatternInput(
+            relationship_id="rel-eva",
+            relationship_type="romantic",
+            person_name="Eva",
+            report_markdown="Saturn appears in prose but should not drive structured aggregation.",
+            structured_motifs=[
+                {
+                    "key": "synastry.moon_saturn",
+                    "category": "stability_container",
+                    "title": "Moon Saturn",
+                    "relationship_id": "rel-eva",
+                },
+                {
+                    "key": "composite.moon_saturn",
+                    "category": "stability_container",
+                    "title": "Composite Moon Saturn",
+                    "relationship_id": "rel-eva",
+                },
+            ],
+        ),
+        RelationshipPatternInput(
+            relationship_id="rel-tess",
+            relationship_type="friend",
+            person_name="Tess",
+            structured_motifs=[
+                {
+                    "key": "synastry.venus_saturn",
+                    "category": "stability_container",
+                    "title": "Venus Saturn",
+                    "relationship_id": "rel-tess",
+                }
+            ],
+        ),
+        RelationshipPatternInput(
+            relationship_id="rel-anna",
+            relationship_type="collaborator",
+            person_name="Anna",
+            structured_motifs=[
+                {
+                    "key": "synastry.sun_moon",
+                    "category": "emotional_recognition",
+                    "title": "Sun Moon",
+                    "relationship_id": "rel-anna",
+                }
+            ],
+        ),
+    ])
+
+    motifs = {item["id"]: item for item in summary["recurring_motifs"]}
+    assert motifs["stability_container"]["label"] == "Stability / Container"
+    assert motifs["stability_container"]["people"] == ["Eva", "Tess"]
+    assert motifs["stability_container"]["count"] == 2
+    assert motifs["stability_container"]["relationship_ids"] == ["rel-eva", "rel-tess"]
+    assert "saturn" not in motifs
+    assert summary["top_motif_categories"][0] == {
+        "category": "stability_container",
+        "label": "Stability / Container",
+        "count": 2,
+    }
+    assert "Your saved maps currently emphasize" in summary["plain_language_summary"]

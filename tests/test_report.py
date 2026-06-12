@@ -887,3 +887,57 @@ def test_synthesis_packet_excludes_default_gated_asteroid_patterns():
     assert "eros" not in text
     assert "psyche" not in text
     assert "synastry.asteroid.juno.venus" in text
+
+
+def test_saved_motif_selector_excludes_suppressed_and_asteroid_patterns():
+    from constellation_core.motifs import select_motifs_for_persistence
+    from constellation_core.schemas import RankedPatternSummary, ReportSynthesisPacket
+
+    lead = RankedPatternSummary(
+        key="synastry.sun_moon",
+        title="Sun Moon",
+        category="emotional_recognition",
+        priority=95,
+        adjusted_priority=95,
+        confidence="high",
+        layer="synastry",
+    )
+    suppressed = RankedPatternSummary(
+        key="synastry.mercury_jupiter",
+        title="Mercury Jupiter",
+        category="communication_heat",
+        priority=24,
+        adjusted_priority=24,
+        confidence="medium",
+        layer="synastry",
+    )
+    asteroid = RankedPatternSummary(
+        key="synastry.asteroid.eros.psyche",
+        title="Eros Psyche",
+        category="asteroid_support",
+        priority=90,
+        adjusted_priority=90,
+        confidence="medium",
+        layer="synastry",
+    )
+    composite = RankedPatternSummary(
+        key="composite.moon_saturn",
+        title="Composite Moon Saturn",
+        category="stability_container",
+        priority=88,
+        adjusted_priority=88,
+        confidence="high",
+        layer="composite",
+    )
+
+    selected = select_motifs_for_persistence(
+        ReportSynthesisPacket(
+            top_ranked_patterns=[lead, suppressed, asteroid],
+            lead_pattern=lead,
+            friction_patterns=[suppressed],
+            composite_themes=[composite],
+        )
+    )
+
+    keys = [item.key for item in selected]
+    assert keys == ["synastry.sun_moon", "composite.moon_saturn"]
