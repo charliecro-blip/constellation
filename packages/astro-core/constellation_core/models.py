@@ -51,6 +51,26 @@ class SavedRelationship(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=_utcnow)
 
 
+class SavedRelationshipMotif(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    relationship_id: str = Field(foreign_key="savedrelationship.id", index=True)
+    person_a_id: str = Field(foreign_key="birthprofile.id", index=True)
+    person_b_id: str = Field(foreign_key="birthprofile.id", index=True)
+
+    motif_key: str = Field(index=True)
+    category: str = Field(index=True)
+    title: str
+    layer: str = Field(index=True)
+    priority: int
+    adjusted_priority: int | None = None
+    confidence: str | None = None
+    evidence_text: str | None = None
+    lead_eligible: bool = False
+
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
 class SavedReport(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
     relationship_id: str = Field(foreign_key="savedrelationship.id", index=True)

@@ -25,8 +25,9 @@ from .chart import DEFAULT_HOUSE_SYSTEM, calculate_chart
 from .context import RelationshipContext
 from .constellation_patterns import RelationshipPatternInput, build_constellation_pattern_summary
 from .database import get_session, init_db
-from .models import BirthProfile, SavedRelationship, SavedReport
+from .models import BirthProfile, SavedRelationship, SavedRelationshipMotif, SavedReport
 from .geocoding import GeocodingStatus, PlaceSearchResponse, geocoding_status, search_places
+from .motifs import list_relationship_motifs, replace_relationship_motifs
 from .patterns import Pattern, detect_relationship_patterns
 from .places import PlacePreset, list_place_presets
 from .relationship import calculate_relationship
@@ -85,6 +86,23 @@ class SavedRelationshipResponse(BaseModel):
     updated_at: datetime
 
 
+class RelationshipMotifResponse(BaseModel):
+    id: str
+    relationship_id: str
+    person_a_id: str
+    person_b_id: str
+    motif_key: str
+    category: str
+    title: str
+    layer: str
+    priority: int
+    adjusted_priority: int | None = None
+    confidence: str | None = None
+    evidence_text: str | None = None
+    lead_eligible: bool
+    created_at: datetime
+    updated_at: datetime
+
 class PatternTypeCountResponse(BaseModel):
     type: str
     label: str
@@ -102,6 +120,14 @@ class PatternMotifResponse(BaseModel):
     count: int
     people: list[str]
     summary_label: str
+    category: str | None = None
+    relationship_ids: list[str] = Field(default_factory=list)
+
+
+class MotifCategoryCountResponse(BaseModel):
+    category: str
+    label: str
+    count: int
 
 
 class ConstellationPatternSummaryResponse(BaseModel):
@@ -111,6 +137,7 @@ class ConstellationPatternSummaryResponse(BaseModel):
     relationship_type_counts: list[PatternTypeCountResponse]
     known_theme_counts: list[PatternKnownThemeResponse]
     recurring_motifs: list[PatternMotifResponse]
+    top_motif_categories: list[MotifCategoryCountResponse] = Field(default_factory=list)
     plain_language_summary: str
 
 
@@ -310,12 +337,23 @@ def constellation_patterns_endpoint(
             .where(SavedReport.relationship_id == relationship.id)
             .order_by(SavedReport.created_at.desc())
         ).first()
+        stored_motifs = list_relationship_motifs(session, relationship.id)
         inputs.append(
             RelationshipPatternInput(
+                relationship_id=relationship.id,
                 relationship_type=relationship.relationship_type,
                 person_name=person_b.display_name if person_b else "",
                 known_themes=json.loads(relationship.known_themes_json),
                 report_markdown=latest_report.markdown if latest_report else None,
+                structured_motifs=[
+                    {
+                        "key": motif.motif_key,
+                        "category": motif.category,
+                        "title": motif.title,
+                        "relationship_id": motif.relationship_id,
+                    }
+                    for motif in stored_motifs
+                ],
             )
         )
     return build_constellation_pattern_summary(inputs)
@@ -339,6 +377,15 @@ def get_saved_relationship(
     if relationship is None:
         raise HTTPException(status_code=404, detail="Saved relationship not found")
     return _relationship_response(relationship)
+
+
+@app.get("/saved-relationships/{relationship_id}/motifs", response_model=list[RelationshipMotifResponse])
+def get_saved_relationship_motifs(
+    relationship_id: str, session: Session = Depends(get_session)
+) -> list[SavedRelationshipMotif]:
+    if session.get(SavedRelationship, relationship_id) is None:
+        raise HTTPException(status_code=404, detail="Saved relationship not found")
+    return list_relationship_motifs(session, relationship_id)
 
 
 @app.post("/saved-relationships/{relationship_id}/report", response_model=SavedReportResponse)
@@ -390,6 +437,7 @@ def generate_saved_relationship_report(
     synthesis_packet = build_report_synthesis_packet(calc, context=context)
     saved = SavedReport(relationship_id=relationship.id, markdown=report.to_markdown())
     session.add(saved)
+    replace_relationship_motifs(session, relationship, synthesis_packet)
     session.commit()
     session.refresh(saved)
     return SavedReportResponse(
