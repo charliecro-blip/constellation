@@ -191,6 +191,21 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
             ))
             continue
 
+        if point_b in {"ascendant", "midheaven"} and point_a in important_angle_bodies:
+            key = f"synastry.angle_{point_b}_{point_a}"
+            if point_b == "ascendant" and point_a == "venus":
+                key = "synastry.venus_ascendant"
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id=f"synastry_{point_a}_{point_b}",
+                category=_angle_category(point_a),
+                priority=_angle_priority(point_b, point_a),
+                key=key,
+                confidence="high",
+            ))
+            continue
+
 
         asteroid_points = pts & ASTEROID_POINTS
         non_asteroid_points = pts - ASTEROID_POINTS

@@ -17,7 +17,7 @@ from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .natal_profile import SIGN_ELEMENTS, SIGN_MODES
 from .pattern_registry import convergence_category_for, get_pattern_metadata
-from .patterns import ASTEROID_CENTRAL_TARGETS, ASTEROID_POINTS, Pattern, detect_relationship_patterns
+from .patterns import ASTEROID_CENTRAL_TARGETS, ASTEROID_POINTS, Pattern, _aspect_word, detect_relationship_patterns
 from .chart import DEFAULT_HOUSE_SYSTEM
 from .relationship import calculate_relationship
 from .schemas import (
@@ -100,6 +100,10 @@ def _interpret_for_section(pattern: Pattern, section: str) -> str:
         return _composite_stellium_language(pattern)
     if section == "composite" and pattern.key == "composite.conjunction_cluster":
         return _composite_cluster_language(pattern)
+    if section == "composite" and pattern.key == "composite.t_square":
+        return _composite_t_square_language(pattern)
+    if section == "composite" and pattern.key == "composite.mars_pluto":
+        return _composite_mars_pluto_language()
     return interpret_pattern(pattern)
 
 
@@ -162,6 +166,43 @@ def _is_major_composite_concentration(pattern: Pattern) -> bool:
     return any(body in evidence_text for body in ["sun", "moon", "venus", "mars", "saturn", "pluto"])
 
 
+AFFIRMATIVE_LEAD_KEYS = {
+    "synastry.venus_ascendant",
+    "synastry.moon_venus",
+    "synastry.sun_moon",
+    "synastry.moon_moon",
+    "synastry.venus_mars",
+    "composite.venus_mars",
+}
+AFFIRMATIVE_OVERLAY_KEYS = {"overlay.house_5", "overlay.house_7"}
+HARD_OPENING_CATEGORIES = {
+    "communication",
+    "emotional_structure",
+    "bond_structure",
+    "relationship_structure",
+    "angle_structure",
+    "emotional_intensity",
+    "intensity",
+    "action_structure",
+    "emotional_variability",
+}
+
+
+def _is_affirmative_lead(pattern: Pattern) -> bool:
+    if pattern.key in AFFIRMATIVE_LEAD_KEYS or pattern.key in AFFIRMATIVE_OVERLAY_KEYS:
+        return True
+    title = pattern.title.lower()
+    if pattern.layer == "house_overlay" and (" 7th house" in title or " 5th house" in title):
+        return True
+    if "venus" in title and ("ascendant" in title or "descendant" in title):
+        return True
+    return False
+
+
+def _is_hard_opening(pattern: Pattern) -> bool:
+    return pattern.layer == "composite" and pattern.category in HARD_OPENING_CATEGORIES
+
+
 def is_lead_eligible(
     pattern: Pattern, context: RelationshipContext | None = None, patterns: list[Pattern] | None = None
 ) -> bool:
@@ -195,21 +236,43 @@ def _is_major_fallback_pattern(pattern: Pattern, context: RelationshipContext | 
 def _central_patterns(
     patterns: list[Pattern], context: RelationshipContext | None = None
 ) -> list[Pattern]:
-    candidates = [pattern for pattern in patterns if pattern.layer != "house_overlay"]
-    lead_candidates = [pattern for pattern in candidates if is_lead_eligible(pattern, context, patterns)]
-    primary = lead_candidates[0] if lead_candidates else next(
-        (pattern for pattern in candidates if _is_major_fallback_pattern(pattern, context)),
-        None,
+    candidates = [pattern for pattern in patterns if not _is_generic_composite_baseline(pattern)]
+    affirmative = [pattern for pattern in candidates if _is_affirmative_lead(pattern)]
+    lead_candidates = [
+        pattern
+        for pattern in candidates
+        if pattern.layer != "house_overlay" and is_lead_eligible(pattern, context, patterns)
+    ]
+
+    hard_lead = lead_candidates[0] if lead_candidates else None
+    should_use_affirmative = (
+        affirmative
+        and not public_life_context_requested(context)
+        and (
+            hard_lead is None
+            or _is_hard_opening(hard_lead)
+            or affirmative[0].priority >= hard_lead.priority - 18
+        )
     )
+    if should_use_affirmative:
+        primary = affirmative[0]
+    else:
+        primary = hard_lead or next(
+            (
+                pattern
+                for pattern in candidates
+                if pattern.layer != "house_overlay" and _is_major_fallback_pattern(pattern, context)
+            ),
+            None,
+        )
     if primary is None:
         return []
 
-    supporting = [
-        pattern
-        for pattern in candidates
-        if pattern.id != primary.id and not _is_generic_composite_baseline(pattern)
-    ]
-    return [primary, *supporting][:4]
+    supporting = [pattern for pattern in candidates if pattern.id != primary.id]
+    # Keep the opening synthetic: after an affirmative lead, show another relational pull before the pressure.
+    if _is_affirmative_lead(primary):
+        supporting = sorted(supporting, key=lambda p: (not _is_affirmative_lead(p), -p.priority))
+    return [primary, *supporting][:5]
 
 
 def _display_body(body: str) -> str:
@@ -261,7 +324,13 @@ def _profile_body(chart: Chart, patterns: list[Pattern]) -> str:
         lines.append(f"- **Attachment style:** {chart.name}'s birth time data does not give a reliable Ascendant/Descendant axis here, so this profile leans on the relational planets rather than angles.")
 
     moon = _placement_phrase(chart, "moon")
-    lines.append(f"- **Emotional need:** {moon or 'The Moon placement is not available in this chart extract'}, so regulation, safety, and reassurance should be read through that emotional tone.")
+    moon_placement = chart.placements.get("moon")
+    if moon_placement and moon_placement.sign == "Capricorn":
+        lines.append(
+            f"- **Emotional need:** {moon} describes sensitivity protected by self-control. Safety comes through reliability, competence, kept promises, and proof over time; care may be shown through responsibility, while needing openly can take trust and patience."
+        )
+    else:
+        lines.append(f"- **Emotional need:** {moon or 'The Moon placement is not available in this chart extract'}, so regulation, safety, and reassurance should be read through that emotional tone rather than reduced to a generic need for closeness.")
 
     desire_parts = [item for item in [_placement_phrase(chart, "venus"), _placement_phrase(chart, "mars")] if item]
     if desire_parts:
@@ -280,7 +349,18 @@ def _profile_body(chart: Chart, patterns: list[Pattern]) -> str:
         lines.append(f"- **Devotion and vulnerability markers:** {', '.join(devotion_markers)} adds specific texture around commitment, care, tenderness, or private focus.")
 
     if houses:
-        lines.append(f"- **Repeated relationship terrain:** The 5th/7th/8th-house emphasis ({', '.join(houses)}) can repeat themes around romance, partnership, intimacy, trust, and shared vulnerability.")
+        terrain_parts: list[str] = []
+        house_numbers = {chart.placements[item].house for item in chart.placements if chart.placements[item].house in {5, 7, 8}}
+        if 5 in house_numbers:
+            terrain_parts.append("5th-house emphasis makes romance, play, creative risk, pleasure, and the courage to be visibly delighted part of the relationship story")
+        if 7 in house_numbers:
+            terrain_parts.append("7th-house emphasis makes direct encounter, mirroring, projection, and negotiated choice unavoidable")
+        if 8 in house_numbers:
+            terrain_parts.append("8th-house emphasis brings trust, exposure, shared consequence, and the need for honest vulnerability")
+        terrain = "; ".join(terrain_parts)
+        lines.append(
+            f"- **Repeated relationship terrain:** {chart.name}'s relational planets emphasize {', '.join(houses)}. {terrain}. The pattern is not a simple house list; it shows how pleasure, partnership, and intimacy can become intertwined under real relational pressure."
+        )
     else:
         lines.append("- **Repeated relationship terrain:** Watch how affection, desire, and self-protection repeat under stress; those patterns will matter more than a full natal inventory here.")
 
@@ -333,7 +413,134 @@ def _directional_patterns(relationship: RelationshipCalculation, patterns: list[
         if wants_a or wants_b:
             selected.append(pattern)
             seen.add(pattern.id)
-    return sorted(selected, key=lambda item: item.priority, reverse=True)[:3]
+    sorted_selected = sorted(selected, key=lambda item: item.priority, reverse=True)
+    top = sorted_selected[:4]
+    has_aspect = any(pattern.layer == "synastry" for pattern in top)
+    has_overlay = any(pattern.layer == "house_overlay" for pattern in top)
+    if not has_overlay:
+        overlay = next(
+            (
+                pattern
+                for pattern in sorted_selected[4:]
+                if pattern.layer == "house_overlay" and pattern.key in {"overlay.house_5", "overlay.house_7", "overlay.house_8"}
+            ),
+            None,
+        )
+        if overlay is not None:
+            top = [*top[:3], overlay]
+    if not has_aspect:
+        aspect = next((pattern for pattern in sorted_selected[4:] if pattern.layer == "synastry"), None)
+        if aspect is not None:
+            top = [*top[:3], aspect]
+    if sum(1 for pattern in top[:3] if pattern.layer == "house_overlay") > 1:
+        aspect = next((pattern for pattern in sorted_selected if pattern.layer == "synastry" and pattern not in top[:3]), None)
+        if aspect is not None:
+            first_overlay_index = next(i for i, pattern in enumerate(top[:3]) if pattern.layer == "house_overlay")
+            replace_index = next(
+                (i for i in range(2, -1, -1) if i != first_overlay_index and top[i].layer == "house_overlay"),
+                None,
+            )
+            if replace_index is not None:
+                top[replace_index] = aspect
+    return top
+
+
+RELATIONAL_ROLE_BY_BODY = {
+    "sun": "identity, vitality, and the need to be recognized",
+    "moon": "emotional safety, instinct, and the way care is received",
+    "mercury": "language, perception, and the pace of interpretation",
+    "venus": "affection, attraction, pleasure, and relational receptivity",
+    "mars": "desire, initiative, heat, and embodied pursuit",
+    "saturn": "limits, timing, responsibility, and fear of failure",
+    "pluto": "depth, power, exposure, and transformation",
+}
+
+
+def _natal_role(body: str) -> str:
+    return RELATIONAL_ROLE_BY_BODY.get(body.lower(), "a natal function that becomes activated in relationship")
+
+
+def _possessive(name: str) -> str:
+    return f"{name}'" if name.endswith("s") else f"{name}'s"
+
+
+def _placement_context(chart: Chart, body: str) -> str:
+    placement = chart.placements.get(body.lower())
+    if placement is None:
+        return f"{_possessive(chart.name)} {_display_body(body)}"
+    house = f" in the {_ordinal(placement.house)} house" if placement.house is not None else ""
+    return f"{_possessive(chart.name)} {placement.sign} {_display_body(body)}{house}"
+
+
+def _synastry_aspect_for_pattern(relationship: RelationshipCalculation, pattern: Pattern) -> Aspect | None:
+    for aspect in relationship.synastry_aspects:
+        if _pattern_for_aspect([pattern], aspect) is pattern:
+            return aspect
+    return None
+
+
+def _natalized_synastry_language(relationship: RelationshipCalculation, pattern: Pattern, section: str) -> str:
+    if pattern.layer != "synastry":
+        return _interpret_for_section(pattern, section)
+    aspect = _synastry_aspect_for_pattern(relationship, pattern)
+    if aspect is None:
+        return _interpret_for_section(pattern, section)
+    point_a = aspect.point_a.lower()
+    point_b = aspect.point_b.lower()
+    aspect_word = _aspect_word(aspect.aspect)
+    if point_a == "ascendant":
+        desc_note = " This also works as a Descendant/partnership-axis contact when the aspect is an opposition, so attraction can feel like direct mirroring rather than background chemistry." if aspect.aspect == "opposition" and point_b == "venus" else ""
+        return (
+            f"{_possessive(relationship.person_a.name)} Ascendant axis meets {_placement_context(relationship.person_b, point_b)} by {aspect_word}. "
+            f"The {point_b.title()} person activates how the Ascendant person enters relationship, is seen, and recognizes partnership cues.{desc_note} "
+            f"Because {_display_body(point_b)} carries {_natal_role(point_b)}, this is felt through both body language and relationship choice."
+        )
+    if point_b == "ascendant":
+        desc_note = " This also touches the Descendant/partnership axis when the aspect is an opposition, so the pull can feel relationally explicit." if aspect.aspect == "opposition" and point_a == "venus" else ""
+        return (
+            f"{_placement_context(relationship.person_a, point_a)} meets {_possessive(relationship.person_b.name)} Ascendant axis by {aspect_word}. "
+            f"The planet person activates how the Ascendant person enters relationship and recognizes the other across the partnership axis.{desc_note} "
+            f"Because {_display_body(point_a)} carries {_natal_role(point_a)}, the signature is not generic; it arrives through that natal style."
+        )
+    if point_a in RELATIONAL_ROLE_BY_BODY or point_b in RELATIONAL_ROLE_BY_BODY:
+        return (
+            f"{_placement_context(relationship.person_a, point_a)} meets {_placement_context(relationship.person_b, point_b)} by {aspect_word}. "
+            f"This is not only a {_display_body(point_a)}/{_display_body(point_b)} contact: it links {_natal_role(point_a)} with {_natal_role(point_b)}, so the attraction or friction is filtered through each person's natal sign, house, and relationship role. "
+            f"{_interpret_for_section(pattern, section)}"
+        )
+    return _interpret_for_section(pattern, section)
+
+
+def _interpret_pattern_for_relationship(relationship: RelationshipCalculation, pattern: Pattern, section: str) -> str:
+    if pattern.layer == "synastry":
+        return _natalized_synastry_language(relationship, pattern, section)
+    return _interpret_for_section(pattern, section)
+
+
+def _overlay_language(pattern: Pattern) -> str:
+    title = pattern.title
+    if " 7th house" in title:
+        if "Venus" in title:
+            return f"{title} is a direct partnership signature: affection, beauty, and receptivity land in the house of mirroring, choice, and one-to-one encounter. Attraction may feel obvious because the Venus person reflects what the house person recognizes as relational."
+        return f"{title} emphasizes partnership mirroring. The planet person does not simply add a topic; they activate the house person's 7th-house field of direct encounter, projection, reciprocity, and negotiated commitment."
+    if " 5th house" in title:
+        return f"{title} brings romance, play, creative risk, pleasure, and the feeling of being enlivened into the foreground."
+    if " 8th house" in title:
+        return f"{title} moves the bond toward trust, exposure, shared vulnerability, and psychological consequence."
+    return interpret_pattern(pattern)
+
+
+def _signature_block_for_relationship(relationship: RelationshipCalculation, patterns: list[Pattern], *, limit: int, empty_message: str, section: str = "general") -> str:
+    if not patterns:
+        return empty_message
+    lines: list[str] = []
+    for pattern in patterns[:limit]:
+        lines.append(f"### {pattern.title}")
+        lines.append("")
+        language = _overlay_language(pattern) if pattern.layer == "house_overlay" else _interpret_pattern_for_relationship(relationship, pattern, section)
+        lines.append(f"{_strength_phrase(pattern)} {language}")
+        lines.append("")
+    return "\n".join(lines).strip()
 
 
 def _element(chart: Chart, body: str) -> str | None:
@@ -386,8 +593,9 @@ def _comparison_notes(relationship: RelationshipCalculation) -> list[str]:
 def _overview(relationship: RelationshipCalculation, central: list[Pattern], composite: list[Pattern], patterns: list[Pattern]) -> str:
     a = relationship.person_a.name
     b = relationship.person_b.name
-    synastry = [pattern for pattern in central if pattern.layer == "synastry"]
-    overlays = [pattern for pattern in patterns if pattern.layer == "house_overlay" and pattern.priority >= 56]
+    affirmative = [pattern for pattern in central if _is_affirmative_lead(pattern)] or [pattern for pattern in patterns if _is_affirmative_lead(pattern)]
+    overlays = [pattern for pattern in patterns if pattern.layer == "house_overlay" and pattern.priority >= 48]
+    partnership_overlays = [pattern for pattern in overlays if pattern.key in {"overlay.house_5", "overlay.house_7"}]
     friction = [
         pattern
         for pattern in patterns
@@ -395,6 +603,8 @@ def _overview(relationship: RelationshipCalculation, central: list[Pattern], com
         in {
             "communication",
             "emotional_structure",
+            "bond_structure",
+            "relationship_structure",
             "angle_structure",
             "emotional_intensity",
             "emotional_activation",
@@ -407,59 +617,56 @@ def _overview(relationship: RelationshipCalculation, central: list[Pattern], com
     comparison_notes = _comparison_notes(relationship)
 
     paragraphs: list[str] = []
-    if central:
-        primary = central[0]
-        supporting_pattern = next((pattern for pattern in central[1:] if pattern.layer == primary.layer), None)
-        supporting = (
-            f" {supporting_pattern.title} repeats the relational pull."
-            if supporting_pattern is not None
-            else ""
+    if affirmative:
+        lead = affirmative[0]
+        lead_text = _overlay_language(lead) if lead.layer == "house_overlay" else _interpret_pattern_for_relationship(relationship, lead, "overview")
+        paragraphs.append(
+            f"What first draws attention in the field between {a} and {b} is {lead.title}. {lead_text} "
+            "This gives the report an affirmative starting point: recognition, attraction, mirroring, pleasure, or relational aliveness should be read before the heavier mechanics are allowed to define the whole bond."
         )
-        if primary.layer == "composite":
-            paragraphs.append(
-                f"The relationship organizes itself around {primary.title}. "
-                f"{_interpret_for_section(primary, 'composite')}{supporting} "
-                "The bond is easier to understand through this specific shared field than through generic composite texture."
-            )
-        else:
-            paragraphs.append(
-                f"The central story between {a} and {b} is carried by {primary.title}. "
-                f"{_interpret_for_section(primary, 'overview')}{supporting} "
-                "This is the signature to read first; tighter but more mechanical contacts should serve this story, not replace it."
-            )
+    elif central:
+        primary = central[0]
+        paragraphs.append(
+            f"The central story between {a} and {b} is carried by {primary.title}. "
+            f"{_interpret_pattern_for_relationship(relationship, primary, 'overview')} "
+            "Read it as the broad relational field rather than as an isolated technical aspect."
+        )
     else:
         paragraphs.append(
             f"The strongest organizing themes between {a} and {b} come from repeated contact patterns rather than one spectacular signature."
         )
 
-    if comparison_notes:
+    if partnership_overlays:
+        paragraphs.append(
+            f"The bond also has clear house-overlay weight: {partnership_overlays[0].title}. "
+            f"{_overlay_language(partnership_overlays[0])} "
+            "This describes where the connection lands in lived experience, not just what aspects are mathematically exact."
+        )
+    elif comparison_notes:
         paragraphs.append(
             "Chart-to-chart comparison makes the field feel "
             + ", ".join(comparison_notes)
             + ". Use this as synthesis support, not as a score."
         )
-    elif overlays:
-        paragraphs.append(
-            f"House overlays such as {overlays[0].title} show where one person's presence repeatedly lands in ordinary life, memory, attraction, or vulnerability."
-        )
 
-    if composite and (not paragraphs[0].startswith("The relationship organizes")):
+    pressure = next((pattern for pattern in friction if pattern not in affirmative), None)
+    if pressure:
+        paragraphs.append(
+            f"The pressure enters through {pressure.title}. {_interpret_pattern_for_relationship(relationship, pressure, 'friction')} "
+            "This names the complexity without making friction the opening thesis."
+        )
+    elif composite:
         comp = composite[0]
         paragraphs.append(
             f"The composite field adds {comp.title}. {_interpret_for_section(comp, 'composite')} "
             "This describes what the bond tends to produce when both charts are read as one shared weather system."
         )
 
-    repair = next((pattern for pattern in friction if not (_is_minor_communication(pattern) and synastry)), None)
-    if repair:
+    repair_source = pressure or (friction[0] if friction else None)
+    if repair_source:
+        repair = _repair_principle_for_pattern(repair_source)
         paragraphs.append(
-            f"The main repair theme is {repair.title}. {_interpret_for_section(repair, 'friction')} "
-            "Give the activation a clean form before it turns into pressure, withdrawal, or escalation."
-        )
-    elif friction:
-        repair = friction[0]
-        paragraphs.append(
-            f"Communication is part of the repair work through {repair.title}, but it should not define the whole bond by itself."
+            f"The growth practice is concrete: {repair} The relationship is best served when sweetness, charge, and repair capacity are developed together."
         )
 
     return "\n\n".join(paragraphs[:4])
@@ -487,8 +694,25 @@ def _composite_stellium_language(pattern: Pattern) -> str:
 def _composite_cluster_language(pattern: Pattern) -> str:
     title = pattern.title.lower()
     if all(body in title for body in ["venus", "mercury", "pluto"]):
-        return "Affection, speech, and depth/compulsion are fused into one relational circuit; what is said, desired, and withheld can carry unusual charge."
-    return "This close chain works like a single circuit: one body activates the next, so affection, response, timing, and pressure are read as a combined pattern rather than isolated conjunctions."
+        return "Affection, speech, and depth/compulsion are braided together: tenderness is hard to separate from what is said, probed, desired, or withheld."
+    return "The conjunction cluster concentrates several relationship functions into one shared operating system, so conversations, desire, timing, and pressure tend to activate together rather than arriving as neat separate issues."
+
+
+def _composite_t_square_language(pattern: Pattern) -> str:
+    evidence = pattern.evidence[0] if pattern.evidence else "one planet squares an opposition"
+    return (
+        f"The pressure structure is specific: {evidence}. "
+        "A T-square works through an opposition that keeps two needs polarized while the apex/pressure point becomes the place where tension discharges. "
+        "Behaviorally, this can create triangle-like repetition, urgency, or the sense that one issue must solve the whole relationship. Repair asks the couple to name both ends of the opposition and give the pressure point a deliberate outlet instead of acting it out."
+    )
+
+
+def _composite_mars_pluto_language() -> str:
+    return (
+        "Composite Mars conjunct Pluto gives the shared field high charge: desire, anger, will, sexuality, and creative force can amplify quickly. "
+        "The bond may resist staying casual because power and vulnerability become intertwined; handled unconsciously this can escalate, but handled consciously it supports transformation. "
+        "Consent, pacing, trust, and a clear way to de-escalate are part of the chemistry itself."
+    )
 
 
 def _composite_patterns(patterns: list[Pattern]) -> list[Pattern]:
@@ -515,6 +739,28 @@ def _composite_patterns(patterns: list[Pattern]) -> list[Pattern]:
         and pattern.priority >= 82
     ]
     return (synthesis + hard_aspects + specific_sign_texture)[:5]
+
+
+def _composite_field_body(composite: list[Pattern]) -> str:
+    if not composite:
+        return "Composite patterns were not strong enough to lead this report."
+    ordered = sorted(
+        composite,
+        key=lambda pattern: (
+            0 if pattern.key.startswith("composite.moon.") else
+            1 if pattern.key.startswith(("composite.stellium.", "composite.conjunction_cluster")) else
+            2 if pattern.key == "composite.t_square" else
+            3 if pattern.key == "composite.mars_pluto" else
+            4 if pattern.key == "composite.sun_saturn" else
+            5,
+            -pattern.priority,
+        ),
+    )[:5]
+    paragraphs: list[str] = []
+    for index, pattern in enumerate(ordered):
+        lead = "The composite field begins with" if index == 0 else "That leads into" if index == 1 else "A further layer is"
+        paragraphs.append(f"### {pattern.title}\n\n{_strength_phrase(pattern)} {lead} {pattern.title}: {_interpret_for_section(pattern, 'composite')}")
+    return "\n\n".join(paragraphs)
 
 
 def _context_note(context: RelationshipContext | None) -> str | None:
@@ -619,7 +865,7 @@ def _friction_loop(patterns: list[Pattern]) -> str:
         lines.append("")
     lines.append("### Repair principles")
     lines.append("")
-    lines.append(_repair_path(patterns))
+    lines.append(_repair_path([*selected, *patterns]))
     return "\n".join(lines).strip()
 
 
@@ -638,13 +884,29 @@ REPAIR_PRINCIPLES_BY_CATEGORY = {
 }
 
 
+def _repair_principle_for_pattern(pattern: Pattern) -> str:
+    if pattern.key == "synastry.mercury_mars":
+        return "With Mercury/Mars heat in the chart, slow the nervous-system speed before debating content; tone, timing, and impact need as much care as being right."
+    if pattern.key == "synastry.mercury_mercury":
+        return "With Mercury/Mercury friction, translate between cognitive styles instead of assuming the other person is being careless or obtuse."
+    if pattern.key == "composite.sun_saturn" or pattern.key in {"synastry.moon_saturn", "synastry.venus_saturn", "synastry.mars_saturn"}:
+        return "With Saturn carrying pressure, make expectations explicit and protect permission for warmth, play, and imperfection inside responsibility."
+    if pattern.key in {"composite.mars_pluto", "synastry.mars_pluto"}:
+        return "With Mars/Pluto carrying so much charge, pace intensity through consent, trust, and de-escalation rather than treating escalation as proof the bond can hold everything at once."
+    if pattern.key == "synastry.venus_ascendant" or (pattern.layer == "house_overlay" and pattern.key == "overlay.house_7"):
+        return "With Venus/angle or 7th-house mirroring, enjoy the recognition without confusing attraction, reflection, or being chosen with automatic obligation."
+    if pattern.key == "overlay.house_12":
+        return "With 12th-house activation, name what is sensed but not spoken so intuition does not become projection."
+    category = _registry_category(pattern)
+    return REPAIR_PRINCIPLES_BY_CATEGORY.get(category, "Name the strongest activation and agree on a workable pace.")
+
+
 def _repair_path(patterns: list[Pattern]) -> str:
-    registry_categories = [_registry_category(pattern) for pattern in patterns[:10]]
     legacy_categories = {pattern.category for pattern in patterns[:10]}
     principles: list[str] = []
 
-    for category in registry_categories:
-        principle = REPAIR_PRINCIPLES_BY_CATEGORY.get(category)
+    for pattern in patterns[:10]:
+        principle = _repair_principle_for_pattern(pattern)
         if principle and principle not in principles:
             principles.append(principle)
 
@@ -653,7 +915,7 @@ def _repair_path(patterns: list[Pattern]) -> str:
     if legacy_categories.intersection({"emotional_structure", "bond_structure", "angle_structure", "action_structure"}) and REPAIR_PRINCIPLES_BY_CATEGORY["stability_container"] not in principles:
         principles.append(REPAIR_PRINCIPLES_BY_CATEGORY["stability_container"])
     if legacy_categories.intersection({"intensity", "emotional_intensity", "attraction_intensity"}) and REPAIR_PRINCIPLES_BY_CATEGORY["trust_depth"] not in principles:
-        principles.append("Intensity needs repair capacity; it is not proof of safety.")
+        principles.append("With the chart's intensity signatures, vulnerability should move at the speed of earned trust rather than the speed of the strongest feeling.")
     if "emotional_variability" in legacy_categories and REPAIR_PRINCIPLES_BY_CATEGORY["volatility"] not in principles:
         principles.append(REPAIR_PRINCIPLES_BY_CATEGORY["volatility"])
     if "daily_life" in legacy_categories:
@@ -949,10 +1211,6 @@ def generate_relationship_report(
             body=_overview(relationship, central, composite, patterns),
         ),
         ReportSection(
-            title="Calculated chart check",
-            body=_chart_check_body(relationship),
-        ),
-        ReportSection(
             title=f"{person_a_name} Relationship Profile",
             body=_profile_body(relationship.person_a, patterns),
         ),
@@ -962,17 +1220,21 @@ def generate_relationship_report(
         ),
         ReportSection(
             title=f"How {person_a_name} Activates {person_b_name}",
-            body=_signature_block(a_to_b, limit=3, empty_message=f"No strong directional synastry patterns show {person_a_name} specifically activating {person_b_name} in the current selection."),
+            body=_signature_block_for_relationship(relationship, a_to_b, limit=3, empty_message=f"No strong directional synastry patterns show {person_a_name} specifically activating {person_b_name} in the current selection."),
         ),
         ReportSection(
             title=f"How {person_b_name} Activates {person_a_name}",
-            body=_signature_block(b_to_a, limit=3, empty_message=f"No strong directional synastry patterns show {person_b_name} specifically activating {person_a_name} in the current selection."),
+            body=_signature_block_for_relationship(relationship, b_to_a, limit=3, empty_message=f"No strong directional synastry patterns show {person_b_name} specifically activating {person_a_name} in the current selection."),
         ),
         ReportSection(
             title="Composite Field",
-            body=_signature_block(composite, limit=5, empty_message="Composite patterns were not strong enough to lead this report.", section="composite"),
+            body=_composite_field_body(composite),
         ),
         ReportSection(title="Friction and Repair", body=_friction_loop(patterns)),
+        ReportSection(
+            title="Calculated chart check",
+            body=_chart_check_body(relationship),
+        ),
     ]
 
     context_body = _context_note(context)
