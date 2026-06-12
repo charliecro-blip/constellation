@@ -93,7 +93,7 @@ def test_primary_report_flow_is_simplified_and_ai_runs_automatically():
     assert "void enhanceReportMarkdown(standardMarkdown)" in source
     assert "setReportMarkdown(standardMarkdown)" in source
     assert "const standardMarkdown = payload.markdown" in source
-    assert 'body: JSON.stringify({ markdown: standardMarkdown, context: buildContext() })' in source
+    assert "synthesis_packet: currentSynthesisPacket" in source
     assert 'new Blob([markdownText], { type: "text/markdown" })' in source
     assert "updateDownload(currentMarkdown)" in source
     assert '<details class="report-section"' in source

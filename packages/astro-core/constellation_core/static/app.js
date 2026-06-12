@@ -13,6 +13,7 @@ let currentMarkdown = "";
 let currentDownloadUrl = "";
 let currentSavedRelationship = null;
 let enhancementRequestId = 0;
+let currentSynthesisPacket = null;
 let searchResults = { a: [], b: [] };
 let placeSelections = { a: null, b: null };
 let shouldScrollToReport = false;
@@ -357,6 +358,7 @@ async function generateSavedReport(relationshipId) {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "Could not generate saved report");
   const standardMarkdown = payload.markdown;
+  currentSynthesisPacket = payload.synthesis_packet || null;
   setReportMarkdown(standardMarkdown);
   setTab("preview");
   setReportStatus("Relationship Map ready.");
@@ -372,7 +374,11 @@ async function enhanceReportMarkdown(standardMarkdown) {
     const response = await fetch("/report/enhance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown: standardMarkdown, context: buildContext() }),
+      body: JSON.stringify({
+        markdown: standardMarkdown,
+        context: buildContext(),
+        synthesis_packet: currentSynthesisPacket,
+      }),
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "Reading refinement failed.");

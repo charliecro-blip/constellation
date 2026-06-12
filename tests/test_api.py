@@ -227,8 +227,15 @@ def test_report_enhance_prompt_guardrails():
     assert "do not invent astrology" in prompt
     assert "do not introduce new aspects" in prompt
     assert "preserve the deterministic priorities" in prompt
+    assert "synthesis packet" in prompt
+    assert "source of deterministic priority order" in prompt
+    assert "preserve the lead pattern" in prompt
+    assert "top ranked patterns" in prompt
+    assert "do not elevate secondary or supporting patterns" in prompt
     assert "do not turn the report into compatibility scoring" in prompt
     assert "fate, soulmate, twin flame, destiny" in prompt
+    assert "fated" in prompt
+    assert "destined" in prompt
     assert "do not add compatibility scores" in prompt
     assert "meant to be" in prompt
     assert "do not use raw orb numbers" in prompt
@@ -324,3 +331,42 @@ def test_saved_relationship_preserves_selected_house_system_in_report():
     assert report.status_code == 200
     assert "House system: Whole Sign" in report.json()["markdown"]
     assert "Birthplace: San Antonio, TX" in report.json()["markdown"]
+
+
+def test_report_enhance_accepts_optional_synthesis_packet(monkeypatch):
+    from constellation_core import api
+
+    def fake_enhance(request):
+        assert request.synthesis_packet is not None
+        assert request.synthesis_packet.lead_pattern.key == "synastry.sun_moon"
+        assert request.synthesis_packet.top_ranked_patterns[0].key == "synastry.sun_moon"
+        return "# Relationship Field Map\n\n## Overview\nEnhanced report."
+
+    monkeypatch.setattr(api, "enhance_report_markdown", fake_enhance)
+
+    pattern = {
+        "key": "synastry.sun_moon",
+        "title": "A's Sun conjunct B's Moon",
+        "category": "emotional_recognition",
+        "tier": 1,
+        "priority": 100,
+        "adjusted_priority": 100,
+        "confidence": "high",
+        "layer": "synastry",
+        "evidence_text": "A's Sun conjunct B's Moon; orb 0.50",
+        "why_it_matters": "Core luminary recognition.",
+    }
+    response = client.post(
+        "/report/enhance",
+        json={
+            "markdown": "# Relationship Field Map",
+            "synthesis_packet": {
+                "relationship_type": "romantic",
+                "top_ranked_patterns": [pattern],
+                "lead_pattern": pattern,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["markdown"].endswith("Enhanced report.")

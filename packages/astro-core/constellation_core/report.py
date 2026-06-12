@@ -5,12 +5,13 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .natal_profile import SIGN_ELEMENTS, SIGN_MODES
 from .pattern_registry import convergence_category_for, get_pattern_metadata
+from .scoring_weights import SUPPRESSION_THRESHOLDS
 from .patterns import Pattern, detect_relationship_patterns
 from .chart import DEFAULT_HOUSE_SYSTEM
 from .relationship import calculate_relationship
@@ -23,9 +24,37 @@ class ReportSection(BaseModel):
     body: str
 
 
+class RankedPatternSummary(BaseModel):
+    key: str
+    title: str
+    category: str
+    tier: int | None = None
+    priority: int
+    adjusted_priority: int
+    confidence: str | None = None
+    layer: str
+    evidence_text: str
+    why_it_matters: str | None = None
+
+
+class ReportSynthesisPacket(BaseModel):
+    relationship_type: str | None = None
+    status: str | None = None
+    user_question: str | None = None
+    origin_story: str | None = None
+    house_system: str | None = None
+    top_ranked_patterns: list[RankedPatternSummary]
+    lead_pattern: RankedPatternSummary | None = None
+    friction_patterns: list[RankedPatternSummary] = Field(default_factory=list)
+    repair_themes: list[str] = Field(default_factory=list)
+    composite_themes: list[RankedPatternSummary] = Field(default_factory=list)
+    chart_sanity_summary: str | None = None
+
+
 class RelationshipReport(BaseModel):
     title: str
     sections: list[ReportSection]
+    synthesis_packet: ReportSynthesisPacket | None = None
 
     def to_markdown(self) -> str:
         lines = [f"# {self.title}", ""]
@@ -674,6 +703,110 @@ def _repair_path(patterns: list[Pattern]) -> str:
     return "\n".join(f"- {principle}" for principle in principles[:5])
 
 
+
+def _is_asteroid_pattern(pattern: Pattern) -> bool:
+    return pattern.category in {"asteroid_support", "asteroid_overlay"} or ".asteroid." in pattern.key
+
+
+def _include_in_synthesis_packet(pattern: Pattern) -> bool:
+    if pattern.priority < SUPPRESSION_THRESHOLDS["omit"]:
+        return False
+    if _is_asteroid_pattern(pattern) and pattern.priority < SUPPRESSION_THRESHOLDS["brief"]:
+        return False
+    return True
+
+
+def _pattern_summary(pattern: Pattern) -> RankedPatternSummary:
+    metadata = get_pattern_metadata(pattern.key)
+    return RankedPatternSummary(
+        key=pattern.key,
+        title=pattern.title,
+        category=metadata.category or pattern.category,
+        tier=metadata.tier,
+        priority=pattern.priority,
+        adjusted_priority=pattern.priority,
+        confidence=pattern.confidence,
+        layer=pattern.layer,
+        evidence_text="; ".join(pattern.evidence[:2]),
+        why_it_matters=metadata.description or _interpret_for_section(pattern, "overview"),
+    )
+
+
+def _friction_patterns(patterns: list[Pattern]) -> list[Pattern]:
+    friction_categories = {
+        "communication",
+        "emotional_structure",
+        "angle_structure",
+        "emotional_intensity",
+        "emotional_activation",
+        "embodied_activation",
+        "intensity",
+        "action_structure",
+        "emotional_variability",
+    }
+    registry_categories = {
+        "communication_heat",
+        "stability_container",
+        "devotion_contract",
+        "erotic_charge",
+        "trust_depth",
+        "volatility",
+        "wounding_healing",
+    }
+    return sorted(
+        [
+            pattern
+            for pattern in patterns
+            if pattern.category in friction_categories or _registry_category(pattern) in registry_categories
+        ],
+        key=lambda pattern: pattern.priority,
+        reverse=True,
+    )
+
+
+def _repair_theme_lines(patterns: list[Pattern]) -> list[str]:
+    return [line.removeprefix("- ") for line in _repair_path(patterns).splitlines() if line.strip()][:5]
+
+
+def _chart_sanity_summary(relationship: RelationshipCalculation) -> str:
+    house_system = relationship.person_a.house_system.replace("_", " ").title()
+    time_notes = []
+    for chart in [relationship.person_a, relationship.person_b]:
+        if not chart.angles:
+            time_notes.append(f"{chart.name}: houses/angles limited by unknown or incomplete birth time")
+        if chart.warnings:
+            time_notes.append(f"{chart.name}: {' '.join(chart.warnings)}")
+    if not time_notes:
+        time_notes.append("both charts include angles and houses")
+    return f"House system: {house_system}; " + "; ".join(time_notes[:3])
+
+
+def build_report_synthesis_packet(
+    relationship: RelationshipCalculation,
+    patterns: list[Pattern],
+    central: list[Pattern],
+    composite: list[Pattern],
+    context: RelationshipContext | None = None,
+) -> ReportSynthesisPacket:
+    eligible_patterns = [pattern for pattern in patterns if _include_in_synthesis_packet(pattern)]
+    top_ranked = eligible_patterns[:7]
+    lead = next((pattern for pattern in central if _include_in_synthesis_packet(pattern)), None)
+    friction = [pattern for pattern in _friction_patterns(eligible_patterns) if pattern is not lead][:3]
+    composite_themes = [pattern for pattern in composite if _include_in_synthesis_packet(pattern)][:3]
+    return ReportSynthesisPacket(
+        relationship_type=context.relationship_type if context else None,
+        status=context.status if context else None,
+        user_question=context.user_question if context else None,
+        origin_story=context.origin_story if context else None,
+        house_system=(context.house_system if context and context.house_system else relationship.person_a.house_system),
+        top_ranked_patterns=[_pattern_summary(pattern) for pattern in top_ranked],
+        lead_pattern=_pattern_summary(lead) if lead is not None else None,
+        friction_patterns=[_pattern_summary(pattern) for pattern in friction],
+        repair_themes=_repair_theme_lines(eligible_patterns),
+        composite_themes=[_pattern_summary(pattern) for pattern in composite_themes],
+        chart_sanity_summary=_chart_sanity_summary(relationship),
+    )
+
 def generate_relationship_report(
     relationship: RelationshipCalculation,
     context: RelationshipContext | None = None,
@@ -724,7 +857,8 @@ def generate_relationship_report(
     if context_body:
         sections.append(ReportSection(title="Context Notes", body=context_body))
 
-    return RelationshipReport(title=title, sections=sections)
+    synthesis_packet = build_report_synthesis_packet(relationship, patterns, central, composite, context)
+    return RelationshipReport(title=title, sections=sections, synthesis_packet=synthesis_packet)
 
 def generate_report_from_birth_data(
     person_a: BirthData,
