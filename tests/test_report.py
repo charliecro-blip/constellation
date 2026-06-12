@@ -690,3 +690,126 @@ def test_generic_composite_sun_moon_texture_is_omitted_without_specific_anchor()
     assert "Composite Sun in" not in composite_block
     assert "Composite Moon in" not in composite_block
     assert "baseline" not in composite_block.lower()
+
+
+def test_default_report_surfaces_only_tightly_relevant_mvp_asteroids():
+    cases = [
+        ("juno", "venus", "Juno"),
+        ("chiron", "moon", "Chiron"),
+        ("ceres", "mars", "Ceres"),
+        ("vesta", "sun", "Vesta"),
+    ]
+
+    for asteroid, target, label in cases:
+        relationship = RelationshipCalculation(
+            person_a=_synthetic_chart("A"),
+            person_b=_synthetic_chart("B"),
+            synastry_aspects=[
+                Aspect(point_a=asteroid, point_b=target, aspect="conjunction", exact_angle=0, orb=0.1),
+            ],
+            house_overlays=[],
+            composite=None,
+            composite_aspects=[],
+        )
+
+        markdown = generate_relationship_report(relationship).to_markdown()
+
+        assert label in markdown
+
+    weak_or_orphan_contacts = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="juno", point_b="mercury", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="ceres", point_b="venus", aspect="conjunction", exact_angle=0, orb=2.1),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    markdown = generate_relationship_report(weak_or_orphan_contacts).to_markdown()
+
+    assert "Juno conjunct B's Mercury" not in markdown
+    assert "Ceres" not in markdown
+
+
+def test_default_report_suppresses_advanced_asteroids_and_asteroid_to_asteroid_contacts():
+    chart_a = _synthetic_chart("A").model_copy(
+        update={
+            "placements": {
+                "eros": _placement("eros", 15, "Aries", house=7),
+                "psyche": _placement("psyche", 16, "Aries", house=8),
+                "lilith": _placement("lilith", 17, "Aries", house=5),
+                "vertex": _placement("vertex", 18, "Aries", house=7),
+            }
+        }
+    )
+    chart_b = _synthetic_chart("B")
+    composite = _synthetic_chart("Composite").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 10, "Aries"),
+                "eros": _placement("eros", 11, "Aries"),
+                "psyche": _placement("psyche", 12, "Aries"),
+                "moon": _placement("moon", 80, "Gemini"),
+            }
+        }
+    )
+    relationship = RelationshipCalculation(
+        person_a=chart_a,
+        person_b=chart_b,
+        synastry_aspects=[
+            Aspect(point_a="eros", point_b="venus", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="psyche", point_b="moon", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="lilith", point_b="mars", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="vertex", point_b="sun", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="juno", point_b="chiron", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="sun", point_b="moon", aspect="conjunction", exact_angle=0, orb=0.1),
+        ],
+        house_overlays=[
+            HouseOverlay(
+                planet_owner="person_a",
+                house_owner="person_b",
+                body="eros",
+                house=7,
+                body_longitude=15,
+            ),
+            HouseOverlay(
+                planet_owner="person_a",
+                house_owner="person_b",
+                body="psyche",
+                house=8,
+                body_longitude=16,
+            ),
+        ],
+        composite=composite,
+        composite_aspects=[
+            Aspect(point_a="eros", point_b="venus", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="psyche", point_b="moon", aspect="conjunction", exact_angle=0, orb=0.1),
+        ],
+    )
+
+    markdown = generate_relationship_report(relationship).to_markdown()
+    lower_markdown = markdown.lower()
+
+    assert "eros" not in lower_markdown
+    assert "psyche" not in lower_markdown
+    assert "lilith" not in lower_markdown
+    assert "vertex" not in lower_markdown
+    assert "juno" not in lower_markdown
+    assert "chiron" not in lower_markdown
+    assert "soulmate" not in lower_markdown
+    assert "fated" not in lower_markdown
+    assert "destined" not in lower_markdown
+    assert "twin flame" not in lower_markdown
+    assert "compatibility score" not in lower_markdown
+    assert "A's Sun conjunct B's Moon" in markdown
+    assert "eros" in relationship.person_a.placements
+    assert "psyche" in relationship.person_a.placements
+
+
+def test_advanced_asteroid_calculation_ids_remain_available_internally():
+    from constellation_core.chart import ASTEROID_IDS
+
+    assert "eros" in ASTEROID_IDS
+    assert "psyche" in ASTEROID_IDS

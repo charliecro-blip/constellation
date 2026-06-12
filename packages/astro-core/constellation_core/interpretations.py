@@ -204,6 +204,6 @@ def interpret_pattern(pattern: Pattern) -> str:
         return COMPOSITE_SUN_BLOCKS.get(sign, "Composite Sun describes the identity and life-force of the relationship.")
 
     if key.startswith("synastry.asteroid.") or key.startswith("composite.asteroid."):
-        return "A relationship asteroid is tightly tied into a personal point, adding a supporting note of commitment, care, vulnerability, devotion, or erotic-psychic pull without replacing the main planetary story."
+        return "A relationship asteroid is tightly tied into a personal point, adding a supporting note of commitment, care, vulnerability, or devotion without replacing the main planetary story."
 
     return "This detected pattern needs a written interpretation before it should lead the reading."

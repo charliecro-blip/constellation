@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .asteroid_policy import DEFAULT_ASTEROID_ORB, SUPPORTED_ASTEROID_POINTS
 from .schemas import Aspect
 from .zodiac import shortest_arc
 
@@ -25,8 +26,8 @@ MAJOR_ASPECTS = [
 
 LUMINARIES = {"sun", "moon"}
 PERSONAL = {"sun", "moon", "mercury", "venus", "mars"}
-ANGLES = {"ascendant", "midheaven", "asc", "mc"}
-ASTEROIDS = {"chiron", "juno", "ceres", "vesta", "psyche", "eros"}
+ANGLES = {"ascendant", "descendant", "midheaven", "asc", "desc", "mc"}
+ASTEROIDS = SUPPORTED_ASTEROID_POINTS
 
 
 def orb_for_points(point_a: str, point_b: str, aspect: AspectDefinition) -> float:
@@ -38,7 +39,7 @@ def orb_for_points(point_a: str, point_b: str, aspect: AspectDefinition) -> floa
     b = point_b.lower()
 
     if a in ASTEROIDS or b in ASTEROIDS:
-        return min(aspect.default_orb, 2.0)
+        return min(aspect.default_orb, DEFAULT_ASTEROID_ORB)
     if a in ANGLES or b in ANGLES:
         return min(aspect.default_orb, 5.0)
     if a in LUMINARIES and b in LUMINARIES:

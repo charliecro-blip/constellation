@@ -11,6 +11,13 @@ from itertools import combinations
 
 from pydantic import BaseModel, Field
 
+from .asteroid_policy import (
+    ASTEROID_CENTRAL_TARGETS,
+    DEFAULT_ASTEROID_ORB,
+    DEFAULT_REPORT_ASTEROIDS,
+    RELATIONSHIP_RELEVANT_HOUSES,
+    SUPPORTED_ASTEROID_POINTS,
+)
 from .schemas import Aspect, Chart, HouseOverlay, RelationshipCalculation
 from .zodiac import shortest_arc
 
@@ -47,19 +54,16 @@ SYNTHESIS_POINTS = {
     "juno",
     "ceres",
     "vesta",
-    "psyche",
-    "eros",
 }
 
-ASTEROID_POINTS = {"chiron", "juno", "ceres", "vesta", "psyche", "eros"}
-PERSONAL_POINTS = {"sun", "moon", "mercury", "venus", "mars"}
+ASTEROID_POINTS = SUPPORTED_ASTEROID_POINTS
+REPORT_ASTEROID_POINTS = DEFAULT_REPORT_ASTEROIDS
+COMPOSITE_ASTEROID_TARGETS = {"sun", "moon", "venus", "mars"}
 RELATIONSHIP_ASTEROID_MEANINGS = {
     "juno": "commitment terms",
     "chiron": "tender wound/healing point",
     "ceres": "care and nourishment",
     "vesta": "devotion and private focus",
-    "psyche": "psychic fascination",
-    "eros": "erotic fascination",
 }
 
 
@@ -122,7 +126,7 @@ def _angle_category(body: str) -> str:
     if body == "saturn":
         return "angle_structure"
     if body in {"north_node", "south_node"}:
-        return "fated_axis"
+        return "nodal_axis"
     return "angular_contact"
 
 
@@ -190,10 +194,10 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
 
         asteroid_points = pts & ASTEROID_POINTS
         non_asteroid_points = pts - ASTEROID_POINTS
-        if asteroid_points and non_asteroid_points and aspect.orb <= 2.0:
+        if asteroid_points and non_asteroid_points and aspect.orb <= DEFAULT_ASTEROID_ORB:
             asteroid = next(iter(asteroid_points))
             other = next(iter(non_asteroid_points))
-            if other in PERSONAL_POINTS or other in {"ascendant", "midheaven"}:
+            if asteroid in REPORT_ASTEROID_POINTS and other in ASTEROID_CENTRAL_TARGETS:
                 meaning = RELATIONSHIP_ASTEROID_MEANINGS[asteroid]
                 patterns.append(_synastry_pattern(
                     aspect,
@@ -368,13 +372,15 @@ def detect_house_overlay_patterns(relationship: RelationshipCalculation) -> list
         10: ("public_direction", 56),
         12: ("hidden_field", 58),
     }
-    important_bodies = {"sun", "moon", "mercury", "venus", "mars", "saturn", "pluto", "juno", "chiron", "ceres", "vesta", "psyche", "eros"}
+    important_bodies = {"sun", "moon", "mercury", "venus", "mars", "saturn", "pluto"} | REPORT_ASTEROID_POINTS
 
     for overlay in relationship.house_overlays:
         if overlay.house not in important_houses or overlay.body not in important_bodies:
             continue
         category, priority = important_houses[overlay.house]
         if overlay.body in ASTEROID_POINTS:
+            if overlay.house not in RELATIONSHIP_RELEVANT_HOUSES:
+                continue
             priority -= 12
             category = "asteroid_overlay"
         patterns.append(Pattern(
@@ -491,7 +497,7 @@ def _detect_composite_angle_contacts(composite: Chart) -> list[Pattern]:
                 seen_node_axes.add(key)
                 title = f"Composite nodal axis on {axis}"
                 priority = 98 if axis == "MC/IC" else 96
-                category = "fated_axis"
+                category = "nodal_axis"
             else:
                 contact = angle.name if direction == "direct" else ("Descendant" if angle_name == "ascendant" else "IC")
                 title = f"Composite {_display_point(body)} on {contact}"
@@ -595,9 +601,16 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
     for aspect in composite_aspects:
 
         asteroid_points = {aspect.point_a.lower(), aspect.point_b.lower()} & ASTEROID_POINTS
-        personal_points = {aspect.point_a.lower(), aspect.point_b.lower()} & PERSONAL_POINTS
-        if asteroid_points and personal_points and aspect.aspect == "conjunction" and aspect.orb <= 2.0:
+        personal_points = {aspect.point_a.lower(), aspect.point_b.lower()} & COMPOSITE_ASTEROID_TARGETS
+        if (
+            asteroid_points
+            and personal_points
+            and aspect.aspect == "conjunction"
+            and aspect.orb <= DEFAULT_ASTEROID_ORB
+        ):
             asteroid = next(iter(asteroid_points))
+            if asteroid not in REPORT_ASTEROID_POINTS:
+                continue
             meaning = RELATIONSHIP_ASTEROID_MEANINGS[asteroid]
             patterns.append(Pattern(
                 id=f"composite_{asteroid}_personal_conjunction",
