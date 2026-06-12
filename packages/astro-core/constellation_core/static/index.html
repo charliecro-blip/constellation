@@ -92,6 +92,34 @@
       <h2>Latest Relationship Map</h2>
       <p id="report_status" class="small-note" aria-live="polite"></p>
       <div id="preview" class="output-html">Generate a relationship map to see the formatted reading.</div>
+      <details id="feedback-panel" class="feedback-panel hidden">
+        <summary>How did this map land?</summary>
+        <form id="feedback-form" class="feedback-form stack">
+          <p class="small-note">Optional tester notes help improve the map while keeping the report calm and non-deterministic.</p>
+          <div class="feedback-choice-row" role="group" aria-label="Overall usefulness">
+            <label><input type="radio" name="usefulness_rating" value="5" /> Landed</label>
+            <label><input type="radio" name="usefulness_rating" value="3" /> Mixed</label>
+            <label><input type="radio" name="usefulness_rating" value="1" /> Off</label>
+          </div>
+          <div class="context-grid">
+            <label>Clarity (optional)<select name="clarity_rating"><option value="">No rating</option><option value="5">5 — very clear</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1 — unclear</option></select></label>
+            <label>Felt true (optional)<select name="accuracy_rating"><option value="">No rating</option><option value="5">5 — very true</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1 — not true</option></select></label>
+            <label>Felt seen (optional)<select name="felt_seen_rating"><option value="">No rating</option><option value="5">5 — felt seen</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1 — did not</option></select></label>
+            <label>Your name/label (optional)<input name="tester_label" placeholder="Tester A" /></label>
+          </div>
+          <label>What felt accurate or useful?<textarea name="what_landed" rows="3"></textarea></label>
+          <label>What felt off or confusing?<textarea name="what_felt_off" rows="3"></textarea></label>
+          <label>Was the central theme right? What would you change?<textarea name="central_theme_feedback" rows="3"></textarea></label>
+          <label>Anything too vague, too intense, or too technical?<textarea name="freeform_comment" rows="3"></textarea></label>
+          <div class="feedback-choice-row">
+            <label><input type="checkbox" name="too_long" /> Too long</label>
+            <label><input type="checkbox" name="too_intense" /> Too intense</label>
+            <label><input type="checkbox" name="too_technical" /> Too technical</label>
+          </div>
+          <div class="actions"><button class="secondary" type="submit">Send feedback</button><span id="feedback_status" class="small-note" aria-live="polite"></span></div>
+        </form>
+      </details>
+      <details id="feedback-summary-panel" class="advanced-place developer-actions hidden"><summary>Tester feedback</summary><div id="feedback-summary" class="small-note">No tester feedback yet.</div></details>
       <details class="advanced-place developer-actions"><summary>Export / developer tools</summary><div class="actions" aria-label="Markdown export tools"><button class="secondary" id="markdown-tab" type="button">View Markdown</button><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download Markdown</a><button class="secondary" id="copy" type="button">Copy Markdown</button></div><p class="small-note">Interpretive prose may be refined using AI. Chart calculations remain deterministic.</p><pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre><details id="diagnostics-panel" class="advanced-place developer-actions hidden"><summary>Developer diagnostics</summary><pre id="diagnostics">Diagnostics are disabled.</pre></details></details>
     </section>
   </section>

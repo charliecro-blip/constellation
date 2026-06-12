@@ -80,3 +80,26 @@ class SavedReport(SQLModel, table=True):
     report_template_version: str = "v0.1.0"
     generated_at: datetime = Field(default_factory=_utcnow)
     created_at: datetime = Field(default_factory=_utcnow)
+
+
+class ReportFeedback(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    relationship_id: str | None = Field(default=None, foreign_key="savedrelationship.id", index=True)
+    saved_report_id: str | None = Field(default=None, foreign_key="savedreport.id", index=True)
+
+    usefulness_rating: int | None = None
+    accuracy_rating: int | None = None
+    clarity_rating: int | None = None
+    felt_seen_rating: int | None = None
+    too_long: bool | None = None
+    too_intense: bool | None = None
+    too_technical: bool | None = None
+
+    freeform_comment: str | None = None
+    what_landed: str | None = None
+    what_felt_off: str | None = None
+    central_theme_feedback: str | None = None
+    tester_label: str | None = None
+    report_version_metadata_json: str | None = None
+
+    created_at: datetime = Field(default_factory=_utcnow)

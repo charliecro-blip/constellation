@@ -12,7 +12,7 @@ import json
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlmodel import Session, delete, select
 
 from .ai_enhancement import (
@@ -25,7 +25,7 @@ from .chart import DEFAULT_HOUSE_SYSTEM, calculate_chart
 from .context import RelationshipContext
 from .constellation_patterns import RelationshipPatternInput, build_constellation_pattern_summary
 from .database import get_session, init_db
-from .models import BirthProfile, SavedRelationship, SavedRelationshipMotif, SavedReport
+from .models import BirthProfile, ReportFeedback, SavedRelationship, SavedRelationshipMotif, SavedReport
 from .geocoding import GeocodingStatus, PlaceSearchResponse, geocoding_status, search_places
 from .motifs import list_relationship_motifs, replace_relationship_motifs
 from .patterns import Pattern, detect_relationship_patterns
@@ -171,6 +171,71 @@ class ConstellationPatternSummaryResponse(BaseModel):
     plain_language_summary: str
 
 
+
+
+class ReportFeedbackRequest(BaseModel):
+    relationship_id: str | None = None
+    report_id: str | None = None
+    saved_report_id: str | None = None
+    usefulness_rating: int | None = Field(default=None, ge=1, le=5)
+    rating: int | None = Field(default=None, ge=1, le=5)
+    accuracy_rating: int | None = Field(default=None, ge=1, le=5)
+    clarity_rating: int | None = Field(default=None, ge=1, le=5)
+    felt_seen_rating: int | None = Field(default=None, ge=1, le=5)
+    too_long: bool | None = None
+    too_intense: bool | None = None
+    too_technical: bool | None = None
+    freeform_comment: str | None = None
+    what_landed: str | None = None
+    what_felt_off: str | None = None
+    central_theme_feedback: str | None = None
+    tester_label: str | None = None
+    report_version_metadata: dict[str, object] | None = None
+
+    @field_validator(
+        "freeform_comment",
+        "what_landed",
+        "what_felt_off",
+        "central_theme_feedback",
+        "tester_label",
+    )
+    @classmethod
+    def blank_strings_as_none(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+
+class ReportFeedbackResponse(BaseModel):
+    feedback_id: str
+    relationship_id: str | None
+    saved_report_id: str | None
+    created_at: datetime
+    usefulness_rating: int | None = None
+    accuracy_rating: int | None = None
+    clarity_rating: int | None = None
+    felt_seen_rating: int | None = None
+    too_long: bool | None = None
+    too_intense: bool | None = None
+    too_technical: bool | None = None
+    freeform_comment: str | None = None
+    what_landed: str | None = None
+    what_felt_off: str | None = None
+    central_theme_feedback: str | None = None
+    tester_label: str | None = None
+    report_version_metadata: dict[str, object] | None = None
+
+
+class RelationshipFeedbackSummaryResponse(BaseModel):
+    relationship_id: str
+    response_count: int
+    average_clarity: float | None = None
+    average_accuracy: float | None = None
+    average_felt_seen: float | None = None
+    most_recent: str | None = None
+    feedback: list[ReportFeedbackResponse]
+
 class SavedReportResponse(BaseModel):
     id: str
     relationship_id: str
@@ -296,6 +361,74 @@ def enhance_report_endpoint(request: ReportEnhancementRequest) -> ReportEnhancem
     return ReportEnhancementResponse(markdown=enhanced_markdown)
 
 
+def _feedback_response(feedback: ReportFeedback) -> ReportFeedbackResponse:
+    metadata = json.loads(feedback.report_version_metadata_json) if feedback.report_version_metadata_json else None
+    return ReportFeedbackResponse(
+        feedback_id=feedback.id,
+        relationship_id=feedback.relationship_id,
+        saved_report_id=feedback.saved_report_id,
+        created_at=feedback.created_at,
+        usefulness_rating=feedback.usefulness_rating,
+        accuracy_rating=feedback.accuracy_rating,
+        clarity_rating=feedback.clarity_rating,
+        felt_seen_rating=feedback.felt_seen_rating,
+        too_long=feedback.too_long,
+        too_intense=feedback.too_intense,
+        too_technical=feedback.too_technical,
+        freeform_comment=feedback.freeform_comment,
+        what_landed=feedback.what_landed,
+        what_felt_off=feedback.what_felt_off,
+        central_theme_feedback=feedback.central_theme_feedback,
+        tester_label=feedback.tester_label,
+        report_version_metadata=metadata,
+    )
+
+
+def _average_rating(values: list[int | None]) -> float | None:
+    numeric = [value for value in values if value is not None]
+    if not numeric:
+        return None
+    return round(sum(numeric) / len(numeric), 2)
+
+
+@app.post("/report-feedback", response_model=ReportFeedbackResponse)
+def create_report_feedback(
+    request: ReportFeedbackRequest, session: Session = Depends(get_session)
+) -> ReportFeedbackResponse:
+    saved_report_id = request.saved_report_id or request.report_id
+    if request.relationship_id and session.get(SavedRelationship, request.relationship_id) is None:
+        raise HTTPException(status_code=404, detail="Saved relationship not found")
+    saved_report = session.get(SavedReport, saved_report_id) if saved_report_id else None
+    if saved_report_id and saved_report is None:
+        raise HTTPException(status_code=404, detail="Saved report not found")
+    if saved_report and request.relationship_id and saved_report.relationship_id != request.relationship_id:
+        raise HTTPException(status_code=422, detail="Saved report does not belong to relationship")
+    relationship_id = request.relationship_id or (saved_report.relationship_id if saved_report else None)
+    feedback = ReportFeedback(
+        relationship_id=relationship_id,
+        saved_report_id=saved_report_id,
+        usefulness_rating=request.usefulness_rating or request.rating,
+        accuracy_rating=request.accuracy_rating,
+        clarity_rating=request.clarity_rating,
+        felt_seen_rating=request.felt_seen_rating,
+        too_long=request.too_long,
+        too_intense=request.too_intense,
+        too_technical=request.too_technical,
+        freeform_comment=request.freeform_comment,
+        what_landed=request.what_landed,
+        what_felt_off=request.what_felt_off,
+        central_theme_feedback=request.central_theme_feedback,
+        tester_label=request.tester_label,
+        report_version_metadata_json=json.dumps(request.report_version_metadata)
+        if request.report_version_metadata
+        else None,
+    )
+    session.add(feedback)
+    session.commit()
+    session.refresh(feedback)
+    return _feedback_response(feedback)
+
+
 @app.post("/birth-profiles", response_model=BirthProfileResponse)
 def create_birth_profile(
     request: CreateBirthProfileRequest, session: Session = Depends(get_session)
@@ -413,6 +546,7 @@ def delete_saved_relationship(
     relationship = session.get(SavedRelationship, relationship_id)
     if relationship is None:
         raise HTTPException(status_code=404, detail="Saved relationship not found")
+    session.exec(delete(ReportFeedback).where(ReportFeedback.relationship_id == relationship_id))
     session.exec(delete(SavedRelationshipMotif).where(SavedRelationshipMotif.relationship_id == relationship_id))
     session.exec(delete(SavedReport).where(SavedReport.relationship_id == relationship_id))
     session.delete(relationship)
@@ -476,6 +610,34 @@ def get_saved_relationship(
     if relationship is None:
         raise HTTPException(status_code=404, detail="Saved relationship not found")
     return _relationship_response(relationship)
+
+
+@app.get("/saved-relationships/{relationship_id}/feedback", response_model=RelationshipFeedbackSummaryResponse)
+def get_saved_relationship_feedback(
+    relationship_id: str, session: Session = Depends(get_session)
+) -> RelationshipFeedbackSummaryResponse:
+    if session.get(SavedRelationship, relationship_id) is None:
+        raise HTTPException(status_code=404, detail="Saved relationship not found")
+    feedback = list(
+        session.exec(
+            select(ReportFeedback)
+            .where(ReportFeedback.relationship_id == relationship_id)
+            .order_by(ReportFeedback.created_at.desc())
+        )
+    )
+    most_recent = None
+    if feedback:
+        latest = feedback[0]
+        most_recent = latest.freeform_comment or latest.what_felt_off or latest.what_landed
+    return RelationshipFeedbackSummaryResponse(
+        relationship_id=relationship_id,
+        response_count=len(feedback),
+        average_clarity=_average_rating([item.clarity_rating for item in feedback]),
+        average_accuracy=_average_rating([item.accuracy_rating for item in feedback]),
+        average_felt_seen=_average_rating([item.felt_seen_rating for item in feedback]),
+        most_recent=most_recent,
+        feedback=[_feedback_response(item) for item in feedback],
+    )
 
 
 @app.get("/saved-relationships/{relationship_id}/motifs", response_model=list[RelationshipMotifResponse])

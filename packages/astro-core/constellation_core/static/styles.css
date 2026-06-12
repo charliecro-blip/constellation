@@ -96,3 +96,9 @@ pre { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, 
 .form-mode-banner span { color: var(--muted); font-size: 0.84rem; }
 .danger-action { border-color: rgba(255, 185, 199, 0.35); color: #ffd2dc; }
 @media (max-width: 640px) { .form-mode-banner { align-items: flex-start; flex-direction: column; } .primary-actions { gap: 8px; } .primary-actions button { min-width: 100%; } }
+.feedback-panel { border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; background: rgba(255,255,255,0.035); padding: 12px 14px; }
+.feedback-panel summary { cursor: pointer; font-weight: 700; color: var(--ink); }
+.feedback-form { margin-top: 12px; }
+.feedback-choice-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.feedback-choice-row label { width: auto; display: inline-flex; flex-direction: row; gap: 6px; align-items: center; color: var(--muted); }
+.feedback-choice-row input { width: auto; }

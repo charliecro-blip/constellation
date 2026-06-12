@@ -16,6 +16,11 @@ const reportStatusEl = document.getElementById("report_status");
 const downloadLink = document.getElementById("download");
 const diagnosticsPanel = document.getElementById("diagnostics-panel");
 const diagnosticsEl = document.getElementById("diagnostics");
+const feedbackPanel = document.getElementById("feedback-panel");
+const feedbackForm = document.getElementById("feedback-form");
+const feedbackStatus = document.getElementById("feedback_status");
+const feedbackSummaryPanel = document.getElementById("feedback-summary-panel");
+const feedbackSummary = document.getElementById("feedback-summary");
 const refreshConstellationButton = document.getElementById("refresh_constellation");
 const constellationEl = document.getElementById("constellation");
 let currentMarkdown = "";
@@ -23,6 +28,7 @@ let currentDownloadUrl = "";
 let currentSavedRelationship = null;
 let currentSynthesisPacket = null;
 let currentDiagnostics = null;
+let currentSavedReportId = null;
 let enhancementRequestId = 0;
 let searchResults = { a: [], b: [] };
 let placeSelections = { a: null, b: null };
@@ -362,6 +368,84 @@ function renderDiagnostics(diagnostics) {
   diagnosticsEl.textContent = JSON.stringify(compact, null, 2);
 }
 
+function resetFeedbackState() {
+  if (feedbackPanel) feedbackPanel.classList.add("hidden");
+  if (feedbackSummaryPanel) feedbackSummaryPanel.classList.add("hidden");
+  if (feedbackSummary) feedbackSummary.textContent = "No tester feedback yet.";
+  if (feedbackStatus) feedbackStatus.textContent = "";
+  feedbackForm?.reset();
+}
+
+function showFeedbackForCurrentReport() {
+  if (!feedbackPanel) return;
+  feedbackPanel.classList.remove("hidden");
+  if (feedbackStatus) feedbackStatus.textContent = "";
+  feedbackForm?.reset();
+  void loadFeedbackSummary();
+}
+
+function optionalInteger(value) {
+  return value ? Number.parseInt(value, 10) : null;
+}
+
+function feedbackFormPayload() {
+  const data = new FormData(feedbackForm);
+  return {
+    relationship_id: currentSavedRelationship?.id || null,
+    saved_report_id: currentSavedReportId,
+    usefulness_rating: optionalInteger(data.get("usefulness_rating")),
+    accuracy_rating: optionalInteger(data.get("accuracy_rating")),
+    clarity_rating: optionalInteger(data.get("clarity_rating")),
+    felt_seen_rating: optionalInteger(data.get("felt_seen_rating")),
+    too_long: data.has("too_long"),
+    too_intense: data.has("too_intense"),
+    too_technical: data.has("too_technical"),
+    what_landed: data.get("what_landed") || null,
+    what_felt_off: data.get("what_felt_off") || null,
+    central_theme_feedback: data.get("central_theme_feedback") || null,
+    freeform_comment: data.get("freeform_comment") || null,
+    tester_label: data.get("tester_label") || null,
+    report_version_metadata: {
+      source: "relationship_map_ui",
+      has_synthesis_packet: Boolean(currentSynthesisPacket),
+      has_diagnostics: Boolean(currentDiagnostics),
+    },
+  };
+}
+
+async function submitFeedback(event) {
+  event.preventDefault();
+  if (!feedbackForm) return;
+  if (feedbackStatus) feedbackStatus.textContent = "Sending feedback…";
+  const response = await fetch("/report-feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(feedbackFormPayload()),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    if (feedbackStatus) feedbackStatus.textContent = payload.detail || "Could not save feedback.";
+    return;
+  }
+  if (feedbackStatus) feedbackStatus.textContent = "Thank you — feedback saved.";
+  await loadFeedbackSummary();
+}
+
+async function loadFeedbackSummary() {
+  if (!currentSavedRelationship || !feedbackSummaryPanel || !feedbackSummary) return;
+  const response = await fetch(`/saved-relationships/${currentSavedRelationship.id}/feedback`);
+  if (!response.ok) return;
+  const payload = await response.json();
+  feedbackSummaryPanel.classList.toggle("hidden", payload.response_count === 0);
+  if (!payload.response_count) {
+    feedbackSummary.textContent = "No tester feedback yet.";
+    return;
+  }
+  const clarity = payload.average_clarity ? ` Average clarity: ${payload.average_clarity}.` : "";
+  const recent = payload.most_recent ? ` Most recent: “${payload.most_recent}”` : "";
+  feedbackSummary.textContent = `${payload.response_count} response${payload.response_count === 1 ? "" : "s"}.${clarity}${recent}`;
+}
+
 function setTab(which) {
   const showMarkdown = which === "markdown";
   preview.classList.remove("hidden");
@@ -437,7 +521,9 @@ function clearReportState() {
   enhancementRequestId += 1;
   currentMarkdown = "";
   currentSynthesisPacket = null;
+  currentSavedReportId = null;
   renderDiagnostics(null);
+  resetFeedbackState();
   markdown.textContent = "Generate a relationship map to see Markdown.";
   preview.innerHTML = "Generate a relationship map to see the formatted reading.";
   setReportStatus("");
@@ -490,11 +576,13 @@ async function generateSavedReport(relationshipId) {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "Could not generate saved report");
   const standardMarkdown = payload.markdown;
+  currentSavedReportId = payload.id || null;
   currentSynthesisPacket = payload.synthesis_packet || null;
   renderDiagnostics(payload.diagnostics || null);
   setReportMarkdown(standardMarkdown);
   setTab("preview");
   setReportStatus("Relationship Map ready.");
+  showFeedbackForCurrentReport();
   scrollReportIntoViewOnce();
   void enhanceReportMarkdown(standardMarkdown, currentSynthesisPacket);
 }
@@ -816,6 +904,7 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
+feedbackForm?.addEventListener("submit", submitFeedback);
 refreshConstellationButton.addEventListener("click", loadConstellation);
 newRelationshipButton.addEventListener("click", startNewRelationship);
 newRelationshipTopButton.addEventListener("click", startNewRelationship);

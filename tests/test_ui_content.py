@@ -341,3 +341,37 @@ def test_ui_avoids_standard_enhanced_and_score_language():
     ):
         assert forbidden not in html
         assert forbidden not in source
+
+
+def test_feedback_ui_renders_after_report_generation_and_uses_tester_copy():
+    html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    assert 'id="feedback-panel"' in html
+    assert "How did this map land?" in html
+    assert "What felt accurate or useful?" in html
+    assert "What felt off or confusing?" in html
+    assert "Was the central theme right?" in html
+    assert "Anything too vague, too intense, or too technical?" in html
+    assert "Landed" in html
+    assert "Mixed" in html
+    assert "Off" in html
+    assert "showFeedbackForCurrentReport()" in source
+    assert "feedbackPanel.classList.remove(\"hidden\")" in source
+    assert 'fetch("/report-feedback"' in source
+    assert "feedbackFormPayload()" in source
+    assert "saved_report_id: currentSavedReportId" in source
+    assert "relationship_id: currentSavedRelationship?.id || null" in source
+
+
+def test_feedback_ui_avoids_score_and_fated_language():
+    html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
+    feedback_html = html.split('id="feedback-panel"')[1].split('id="feedback-summary-panel"')[0].lower()
+
+    assert "compatibility score" not in feedback_html
+    assert "rate compatibility" not in feedback_html
+    assert "soulmate" not in feedback_html
+    assert "fated" not in feedback_html
+    assert "destined" not in feedback_html
+    assert "meant-to-be" not in feedback_html
+    assert "meant to be" not in feedback_html
