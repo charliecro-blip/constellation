@@ -303,3 +303,87 @@ def test_deleting_saved_relationship_removes_reports_and_motifs_from_patterns():
     after_patterns = client.get("/constellation-patterns")
     assert after_patterns.status_code == 200
     assert relationship_id not in str(after_patterns.json())
+
+
+def test_report_feedback_persists_with_saved_relationship_and_can_be_fetched():
+    client = TestClient(api.app)
+    relationship, _, _ = _create_saved_relationship(client, "Feedback")
+    report = client.post(f"/saved-relationships/{relationship['id']}/report")
+    assert report.status_code == 200
+
+    response = client.post("/report-feedback", json={
+        "relationship_id": relationship["id"],
+        "saved_report_id": report.json()["id"],
+        "usefulness_rating": 5,
+        "accuracy_rating": 4,
+        "clarity_rating": 5,
+        "felt_seen_rating": 4,
+        "too_long": False,
+        "too_intense": False,
+        "too_technical": True,
+        "what_landed": "The emotional recognition part landed.",
+        "what_felt_off": "The Mars section felt like too much.",
+        "central_theme_feedback": "Central theme was close.",
+        "freeform_comment": "Keep the repair guidance practical.",
+        "tester_label": "Tester A",
+        "report_version_metadata": {"source": "pytest"},
+    })
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["feedback_id"]
+    assert payload["relationship_id"] == relationship["id"]
+    assert payload["saved_report_id"] == report.json()["id"]
+    assert payload["clarity_rating"] == 5
+    assert payload["report_version_metadata"] == {"source": "pytest"}
+
+    fetched = client.get(f"/saved-relationships/{relationship['id']}/feedback")
+    assert fetched.status_code == 200
+    summary = fetched.json()
+    assert summary["response_count"] == 1
+    assert summary["average_clarity"] == 5
+    assert summary["average_accuracy"] == 4
+    assert summary["average_felt_seen"] == 4
+    assert summary["most_recent"] == "Keep the repair guidance practical."
+    assert summary["feedback"][0]["what_landed"] == "The emotional recognition part landed."
+
+
+def test_report_feedback_rejects_invalid_relationship_or_report_ids():
+    client = TestClient(api.app)
+    missing_relationship = client.post("/report-feedback", json={
+        "relationship_id": "not-a-real-relationship",
+        "what_landed": "Something landed.",
+    })
+    assert missing_relationship.status_code == 404
+
+    missing_report = client.post("/report-feedback", json={
+        "saved_report_id": "not-a-real-report",
+        "what_landed": "Something landed.",
+    })
+    assert missing_report.status_code == 404
+
+    relationship_a, _, _ = _create_saved_relationship(client, "FeedbackA")
+    relationship_b, _, _ = _create_saved_relationship(client, "FeedbackB")
+    report_a = client.post(f"/saved-relationships/{relationship_a['id']}/report")
+    assert report_a.status_code == 200
+    mismatch = client.post("/report-feedback", json={
+        "relationship_id": relationship_b["id"],
+        "saved_report_id": report_a.json()["id"],
+        "what_landed": "Something landed.",
+    })
+    assert mismatch.status_code == 422
+
+    fetched_missing = client.get("/saved-relationships/not-a-real-relationship/feedback")
+    assert fetched_missing.status_code == 404
+
+
+def test_report_feedback_accepts_direct_unsaved_payload():
+    client = TestClient(api.app)
+    response = client.post("/report-feedback", json={
+        "rating": 3,
+        "clarity_rating": 4,
+        "what_landed": "The tone was respectful.",
+    })
+    assert response.status_code == 200
+    assert response.json()["relationship_id"] is None
+    assert response.json()["saved_report_id"] is None
+    assert response.json()["usefulness_rating"] == 3
