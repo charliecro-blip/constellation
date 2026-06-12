@@ -251,3 +251,56 @@ def test_scoring_weight_constants_are_report_prioritization_only():
     module_text = f"{pattern_registry.PATTERN_REGISTRY} {scoring_weights.__dict__}".lower()
     assert "compatibility score" not in module_text
     assert "meant to be" not in module_text
+
+
+def test_asteroid_policy_constants_define_default_and_advanced_layers():
+    from constellation_core.asteroid_policy import (
+        ADVANCED_ASTEROIDS,
+        DEFAULT_REPORT_ASTEROIDS,
+        MVP_ASTEROIDS,
+        OPTIONAL_MVP_ASTEROIDS,
+    )
+
+    assert MVP_ASTEROIDS == {"juno", "chiron", "ceres"}
+    assert OPTIONAL_MVP_ASTEROIDS == {"vesta"}
+    assert {"eros", "psyche", "lilith", "vertex"}.issubset(ADVANCED_ASTEROIDS)
+    assert DEFAULT_REPORT_ASTEROIDS == {"juno", "chiron", "ceres", "vesta"}
+
+
+def test_asteroid_to_asteroid_contacts_do_not_create_default_patterns():
+    chart_a = Chart(
+        name="A",
+        birth=BirthData(
+            name="A",
+            date="1992-01-03",
+            time="17:37",
+            time_known=True,
+            latitude=29.4252,
+            longitude=-98.4946,
+            timezone="America/Chicago",
+        ),
+        julian_day_ut=None,
+        house_system="placidus",
+        placements={"juno": _placement("juno", 10)},
+    )
+    chart_b = chart_a.model_copy(
+        update={"name": "B", "placements": {"chiron": _placement("chiron", 10)}}
+    )
+    relationship = RelationshipCalculation(
+        person_a=chart_a,
+        person_b=chart_b,
+        synastry_aspects=[
+            Aspect(point_a="juno", point_b="chiron", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="eros", point_b="psyche", aspect="conjunction", exact_angle=0, orb=0.1),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+
+    text = " ".join(pattern.title for pattern in detect_relationship_patterns(relationship))
+
+    assert "Juno" not in text
+    assert "Chiron" not in text
+    assert "Eros" not in text
+    assert "Psyche" not in text

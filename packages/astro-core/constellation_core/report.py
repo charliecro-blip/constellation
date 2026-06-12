@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from pydantic import BaseModel
 
+from .asteroid_policy import DEFAULT_REPORT_ASTEROIDS, RELATIONSHIP_RELEVANT_HOUSES
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .natal_profile import SIGN_ELEMENTS, SIGN_MODES
@@ -254,9 +255,13 @@ def _profile_body(chart: Chart, patterns: list[Pattern]) -> str:
     if sun:
         lines.append(f"- **What gets protected:** {sun} points to the selfhood {chart.name} is trying to keep intact inside intimacy, especially when a bond asks for compromise.")
 
-    devotion_markers = [item for item in (_placement_phrase(chart, body) for body in ["chiron", "juno", "ceres", "vesta", "psyche", "eros"]) if item and any(f" {_ordinal(house)} house" in item for house in [1, 5, 7, 8, 12])]
+    devotion_markers = [
+        item
+        for item in (_placement_phrase(chart, body) for body in sorted(DEFAULT_REPORT_ASTEROIDS))
+        if item and any(f" {_ordinal(house)} house" in item for house in RELATIONSHIP_RELEVANT_HOUSES)
+    ]
     if devotion_markers:
-        lines.append(f"- **Devotion and vulnerability markers:** {', '.join(devotion_markers)} adds specific texture around commitment, care, tenderness, private focus, or erotic-psychic pull.")
+        lines.append(f"- **Devotion and vulnerability markers:** {', '.join(devotion_markers)} adds specific texture around commitment, care, tenderness, or private focus.")
 
     if houses:
         lines.append(f"- **Repeated relationship terrain:** The 5th/7th/8th-house emphasis ({', '.join(houses)}) can repeat themes around romance, partnership, intimacy, trust, and shared vulnerability.")
