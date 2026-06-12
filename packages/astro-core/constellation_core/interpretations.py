@@ -65,19 +65,19 @@ INTERPRETATION_BLOCKS: dict[str, str] = {
         "Feelings heat up quickly. Aliveness, desire, protection, and reactivity travel together; pacing matters."
     ),
     "synastry.mercury_mars": (
-        "Words carry heat, speed, humor, and provocation. It can sharpen clarity or escalate irritation."
+        "Words can become a place where attraction and irritation both leak out. This contact does not have to define the relationship, but when stress rises, tone and timing matter."
     ),
     "synastry.mercury_mercury": (
-        "The minds meet directly. Similarity can ease conversation; difference can stimulate or polarize. Translation matters more than sameness."
+        "The minds meet directly. Similarity can make language feel easy; difference can make each person hear a different subtext. Repair often means checking impact before defending intention."
     ),
     "synastry.moon_saturn": (
-        "Emotional life meets time, restraint, and responsibility. Saturn can steady the bond or make softness feel judged."
+        "Moon-Saturn contacts ask whether care and structure can coexist. The risk is that one person's need for steadiness becomes the other person's feeling of being judged or emotionally managed."
     ),
     "synastry.moon_pluto": (
         "The emotional field becomes deep, exposing, magnetic, and hard to keep casual. Intensity needs honesty and repair capacity."
     ),
     "synastry.venus_pluto": (
-        "Attraction intensifies fast. Pleasure, longing, jealousy, and vulnerability can press into deeper material."
+        "Venus-Pluto contacts can feel less like simply liking someone and more like being pulled toward them before the attraction has been fully understood. The intensity is real, but it needs trust, pacing, and clear choice."
     ),
     "synastry.mars_pluto": (
         "High-force chemistry. Desire, anger, will, pressure, and power amplify quickly; force needs clean channels."
@@ -94,9 +94,7 @@ INTERPRETATION_BLOCKS: dict[str, str] = {
         "pacing and consent."
     ),
     "composite.mars_pluto": (
-        "The relationship field carries a high-intensity engine. This can show desire, force, "
-        "endurance, transformation, and conflict potential. Without repair skills, intensity can "
-        "become escalation. With maturity, it can become shared power and depth."
+        "This is a private, high-intensity field. Desire, anger, will, and pressure can amplify quickly, so trust matters more than performance and intimacy needs pacing."
     ),
     "composite.venus_saturn": (
         "The relationship field asks affection to meet time, structure, responsibility, or "
@@ -109,9 +107,7 @@ INTERPRETATION_BLOCKS: dict[str, str] = {
         "make the field feel heavy if joy and spontaneity are not protected."
     ),
     "composite.moon_saturn": (
-        "The relationship's emotional body meets Saturn: time, structure, duty, restraint, and "
-        "the need for reliable repair. This can mature the bond, but it can also make softness "
-        "feel delayed or burdened."
+        "The relationship's emotional body meets Saturn: time, structure, duty, restraint, and reliable repair. Care may need proof, but proof should not replace warmth."
     ),
     "composite.moon_uranus": (
         "The relationship's emotional rhythm is electric, changeable, and hard to settle. Space is necessary; inconsistency can become the wound."

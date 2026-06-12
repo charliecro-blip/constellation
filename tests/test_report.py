@@ -66,8 +66,19 @@ def test_generate_report_markdown_contains_polished_sections_without_technical_d
     assert "Generated at (UTC):" not in markdown
     assert "Central Signatures" not in markdown.split("##", 2)[1]
     assert "orb " not in markdown.lower()
-    assert "compatibility score" not in markdown.lower()
-    assert "meant to be" not in markdown.lower()
+    banned_phrases = [
+        "meant to be",
+        "destined",
+        "soulmate",
+        "compatibility score",
+        "twin flame",
+        "navigate the complexities",
+        "unique entity",
+        "thrives on",
+        "composite sun, moon, and ascendant provide a baseline",
+    ]
+    for phrase in banned_phrases:
+        assert phrase not in markdown.lower()
     assert markdown.count("Look for these sign themes") <= 1
     assert "Gift:" not in markdown
     assert "Care point:" not in markdown
@@ -300,6 +311,48 @@ def test_composite_moon_uranus_progresses_from_concise_to_repair_language_withou
     assert "The Moon–Uranus square describes a rhythm problem" in friction
     assert composite.strip() != friction.strip()
     assert markdown.count("electric, changeable, and hard to settle") <= 2
+
+
+
+def test_friction_and_repair_names_communication_heat_repair_move():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="mercury", point_b="mars", aspect="square", exact_angle=90, orb=0.1),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+
+    markdown = generate_relationship_report(relationship).to_markdown()
+    friction = markdown.split("## Friction and Repair")[1]
+
+    assert "gap between intention" in friction
+    assert "tone" in friction
+    assert "impact" in friction
+    assert "proof of incompatibility" in friction
+
+
+def test_friction_and_repair_names_saturn_container_repair_move():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="moon", point_b="saturn", aspect="opposition", exact_angle=180, orb=0.2),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+
+    markdown = generate_relationship_report(relationship).to_markdown()
+    friction = markdown.split("## Friction and Repair")[1]
+
+    assert "care and structure can coexist" in friction
+    assert "supportive or restrictive" in friction
+    assert "name expectations directly" in friction
 
 
 def test_ai_enhancement_provider_exception_uses_safe_error_message():
