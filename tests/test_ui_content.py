@@ -38,6 +38,19 @@ def test_primary_ui_has_single_relationship_type_dropdown_and_no_sample_or_curre
     assert "Anything important about this connection?" in html
 
 
+def test_developer_diagnostics_are_collapsed_and_debug_enabled():
+    html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    assert '<details id="diagnostics-panel"' in html
+    assert '<summary>Developer diagnostics</summary>' in html
+    assert 'class="advanced-place developer-actions hidden"' in html
+    assert 'new URLSearchParams(window.location.search).get("include_diagnostics") === "true"' in source
+    assert 'localStorage.getItem("constellation.includeDiagnostics") === "true"' in source
+    assert '?include_diagnostics=true' in source
+    assert 'renderDiagnostics(payload.diagnostics || null)' in source
+
+
 def test_preview_renderer_uses_details_but_markdown_export_stays_plain():
     source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
     report_source = Path("packages/astro-core/constellation_core/report.py").read_text()

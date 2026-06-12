@@ -7,18 +7,22 @@ const generateButton = document.getElementById("generate");
 const providerStatus = document.getElementById("provider-status");
 const reportStatusEl = document.getElementById("report_status");
 const downloadLink = document.getElementById("download");
+const diagnosticsPanel = document.getElementById("diagnostics-panel");
+const diagnosticsEl = document.getElementById("diagnostics");
 const refreshConstellationButton = document.getElementById("refresh_constellation");
 const constellationEl = document.getElementById("constellation");
 let currentMarkdown = "";
 let currentDownloadUrl = "";
 let currentSavedRelationship = null;
 let currentSynthesisPacket = null;
+let currentDiagnostics = null;
 let enhancementRequestId = 0;
 let searchResults = { a: [], b: [] };
 let placeSelections = { a: null, b: null };
 let shouldScrollToReport = false;
 const draftKey = "constellation.relationshipForm.v1";
 const constellationPatternsEmptyState = "Save two or more relationships to see recurring patterns across your constellation.";
+const diagnosticsEnabled = new URLSearchParams(window.location.search).get("include_diagnostics") === "true" || localStorage.getItem("constellation.includeDiagnostics") === "true";
 
 const defaultState = {
   a_name: "",
@@ -297,6 +301,31 @@ function markdownToHtml(md) {
   return html;
 }
 
+
+function renderDiagnostics(diagnostics) {
+  currentDiagnostics = diagnostics || null;
+  if (!diagnosticsPanel || !diagnosticsEl) return;
+  diagnosticsPanel.classList.toggle("hidden", !diagnosticsEnabled || !currentDiagnostics);
+  if (!diagnosticsEnabled || !currentDiagnostics) {
+    diagnosticsEl.textContent = "Diagnostics are disabled.";
+    return;
+  }
+  const compact = {
+    lead_pattern: currentDiagnostics.selected_lead_pattern,
+    top_ranked_patterns: currentDiagnostics.top_ranked_patterns,
+    included_asteroids: currentDiagnostics.asteroid_policy_summary?.included_asteroid_patterns || [],
+    suppressed_asteroids: currentDiagnostics.asteroid_policy_summary?.suppressed_asteroid_patterns || [],
+    advanced_asteroids_suppressed: currentDiagnostics.asteroid_policy_summary?.advanced_asteroids_suppressed || [],
+    persisted_motifs: currentDiagnostics.motif_persistence_summary || [],
+    house_system: currentDiagnostics.house_system,
+    chart_sanity: {
+      person_a: currentDiagnostics.person_a_chart_sanity,
+      person_b: currentDiagnostics.person_b_chart_sanity,
+    },
+  };
+  diagnosticsEl.textContent = JSON.stringify(compact, null, 2);
+}
+
 function setTab(which) {
   const showMarkdown = which === "markdown";
   preview.classList.remove("hidden");
@@ -354,11 +383,13 @@ function setReportStatus(message) {
 
 async function generateSavedReport(relationshipId) {
   setReportStatus("Preparing your map…");
-  const response = await fetch(`/saved-relationships/${relationshipId}/report`, { method: "POST" });
+  const diagnosticsQuery = diagnosticsEnabled ? "?include_diagnostics=true" : "";
+  const response = await fetch(`/saved-relationships/${relationshipId}/report${diagnosticsQuery}`, { method: "POST" });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "Could not generate saved report");
   const standardMarkdown = payload.markdown;
   currentSynthesisPacket = payload.synthesis_packet || null;
+  renderDiagnostics(payload.diagnostics || null);
   setReportMarkdown(standardMarkdown);
   setTab("preview");
   setReportStatus("Relationship Map ready.");

@@ -7,20 +7,24 @@ from collections import defaultdict
 
 from pydantic import BaseModel
 
-from .asteroid_policy import DEFAULT_REPORT_ASTEROIDS, RELATIONSHIP_RELEVANT_HOUSES
+from .asteroid_policy import ADVANCED_ASTEROIDS, DEFAULT_ASTEROID_ORB, DEFAULT_REPORT_ASTEROIDS, RELATIONSHIP_RELEVANT_HOUSES
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .natal_profile import SIGN_ELEMENTS, SIGN_MODES
 from .pattern_registry import convergence_category_for, get_pattern_metadata
-from .patterns import Pattern, detect_relationship_patterns
+from .patterns import ASTEROID_CENTRAL_TARGETS, ASTEROID_POINTS, Pattern, detect_relationship_patterns
 from .chart import DEFAULT_HOUSE_SYSTEM
 from .relationship import calculate_relationship
 from .schemas import (
     Aspect,
+    AsteroidPolicyDiagnostics,
     BirthData,
     Chart,
+    ChartSanityDiagnostics,
     RankedPatternSummary,
     RelationshipCalculation,
+    ReportDiagnostics,
+    ReportPatternDiagnostics,
     ReportSynthesisPacket,
 )
 from .weighting import communication_context_requested, public_life_context_requested, weight_patterns
@@ -733,13 +737,190 @@ def build_report_synthesis_packet(
         status=context.status if context else None,
         user_question=context.user_question if context else None,
         origin_story=context.origin_story if context else None,
-        house_system=(context.house_system if context and context.house_system else relationship.person_a.house_system),
+        house_system=relationship.person_a.house_system,
         top_ranked_patterns=[_pattern_summary(pattern) for pattern in patterns[:max_patterns]],
         lead_pattern=_pattern_summary(lead) if lead else None,
         friction_patterns=[_pattern_summary(pattern) for pattern in _friction_patterns(patterns)[:3]],
         repair_themes=_repair_theme_list(patterns),
         composite_themes=[_pattern_summary(pattern) for pattern in composite[:3]],
         chart_sanity_summary=_chart_check_body(relationship),
+    )
+
+
+
+
+def _placement_diagnostic(chart: Chart, body: str) -> str | None:
+    placement = chart.placements.get(body)
+    if placement is None:
+        return None
+    house = f", house {placement.house}" if placement.house is not None else ""
+    return f"{placement.sign} {placement.degree:.1f}°{house}"
+
+
+def _chart_sanity_diagnostics(chart: Chart) -> ChartSanityDiagnostics:
+    asc = chart.angles.get("ascendant")
+    mc = chart.angles.get("midheaven")
+    return ChartSanityDiagnostics(
+        name=chart.name,
+        time_known=chart.birth.time_known,
+        house_system=chart.house_system,
+        ascendant=f"{asc.sign} {asc.degree:.1f}°" if asc else None,
+        midheaven=f"{mc.sign} {mc.degree:.1f}°" if mc else None,
+        sun=_placement_diagnostic(chart, "sun"),
+        moon=_placement_diagnostic(chart, "moon"),
+        venus=_placement_diagnostic(chart, "venus"),
+        mars=_placement_diagnostic(chart, "mars"),
+        birthplace=chart.birth.birthplace_label or "manual coordinates",
+        timezone=chart.birth.timezone,
+        coordinates=f"{chart.birth.latitude:.4f}, {chart.birth.longitude:.4f}",
+        warnings=chart.warnings,
+    )
+
+
+def _pattern_diagnostics(
+    pattern: Pattern,
+    *,
+    raw_by_id: dict[str, Pattern] | None = None,
+    context: RelationshipContext | None = None,
+    patterns: list[Pattern] | None = None,
+) -> ReportPatternDiagnostics:
+    metadata = get_pattern_metadata(pattern.key)
+    raw = raw_by_id.get(pattern.id) if raw_by_id else None
+    return ReportPatternDiagnostics(
+        key=pattern.key,
+        title=pattern.title,
+        category=metadata.category or pattern.category,
+        tier=metadata.tier,
+        priority=raw.priority if raw is not None else pattern.priority,
+        adjusted_priority=pattern.priority,
+        confidence=pattern.confidence,
+        layer=pattern.layer,
+        lead_eligible=is_lead_eligible(pattern, context, patterns),
+        evidence=pattern.evidence,
+    )
+
+
+def _pattern_diagnostics_from_summary(summary: RankedPatternSummary) -> ReportPatternDiagnostics:
+    metadata = get_pattern_metadata(summary.key)
+    evidence = [summary.evidence_text] if summary.evidence_text else []
+    return ReportPatternDiagnostics(
+        key=summary.key,
+        title=summary.title,
+        category=summary.category,
+        tier=summary.tier,
+        priority=summary.priority,
+        adjusted_priority=summary.adjusted_priority,
+        confidence=summary.confidence,
+        layer=summary.layer,
+        lead_eligible=metadata.lead_eligible,
+        evidence=evidence,
+    )
+
+
+def _aspect_asteroids(aspect: Aspect) -> set[str]:
+    return {aspect.point_a.lower(), aspect.point_b.lower()} & ASTEROID_POINTS
+
+
+def _aspect_non_asteroids(aspect: Aspect) -> set[str]:
+    return {aspect.point_a.lower(), aspect.point_b.lower()} - ASTEROID_POINTS
+
+
+def _suppressed_asteroid_notes(relationship: RelationshipCalculation, included_keys: set[str]) -> list[str]:
+    notes: list[str] = []
+    for label, aspects in [("synastry", relationship.synastry_aspects), ("composite", relationship.composite_aspects)]:
+        for aspect in aspects:
+            asteroids = _aspect_asteroids(aspect)
+            if not asteroids:
+                continue
+            other_points = _aspect_non_asteroids(aspect)
+            asteroid = sorted(asteroids)[0]
+            other = sorted(other_points)[0] if other_points else "asteroid"
+            key_fragment = f".asteroid.{asteroid}.{other}"
+            if any(key_fragment in key for key in included_keys):
+                continue
+            if asteroid in ADVANCED_ASTEROIDS:
+                notes.append(
+                    f"{label}: {asteroid} {aspect.aspect} {other} suppressed as advanced asteroid (orb {aspect.orb:.2f})"
+                )
+            elif aspect.orb > DEFAULT_ASTEROID_ORB:
+                notes.append(
+                    f"{label}: {asteroid} {aspect.aspect} {other} suppressed outside default asteroid orb (orb {aspect.orb:.2f})"
+                )
+            elif other not in ASTEROID_CENTRAL_TARGETS:
+                notes.append(
+                    f"{label}: {asteroid} {aspect.aspect} {other} suppressed because target is not central"
+                )
+    return notes[:12]
+
+
+def _synthesis_packet_summary(packet: ReportSynthesisPacket) -> dict[str, object]:
+    return {
+        "house_system": packet.house_system,
+        "lead_pattern_key": packet.lead_pattern.key if packet.lead_pattern else None,
+        "top_ranked_pattern_keys": [pattern.key for pattern in packet.top_ranked_patterns],
+        "friction_pattern_keys": [pattern.key for pattern in packet.friction_patterns],
+        "composite_theme_keys": [pattern.key for pattern in packet.composite_themes],
+        "repair_theme_count": len(packet.repair_themes),
+        "has_chart_sanity_summary": bool(packet.chart_sanity_summary),
+    }
+
+
+def build_report_diagnostics(
+    relationship: RelationshipCalculation,
+    context: RelationshipContext | None = None,
+    *,
+    synthesis_packet: ReportSynthesisPacket | None = None,
+    max_patterns: int = 10,
+) -> ReportDiagnostics:
+    """Build compact developer diagnostics for deterministic report ranking and motif QA."""
+    from .motifs import select_motifs_for_persistence
+
+    raw_patterns = detect_relationship_patterns(relationship)
+    raw_by_id = {pattern.id: pattern for pattern in raw_patterns}
+    patterns = weight_patterns(raw_patterns, context)
+    central = _central_patterns(patterns, context)
+    composite = _composite_patterns(patterns)
+    lead = central[0] if central else (patterns[0] if patterns else None)
+    packet = synthesis_packet or build_report_synthesis_packet(relationship, context=context)
+    included_asteroids = [pattern for pattern in patterns if ".asteroid." in pattern.key or pattern.category.startswith("asteroid")]
+    included_keys = {pattern.key for pattern in included_asteroids}
+
+    return ReportDiagnostics(
+        house_system=relationship.person_a.house_system,
+        person_a_chart_sanity=_chart_sanity_diagnostics(relationship.person_a),
+        person_b_chart_sanity=_chart_sanity_diagnostics(relationship.person_b),
+        top_ranked_patterns=[
+            _pattern_diagnostics(pattern, raw_by_id=raw_by_id, context=context, patterns=patterns)
+            for pattern in patterns[:max_patterns]
+        ],
+        selected_lead_pattern=(
+            _pattern_diagnostics(lead, raw_by_id=raw_by_id, context=context, patterns=patterns) if lead else None
+        ),
+        overview_central_patterns=[
+            _pattern_diagnostics(pattern, raw_by_id=raw_by_id, context=context, patterns=patterns)
+            for pattern in central
+        ],
+        friction_patterns=[
+            _pattern_diagnostics(pattern, raw_by_id=raw_by_id, context=context, patterns=patterns)
+            for pattern in _friction_patterns(patterns)[:3]
+        ],
+        composite_themes=[
+            _pattern_diagnostics(pattern, raw_by_id=raw_by_id, context=context, patterns=patterns)
+            for pattern in composite[:3]
+        ],
+        motif_persistence_summary=[
+            _pattern_diagnostics_from_summary(pattern) for pattern in select_motifs_for_persistence(packet)
+        ],
+        asteroid_policy_summary=AsteroidPolicyDiagnostics(
+            included_asteroid_patterns=[
+                _pattern_diagnostics(pattern, raw_by_id=raw_by_id, context=context, patterns=patterns)
+                for pattern in included_asteroids[:8]
+            ],
+            suppressed_asteroid_patterns=_suppressed_asteroid_notes(relationship, included_keys),
+            default_report_asteroids=sorted(DEFAULT_REPORT_ASTEROIDS),
+            advanced_asteroids_suppressed=sorted(ADVANCED_ASTEROIDS),
+        ),
+        ai_synthesis_packet_summary=_synthesis_packet_summary(packet),
     )
 
 

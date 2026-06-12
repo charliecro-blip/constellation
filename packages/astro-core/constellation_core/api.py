@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date, datetime, time
 import json
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -31,8 +31,8 @@ from .motifs import list_relationship_motifs, replace_relationship_motifs
 from .patterns import Pattern, detect_relationship_patterns
 from .places import PlacePreset, list_place_presets
 from .relationship import calculate_relationship
-from .report import build_report_synthesis_packet, generate_relationship_report
-from .schemas import BirthData, Chart, RelationshipCalculation, ReportSynthesisPacket
+from .report import build_report_diagnostics, build_report_synthesis_packet, generate_relationship_report
+from .schemas import BirthData, Chart, RelationshipCalculation, ReportDiagnostics, ReportSynthesisPacket
 from .web import INDEX_PATH, STATIC_DIR
 from .weighting import weight_patterns
 
@@ -146,6 +146,7 @@ class SavedReportResponse(BaseModel):
     relationship_id: str
     markdown: str
     synthesis_packet: ReportSynthesisPacket | None = None
+    diagnostics: ReportDiagnostics | None = None
     calculation_engine_version: str
     interpretation_engine_version: str
     report_template_version: str
@@ -166,6 +167,12 @@ class RelationshipResponse(BaseModel):
 
 
 class ReportResponse(BaseModel):
+    markdown: str
+    synthesis_packet: ReportSynthesisPacket | None = None
+    diagnostics: ReportDiagnostics | None = None
+
+
+class ReportEnhancementResponse(BaseModel):
     markdown: str
     synthesis_packet: ReportSynthesisPacket | None = None
 
@@ -226,8 +233,11 @@ def relationship_endpoint(request: RelationshipRequest) -> RelationshipResponse:
     return RelationshipResponse(calculation=calculation, patterns=patterns)
 
 
-@app.post("/report", response_model=ReportResponse)
-def report_endpoint(request: RelationshipRequest) -> ReportResponse:
+@app.post("/report", response_model=ReportResponse, response_model_exclude_none=True)
+def report_endpoint(
+    request: RelationshipRequest,
+    include_diagnostics: bool = Query(False),
+) -> ReportResponse:
     calculation = calculate_relationship(
         request.person_a,
         request.person_b,
@@ -235,11 +245,16 @@ def report_endpoint(request: RelationshipRequest) -> ReportResponse:
     )
     report = generate_relationship_report(calculation, context=request.context)
     synthesis_packet = build_report_synthesis_packet(calculation, context=request.context)
-    return ReportResponse(markdown=report.to_markdown(), synthesis_packet=synthesis_packet)
+    diagnostics = (
+        build_report_diagnostics(calculation, context=request.context, synthesis_packet=synthesis_packet)
+        if include_diagnostics
+        else None
+    )
+    return ReportResponse(markdown=report.to_markdown(), synthesis_packet=synthesis_packet, diagnostics=diagnostics)
 
 
-@app.post("/report/enhance", response_model=ReportResponse)
-def enhance_report_endpoint(request: ReportEnhancementRequest) -> ReportResponse:
+@app.post("/report/enhance", response_model=ReportEnhancementResponse)
+def enhance_report_endpoint(request: ReportEnhancementRequest) -> ReportEnhancementResponse:
     try:
         enhanced_markdown = enhance_report_markdown(request)
     except ValueError as exc:
@@ -248,7 +263,7 @@ def enhance_report_endpoint(request: ReportEnhancementRequest) -> ReportResponse
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except EnhancementProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    return ReportResponse(markdown=enhanced_markdown)
+    return ReportEnhancementResponse(markdown=enhanced_markdown)
 
 
 @app.post("/birth-profiles", response_model=BirthProfileResponse)
@@ -388,9 +403,11 @@ def get_saved_relationship_motifs(
     return list_relationship_motifs(session, relationship_id)
 
 
-@app.post("/saved-relationships/{relationship_id}/report", response_model=SavedReportResponse)
+@app.post("/saved-relationships/{relationship_id}/report", response_model=SavedReportResponse, response_model_exclude_none=True)
 def generate_saved_relationship_report(
-    relationship_id: str, session: Session = Depends(get_session)
+    relationship_id: str,
+    include_diagnostics: bool = Query(False),
+    session: Session = Depends(get_session),
 ) -> SavedReportResponse:
     relationship = session.get(SavedRelationship, relationship_id)
     if relationship is None:
@@ -440,11 +457,17 @@ def generate_saved_relationship_report(
     replace_relationship_motifs(session, relationship, synthesis_packet)
     session.commit()
     session.refresh(saved)
+    diagnostics = (
+        build_report_diagnostics(calc, context=context, synthesis_packet=synthesis_packet)
+        if include_diagnostics
+        else None
+    )
     return SavedReportResponse(
         id=saved.id,
         relationship_id=saved.relationship_id,
         markdown=saved.markdown,
         synthesis_packet=synthesis_packet,
+        diagnostics=diagnostics,
         calculation_engine_version=saved.calculation_engine_version,
         interpretation_engine_version=saved.interpretation_engine_version,
         report_template_version=saved.report_template_version,
