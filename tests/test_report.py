@@ -690,3 +690,113 @@ def test_generic_composite_sun_moon_texture_is_omitted_without_specific_anchor()
     assert "Composite Sun in" not in composite_block
     assert "Composite Moon in" not in composite_block
     assert "baseline" not in composite_block.lower()
+
+
+def test_synthesis_packet_contains_ranked_patterns_and_lead_pattern():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="sun", point_b="moon", aspect="conjunction", exact_angle=0, orb=0.5),
+            Aspect(point_a="moon", point_b="venus", aspect="trine", exact_angle=120, orb=0.8),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+
+    packet = generate_relationship_report(relationship).synthesis_packet
+
+    assert packet is not None
+    assert packet.top_ranked_patterns
+    assert len(packet.top_ranked_patterns) <= 7
+    assert packet.lead_pattern is not None
+    assert packet.lead_pattern.key == "synastry.sun_moon"
+    assert packet.top_ranked_patterns[0].priority >= packet.top_ranked_patterns[-1].priority
+    assert packet.top_ranked_patterns[0].reason
+
+
+def test_synthesis_packet_respects_convergence_adjusted_ordering():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="venus", point_b="mars", aspect="conjunction", exact_angle=0, orb=0.5),
+            Aspect(point_a="mars", point_b="venus", aspect="conjunction", exact_angle=0, orb=0.5),
+            Aspect(point_a="moon", point_b="saturn", aspect="square", exact_angle=90, orb=0.5),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+
+    packet = generate_relationship_report(relationship).synthesis_packet
+
+    assert packet is not None
+    keys = [pattern.key for pattern in packet.top_ranked_patterns]
+    assert keys.index("synastry.venus_mars") < keys.index("synastry.moon_saturn")
+    assert packet.top_ranked_patterns[0].adjusted_priority == packet.top_ranked_patterns[0].priority
+
+
+def test_synthesis_packet_excludes_suppressed_default_gated_asteroid_patterns():
+    from constellation_core.patterns import Pattern
+    from constellation_core.report import build_report_synthesis_packet
+
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    lead = Pattern(
+        id="sun_moon",
+        layer="synastry",
+        category="emotional_body",
+        priority=92,
+        title="A's Sun conjunct B's Moon",
+        evidence=["A's Sun conjunct B's Moon; orb 0.50"],
+        key="synastry.sun_moon",
+    )
+    asteroid = Pattern(
+        id="juno_venus",
+        layer="synastry",
+        category="asteroid_support",
+        priority=69,
+        title="A's Juno conjunct B's Venus",
+        evidence=["A's Juno conjunct B's Venus; orb 1.00"],
+        key="synastry.asteroid.juno.venus",
+    )
+
+    packet = build_report_synthesis_packet(relationship, [lead, asteroid], [lead], [], None)
+
+    assert [pattern.key for pattern in packet.top_ranked_patterns] == ["synastry.sun_moon"]
+
+
+def test_ai_enhancement_user_prompt_embeds_synthesis_packet_priority_order():
+    from constellation_core.ai_enhancement import build_enhancement_user_prompt
+    from constellation_core.schemas import RankedPatternSummary, ReportSynthesisPacket
+
+    lead = RankedPatternSummary(
+        key="synastry.sun_moon",
+        title="A's Sun conjunct B's Moon",
+        category="emotional_recognition",
+        tier=1,
+        priority=100,
+        adjusted_priority=100,
+        confidence="high",
+        layer="synastry",
+        evidence_text="A's Sun conjunct B's Moon; orb 0.50",
+        reason="Core luminary recognition.",
+    )
+    packet = ReportSynthesisPacket(top_ranked_patterns=[lead], lead_pattern=lead)
+
+    prompt = build_enhancement_user_prompt("# Relationship Field Map", synthesis_packet=packet)
+
+    assert "Deterministic synthesis packet" in prompt
+    assert "top_ranked_patterns" in prompt
+    assert "lead_pattern" in prompt
+    assert "synastry.sun_moon" in prompt
+    assert "priority order" in prompt
+    assert "Do not calculate new astrology" in prompt

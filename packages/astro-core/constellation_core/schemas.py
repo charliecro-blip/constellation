@@ -112,6 +112,37 @@ class HouseOverlay(BaseModel):
     body_longitude: float
 
 
+class RankedPatternSummary(BaseModel):
+    """Compact deterministic pattern priority for AI report synthesis."""
+
+    key: str
+    title: str
+    category: str
+    tier: int | None = None
+    priority: int
+    adjusted_priority: int
+    confidence: str | None = None
+    layer: str
+    evidence_text: str
+    reason: str | None = None
+
+
+class ReportSynthesisPacket(BaseModel):
+    """Deterministic relationship-report priorities for optional AI prose enhancement."""
+
+    relationship_type: str | None = None
+    status: str | None = None
+    user_question: str | None = None
+    origin_story: str | None = None
+    house_system: str | None = None
+    top_ranked_patterns: list[RankedPatternSummary] = Field(default_factory=list)
+    lead_pattern: RankedPatternSummary | None = None
+    friction_patterns: list[RankedPatternSummary] = Field(default_factory=list)
+    repair_themes: list[str] = Field(default_factory=list)
+    composite_themes: list[RankedPatternSummary] = Field(default_factory=list)
+    chart_sanity_summary: str | None = None
+
+
 class RelationshipCalculation(BaseModel):
     person_a: Chart
     person_b: Chart
