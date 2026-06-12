@@ -39,12 +39,25 @@ CATEGORY_LABELS = {
     "supporting_texture": "Supporting Texture",
 }
 
+CATEGORY_DESCRIPTIONS = {
+    "emotional_recognition": "Where someone feels familiar, legible, or emotionally known.",
+    "erotic_charge": "Where attraction, pursuit, chemistry, or creative heat concentrates.",
+    "stability_container": "Where commitment, time, limits, or responsibility shape the bond.",
+    "trust_depth": "Where vulnerability, honesty, and deeper psychological contact are emphasized.",
+    "communication_heat": "Where language, timing, nervous systems, or conflict patterns matter.",
+    "private_roots": "Where home, family patterns, memory, or attachment history are activated.",
+    "devotion_contract": "Where loyalty, vows, care, or relational obligation become central.",
+    "projection_mirror": "Where the other person reflects disowned or amplified parts of the self.",
+    "repair_capacity": "Where the bond shows pathways for working through friction.",
+}
 
-class StructuredMotifInput(TypedDict):
+
+class StructuredMotifInput(TypedDict, total=False):
     key: str
     category: str
     title: str
     relationship_id: str
+    evidence_text: str | None
 
 
 MOTIF_KEYWORDS = [
@@ -194,6 +207,22 @@ def _category_label(category: str) -> str:
     return CATEGORY_LABELS.get(category, category.replace("_", " ").title())
 
 
+def _category_description(category: str | None) -> str:
+    if not category:
+        return "A recurring relationship motif that may become clearer as more maps are generated."
+    return CATEGORY_DESCRIPTIONS.get(
+        category,
+        "A recurring relationship motif that may become clearer as more maps are generated.",
+    )
+
+
+def _compact_evidence(text: str | None) -> str | None:
+    cleaned = " ".join((text or "").strip().split())
+    if not cleaned:
+        return None
+    return cleaned if len(cleaned) <= 180 else f"{cleaned[:177].rstrip()}…"
+
+
 def _summary_label(label: str) -> str:
     return label.replace(" / ", "/").lower()
 
@@ -213,6 +242,7 @@ def build_constellation_pattern_summary(
             "known_theme_counts": [],
             "recurring_motifs": [],
             "top_motif_categories": [],
+            "relationship_motifs": [],
             "plain_language_summary": "",
         }
 
@@ -224,8 +254,10 @@ def build_constellation_pattern_summary(
 
     motif_people: dict[str, list[str]] = defaultdict(list)
     motif_relationship_ids: dict[str, list[str]] = defaultdict(list)
+    motif_evidence: dict[str, list[str]] = defaultdict(list)
     motif_labels: dict[str, str] = {}
     motif_categories: dict[str, str] = {}
+    relationship_motifs: list[dict[str, object]] = []
     category_relationships: dict[str, set[str]] = defaultdict(set)
     has_structured_motifs = any(item.structured_motifs for item in relationships)
 
@@ -240,10 +272,38 @@ def build_constellation_pattern_summary(
                     continue
                 seen_in_relationship.add(motif_id)
                 motif_people[motif_id].append(display_name)
-                motif_relationship_ids[motif_id].append(motif["relationship_id"])
+                motif_relationship_ids[motif_id].append(motif.get("relationship_id", relationship_key))
+                evidence = _compact_evidence(motif.get("evidence_text"))
+                if evidence and evidence not in motif_evidence[motif_id]:
+                    motif_evidence[motif_id].append(evidence)
                 motif_labels[motif_id] = _category_label(motif["category"])
                 motif_categories[motif_id] = motif["category"]
                 category_relationships[motif["category"]].add(relationship_key)
+            if item.structured_motifs:
+                seen_relationship_titles: set[tuple[str, str]] = set()
+                compact_motifs = []
+                for motif in item.structured_motifs:
+                    title = motif.get("title") or _category_label(motif["category"])
+                    identity = (motif["category"], title)
+                    if identity in seen_relationship_titles:
+                        continue
+                    seen_relationship_titles.add(identity)
+                    compact_motifs.append(
+                        {
+                            "title": title,
+                            "category": motif["category"],
+                            "category_label": _category_label(motif["category"]),
+                            "description": _category_description(motif["category"]),
+                            "evidence": _compact_evidence(motif.get("evidence_text")),
+                        }
+                    )
+                relationship_motifs.append(
+                    {
+                        "relationship_id": relationship_key,
+                        "label": display_name,
+                        "motifs": compact_motifs[:4],
+                    }
+                )
     else:
         motif_lookup = {motif["id"]: motif for motif in MOTIF_KEYWORDS}
         for index, item in enumerate(relationships, start=1):
@@ -269,6 +329,9 @@ def build_constellation_pattern_summary(
                     "people": people,
                     "summary_label": fallback.get("summary_label", _summary_label(label)),
                     "category": motif_categories.get(motif_id),
+                    "category_label": _category_label(motif_categories.get(motif_id) or motif_id),
+                    "description": _category_description(motif_categories.get(motif_id) or motif_id),
+                    "evidence": motif_evidence.get(motif_id, [])[:2],
                     "relationship_ids": motif_relationship_ids.get(motif_id, []),
                 }
             )
@@ -276,7 +339,12 @@ def build_constellation_pattern_summary(
     recurring_motifs.sort(key=lambda item: (-item["count"], item["label"]))
 
     top_motif_categories = [
-        {"category": category, "label": _category_label(category), "count": len(relationship_ids)}
+        {
+            "category": category,
+            "label": _category_label(category),
+            "description": _category_description(category),
+            "count": len(relationship_ids),
+        }
         for category, relationship_ids in sorted(
             category_relationships.items(), key=lambda pair: (-len(pair[1]), _category_label(pair[0]))
         )[:5]
@@ -327,5 +395,6 @@ def build_constellation_pattern_summary(
         "known_theme_counts": known_theme_counts,
         "recurring_motifs": recurring_motifs,
         "top_motif_categories": top_motif_categories,
+        "relationship_motifs": relationship_motifs[:6],
         "plain_language_summary": plain_summary,
     }

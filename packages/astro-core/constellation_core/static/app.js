@@ -21,7 +21,18 @@ let searchResults = { a: [], b: [] };
 let placeSelections = { a: null, b: null };
 let shouldScrollToReport = false;
 const draftKey = "constellation.relationshipForm.v1";
-const constellationPatternsEmptyState = "Save two or more relationships to see recurring patterns across your constellation.";
+const constellationPatternsEmptyState = "Your constellation is still forming. Save a relationship and generate a Relationship Map to begin seeing recurring patterns.";
+const categoryDescriptions = {
+  emotional_recognition: "Where someone feels familiar, legible, or emotionally known.",
+  erotic_charge: "Where attraction, pursuit, chemistry, or creative heat concentrates.",
+  stability_container: "Where commitment, time, limits, or responsibility shape the bond.",
+  trust_depth: "Where vulnerability, honesty, and deeper psychological contact are emphasized.",
+  communication_heat: "Where language, timing, nervous systems, or conflict patterns matter.",
+  private_roots: "Where home, family patterns, memory, or attachment history are activated.",
+  devotion_contract: "Where loyalty, vows, care, or relational obligation become central.",
+  projection_mirror: "Where the other person reflects disowned or amplified parts of the self.",
+  repair_capacity: "Where the bond shows pathways for working through friction.",
+};
 const diagnosticsEnabled = new URLSearchParams(window.location.search).get("include_diagnostics") === "true" || localStorage.getItem("constellation.includeDiagnostics") === "true";
 
 const defaultState = {
@@ -439,46 +450,131 @@ function renderCountList(items, labelKey) {
   return `<ul class="pattern-list">${items.map((item) => `<li><span>${escapeHtml(item[labelKey])}</span><strong>${item.count}</strong></li>`).join("")}</ul>`;
 }
 
+function categoryDescription(category, fallback = "") {
+  return fallback || categoryDescriptions[category] || "A recurring relationship motif that may become clearer as more maps are generated.";
+}
+
+function categoryLabel(motif) {
+  return motif.category_label || motif.label || (motif.category || "motif").replaceAll("_", " ");
+}
+
+function savedMapCountLabel(count) {
+  return count === 1 ? "Appears in 1 saved map" : `Appears in ${count} saved maps`;
+}
+
+function renderEvidence(evidence) {
+  const snippets = Array.isArray(evidence) ? evidence.filter(Boolean).slice(0, 2) : (evidence ? [evidence] : []);
+  if (!snippets.length) return "";
+  return `<div class="motif-evidence" aria-label="Evidence snippets">${snippets.map((snippet) => `<p>${escapeHtml(snippet)}</p>`).join("")}</div>`;
+}
+
+function renderRecurringMotifCard(motif) {
+  const people = (motif.people || []).filter(Boolean);
+  const category = motif.category || motif.id || "motif";
+  const description = categoryDescription(category, motif.description);
+  return `
+    <article class="motif-card">
+      <div class="motif-card-header">
+        <div>
+          <h4>${escapeHtml(motif.label)}</h4>
+          <p class="motif-category">${escapeHtml(categoryLabel(motif))}</p>
+        </div>
+        <span class="motif-count">${escapeHtml(String(motif.count))}</span>
+      </div>
+      <p class="motif-map-count">${escapeHtml(savedMapCountLabel(motif.count))}</p>
+      <p class="motif-people"><span>Appears in:</span> ${escapeHtml(people.join(" · ") || "Saved maps")}</p>
+      <p>${escapeHtml(description)}</p>
+      ${renderEvidence(motif.evidence)}
+    </article>`;
+}
+
+function renderCategoryChips(categories) {
+  if (!categories || !categories.length) {
+    return '<p class="small-note">Generate Relationship Maps for your saved relationships to begin seeing recurring patterns.</p>';
+  }
+  return `<div class="category-chip-list">${categories.map((item) => `
+    <div class="category-chip">
+      <strong>${escapeHtml(item.label)}</strong>
+      <span>${escapeHtml(categoryDescription(item.category, item.description))}</span>
+    </div>`).join("")}</div>`;
+}
+
+function renderRelationshipMotifGroups(groups) {
+  if (!groups || !groups.length) return "";
+  return `
+    <section class="relationship-motif-section">
+      <h3>Relationship-specific motifs</h3>
+      <p class="small-note">A smaller view of motifs inside individual maps. These are not ordered as better or worse.</p>
+      <div class="relationship-motif-list">${groups.map((group) => `
+        <div class="relationship-motif-group">
+          <h4>${escapeHtml(group.label)}</h4>
+          <ul>${(group.motifs || []).map((motif) => `
+            <li>
+              <strong>${escapeHtml(motif.title)}</strong>
+              <span>${escapeHtml(motif.category_label || categoryLabel(motif))}</span>
+            </li>`).join("")}</ul>
+        </div>`).join("")}</div>
+    </section>`;
+}
+
 function renderConstellationPatterns(summary) {
   if (!summary) {
-    return `<section class="pattern-summary"><h3>Recurring patterns</h3><p class="small-note">Pattern synthesis is unavailable right now. Saved relationship snapshots are still shown below.</p></section>`;
-  }
-  if (!summary.has_enough_data) {
-    return `<section class="pattern-summary"><h3>Recurring patterns</h3><p class="small-note">${escapeHtml(summary.empty_state || constellationPatternsEmptyState)}</p></section>`;
+    return `<section class="pattern-summary"><h3>Constellation Patterns</h3><p class="small-note">Pattern synthesis is unavailable right now. Saved relationship snapshots are still shown below.</p></section>`;
   }
 
-  const motifCards = summary.recurring_motifs.length
-    ? summary.recurring_motifs.map((motif) => `<div class="pattern-card"><strong>${escapeHtml(motif.label)}</strong><div class="small-note">Appears in: ${escapeHtml(motif.people.join(", "))}</div><div class="small-note">${motif.count} saved maps</div></div>`).join("")
-    : '<p class="small-note">No structured motifs repeat across saved maps yet. Generate maps for saved relationships to let recurring patterns emerge.</p>';
+  if (!summary.relationship_count) {
+    return `<section class="pattern-summary constellation-empty"><h3>Constellation Patterns</h3><h4>Your constellation is still forming.</h4><p class="small-note">Save a relationship and generate a Relationship Map to begin seeing recurring patterns.</p></section>`;
+  }
+
+  if (!summary.has_enough_data) {
+    return `<section class="pattern-summary constellation-empty"><h3>Constellation Patterns</h3><h4>Still forming</h4><p class="small-note">One map is active. Add more saved maps to see what repeats across your field.</p></section>`;
+  }
+
+  const hasMotifs = (summary.recurring_motifs && summary.recurring_motifs.length) || (summary.top_motif_categories && summary.top_motif_categories.length);
+  const motifCards = summary.recurring_motifs && summary.recurring_motifs.length
+    ? summary.recurring_motifs.map(renderRecurringMotifCard).join("")
+    : '<p class="small-note">Generate Relationship Maps for your saved relationships to begin seeing recurring patterns.</p>';
   const themeLine = summary.known_theme_counts.length
     ? `<p class="small-note">Recurring named themes: ${escapeHtml(summary.known_theme_counts.map((item) => item.theme).join(", "))}.</p>`
     : '<p class="small-note">No recurring named themes have been saved yet.</p>';
-  const categoryLine = summary.top_motif_categories && summary.top_motif_categories.length
-    ? `<p class="small-note">Your saved maps currently emphasize: ${escapeHtml(summary.top_motif_categories.map((item) => item.label).join(", "))}.</p>`
-    : '<p class="small-note">Generate maps for saved relationships to reveal structured motif categories.</p>';
 
   return `
     <section class="pattern-summary">
-      <h3>Recurring patterns</h3>
+      <div class="pattern-kicker">Constellation Patterns</div>
+      <h3>What keeps showing up in your relational field?</h3>
       <p class="small-note">${summary.relationship_count} saved relationships analyzed.</p>
-      <p>${escapeHtml(summary.plain_language_summary)}</p>
-      <div class="pattern-grid">
+
+      <section class="pattern-section">
+        <h3>Currently emerging</h3>
+        <p>${escapeHtml(summary.plain_language_summary || "Your saved maps are beginning to form a constellation.")}</p>
+        ${renderCategoryChips(summary.top_motif_categories)}
+      </section>
+
+      <section class="pattern-section">
+        <h3>Recurring motifs</h3>
+        <div class="motif-card-list">${motifCards}</div>
+      </section>
+
+      ${renderRelationshipMotifGroups(summary.relationship_motifs)}
+
+      <section class="pattern-section pattern-grid">
         <div>
-          <h4>Relationship types</h4>
+          <h3>Relationship types</h3>
           ${renderCountList(summary.relationship_type_counts, "label")}
         </div>
         <div>
-          <h4>Recurring themes</h4>
+          <h3>Recurring themes</h3>
           ${themeLine}
         </div>
-      </div>
-      <div>
-        <h4>Currently emerging</h4>
-        ${categoryLine}
-        <div class="pattern-card-list">${motifCards}</div>
-      </div>
+      </section>
+
+      <section class="pattern-section still-forming">
+        <h3>Still forming</h3>
+        <p class="small-note">${hasMotifs ? "Generate more Relationship Maps to clarify what repeats." : "Generate Relationship Maps for your saved relationships to begin seeing recurring patterns."}</p>
+      </section>
     </section>`;
 }
+
 
 async function loadConstellation() {
   constellationEl.innerHTML = "Loading saved relationships…";

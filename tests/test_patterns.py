@@ -365,6 +365,10 @@ def test_constellation_patterns_prefer_structured_motifs_and_group_people_by_cat
     assert summary["top_motif_categories"][0] == {
         "category": "stability_container",
         "label": "Stability / Container",
+        "description": "Where commitment, time, limits, or responsibility shape the bond.",
         "count": 2,
     }
+    assert motifs["stability_container"]["description"] == (
+        "Where commitment, time, limits, or responsibility shape the bond."
+    )
     assert "Your saved maps currently emphasize" in summary["plain_language_summary"]
