@@ -136,6 +136,65 @@ class RankedPatternSummary(BaseModel):
     interpretive_reason: str | None = None
 
 
+
+class ReportPatternDiagnostics(BaseModel):
+    """Compact developer-facing view of a ranked deterministic pattern."""
+
+    key: str
+    title: str
+    category: str
+    tier: int | None = None
+    priority: int
+    adjusted_priority: int | None = None
+    confidence: str
+    layer: str
+    lead_eligible: bool
+    evidence: list[str] = Field(default_factory=list)
+
+
+class ChartSanityDiagnostics(BaseModel):
+    """Small chart-calculation summary for diagnostics, without raw chart dumps."""
+
+    name: str
+    time_known: bool
+    house_system: str
+    ascendant: str | None = None
+    midheaven: str | None = None
+    sun: str | None = None
+    moon: str | None = None
+    venus: str | None = None
+    mars: str | None = None
+    birthplace: str | None = None
+    timezone: str
+    coordinates: str
+    warnings: list[str] = Field(default_factory=list)
+
+
+class AsteroidPolicyDiagnostics(BaseModel):
+    """Developer-facing summary of default versus gated asteroid surfacing."""
+
+    included_asteroid_patterns: list[ReportPatternDiagnostics] = Field(default_factory=list)
+    suppressed_asteroid_patterns: list[str] = Field(default_factory=list)
+    default_report_asteroids: list[str] = Field(default_factory=list)
+    advanced_asteroids_suppressed: list[str] = Field(default_factory=list)
+
+
+class ReportDiagnostics(BaseModel):
+    """Compact deterministic report diagnostics for builder QA."""
+
+    house_system: str
+    person_a_chart_sanity: ChartSanityDiagnostics
+    person_b_chart_sanity: ChartSanityDiagnostics
+    top_ranked_patterns: list[ReportPatternDiagnostics] = Field(default_factory=list)
+    selected_lead_pattern: ReportPatternDiagnostics | None = None
+    overview_central_patterns: list[ReportPatternDiagnostics] = Field(default_factory=list)
+    friction_patterns: list[ReportPatternDiagnostics] = Field(default_factory=list)
+    composite_themes: list[ReportPatternDiagnostics] = Field(default_factory=list)
+    motif_persistence_summary: list[ReportPatternDiagnostics] = Field(default_factory=list)
+    asteroid_policy_summary: AsteroidPolicyDiagnostics
+    ai_synthesis_packet_summary: dict[str, object] | None = None
+
+
 class ReportSynthesisPacket(BaseModel):
     """Deterministic priorities the AI enhancer should preserve."""
 

@@ -154,6 +154,47 @@ def test_report_endpoint():
     assert payload["synthesis_packet"]["top_ranked_patterns"]
 
 
+def test_report_endpoint_can_include_compact_diagnostics():
+    response = client.post(
+        "/report?include_diagnostics=true",
+        json={
+            "person_a": PERSON_A,
+            "person_b": PERSON_B,
+            "house_system": "whole_sign",
+            "context": {"relationship_type": "romantic", "status": "current"},
+        },
+    )
+
+    assert response.status_code == 200
+    diagnostics = response.json()["diagnostics"]
+    assert diagnostics["house_system"] == "whole_sign"
+    assert diagnostics["person_a_chart_sanity"]["house_system"] == "whole_sign"
+    assert diagnostics["person_b_chart_sanity"]["name"] == "Person B"
+    assert diagnostics["top_ranked_patterns"]
+    assert {"key", "category", "tier", "priority", "adjusted_priority", "confidence", "layer", "lead_eligible", "evidence"}.issubset(diagnostics["top_ranked_patterns"][0])
+    assert diagnostics["selected_lead_pattern"]
+    assert "default_report_asteroids" in diagnostics["asteroid_policy_summary"]
+    assert "advanced_asteroids_suppressed" in diagnostics["asteroid_policy_summary"]
+    assert "included_asteroid_patterns" in diagnostics["asteroid_policy_summary"]
+    assert diagnostics["motif_persistence_summary"]
+    assert diagnostics["ai_synthesis_packet_summary"]["lead_pattern_key"]
+
+
+def test_report_endpoint_diagnostics_are_optional_for_normal_generation():
+    response = client.post(
+        "/report",
+        json={
+            "person_a": PERSON_A,
+            "person_b": PERSON_B,
+            "house_system": "whole_sign",
+            "context": {"relationship_type": "romantic", "status": "current"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert "diagnostics" not in response.json()
+
+
 def test_report_enhance_unavailable_without_openai_key(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
@@ -366,3 +407,13 @@ def test_saved_relationship_preserves_selected_house_system_in_report():
     assert "House system: Whole Sign" in report.json()["markdown"]
     assert "Birthplace: San Antonio, TX" in report.json()["markdown"]
     assert report.json()["synthesis_packet"]["house_system"] == "whole_sign"
+    assert "diagnostics" not in report.json()
+
+    diagnostic_report = client.post(f"/saved-relationships/{rel.json()['id']}/report?include_diagnostics=true")
+    assert diagnostic_report.status_code == 200
+    diagnostics = diagnostic_report.json()["diagnostics"]
+    assert diagnostics["house_system"] == "whole_sign"
+    assert diagnostics["top_ranked_patterns"]
+    assert diagnostics["selected_lead_pattern"]
+    assert diagnostics["asteroid_policy_summary"]["default_report_asteroids"]
+    assert diagnostics["motif_persistence_summary"]
