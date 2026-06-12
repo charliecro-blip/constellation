@@ -1,0 +1,21 @@
+# Pattern Taxonomy
+
+Pattern categories group different astrological signatures into relationship motifs. Categories help the report synthesize repeated evidence instead of listing disconnected aspects.
+
+| Category | Describes | Common indicators | Shadow / failure mode | Repair principle | Usually leads? |
+| --- | --- | --- | --- | --- | --- |
+| `emotional_recognition` | Feeling seen, known, or emotionally met. | Sun/Moon, Moon/Moon, luminaries to angles. | Assuming recognition equals compatibility; emotional projection. | Name needs explicitly and test felt familiarity against behavior. | Yes. |
+| `erotic_charge` | Attraction, pursuit, desire, and embodied chemistry. | Venus/Mars, Venus or Mars to angles, 5th/8th overlays. | Chemistry outruns trust or timing. | Slow the pace enough for consent, clarity, and consistency. | Yes. |
+| `projection_mirror` | Mutual fascination, mirroring, and intensified self-encounter. | Pluto contacts, Neptune contacts, 7th/8th emphasis. | Obsession, fantasy, control, or disappointment. | Separate what is felt from what is known and check assumptions. | Sometimes, if convergent. |
+| `private_roots` | Home, belonging, family patterning, and emotional base. | 4th-house overlays, Moon/IC themes, composite 4th emphasis. | Regression, caretaking scripts, or privacy conflicts. | Build explicit agreements around safety, home, and family boundaries. | Sometimes. |
+| `trust_depth` | Intimacy, disclosure, vulnerability, and shared risk. | 8th-house overlays, Pluto, Moon/Pluto, Saturn support. | Testing, secrecy, power struggles, or fear of dependence. | Move at the speed of earned trust and make repair concrete. | Sometimes. |
+| `communication_heat` | Mental rapport, argument style, and activation through words. | Mercury/Mars, Mercury/Uranus, 3rd-house themes. | Debate becomes defensiveness or contempt. | Use timing, reflection, and specific requests rather than escalation. | Contextually. |
+| `stability_container` | Commitment pressure, endurance, duty, and structure. | Saturn to Moon/Venus/Sun/angles, composite Saturn. | Coldness, burden, fear, or obligation without warmth. | Turn responsibility into reliable care, not control. | Yes. |
+| `idealization` | Dream, longing, inspiration, and spiritual or romantic projection. | Venus/Neptune, Moon/Neptune, Neptune to angles. | Seeing the fantasy instead of the person. | Keep tenderness while verifying reality and boundaries. | Rarely alone. |
+| `volatility` | Excitement, disruption, freedom needs, and unstable rhythm. | Venus/Uranus, Moon/Uranus, Mars/Uranus. | Hot-cold cycles or nervous-system unpredictability. | Create room for autonomy while agreeing on steadiness. | Rarely alone. |
+| `wounding_healing` | Tender spots, repair, mentorship, and old pain activated. | Chiron contacts, 12th-house sensitivity, Moon/Chiron. | Making pain into identity or assigning one person as healer. | Hold compassion with limits; repair cannot require self-erasure. | Rarely alone. |
+| `devotion_contract` | Chosen loyalty, vows, duties, and relational agreements. | Juno, Saturn, 7th-house emphasis, ruler contacts. | Duty replaces desire or consent. | Make commitments explicit, revisable, and mutual. | Yes when well-supported. |
+| `familiar_pull` | Recognition, repetition, ancestry, or “I know this pattern” feeling. | Nodes, South Node, Moon, 4th/12th overlays. | Calling familiarity fate and ignoring present evidence. | Treat pull as information, not instruction. | Sometimes. |
+| `repair_capacity` | The pair’s ability to metabolize friction. | Saturn with benefic support, Mercury links, composite stabilizers. | Repair is discussed but not practiced. | Translate insight into behavior, timing, apology, and follow-through. | Contextually. |
+| `public_life` | Visibility, work, reputation, and shared worldly role. | 10th/MC overlays, Sun/MC, Saturn/MC, composite 10th. | Relationship becomes performance or hierarchy. | Clarify private bond versus public function. | Only with relevant context. |
+| `supporting_texture` | Secondary color that enriches but should not dominate. | Jupiter, minor overlays, wide contacts, secondary aspects. | Clutter, over-interpretation, or false equivalence. | Keep it brief and subordinate to the main story. | No. |

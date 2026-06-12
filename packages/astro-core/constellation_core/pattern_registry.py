@@ -1,4 +1,9 @@
-"""Explicit registry for relationship-pattern report prioritization doctrine."""
+"""Explicit registry for relationship-pattern report prioritization doctrine.
+
+See docs/astrology_doctrine/pattern_taxonomy.md and
+docs/astrology_doctrine/report_prioritization.md for the doctrine behind
+categories, tiers, and lead eligibility.
+"""
 
 from __future__ import annotations
 

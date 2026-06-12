@@ -1,4 +1,8 @@
-"""Persistence helpers for structured relationship motifs."""
+"""Persistence helpers for structured relationship motifs.
+
+See docs/astrology_doctrine/README.md for how persisted motifs fit into the
+relationship-doctrine flow.
+"""
 
 from __future__ import annotations
 

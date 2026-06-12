@@ -1,4 +1,8 @@
-"""Optional AI prose enhancement for deterministic relationship reports."""
+"""Optional AI prose enhancement for deterministic relationship reports.
+
+See docs/astrology_doctrine/report_voice_guide.md for the prose doctrine:
+AI may synthesize or rewrite, but must not calculate or invent astrology.
+"""
 
 from __future__ import annotations
 

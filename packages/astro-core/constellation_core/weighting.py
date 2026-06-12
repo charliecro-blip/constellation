@@ -1,7 +1,9 @@
 """Relationship-type weighting for detected patterns.
 
 The detector identifies what is present. Weighting decides what should be
-emphasized for this particular relationship type.
+emphasized for this particular relationship type. See
+docs/astrology_doctrine/synastry_weighting.md and
+docs/astrology_doctrine/report_prioritization.md for the doctrine.
 """
 
 from __future__ import annotations

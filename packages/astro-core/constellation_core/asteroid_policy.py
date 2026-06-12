@@ -1,8 +1,9 @@
 """Policy for asteroid calculation versus default report surfacing.
 
 Constellation may calculate more minor points than the default Relationship Map
-should interpret.  These constants keep the MVP report layer narrow while leaving
-advanced points available internally for a later explicit advanced mode.
+should interpret. These constants keep the MVP report layer narrow while leaving
+advanced points available internally for a later explicit advanced mode. See
+docs/astrology_doctrine/asteroid_policy.md for the gating doctrine.
 """
 
 from __future__ import annotations
