@@ -135,7 +135,8 @@ def test_report_endpoint():
         },
     )
     assert response.status_code == 200
-    markdown = response.json()["markdown"]
+    payload = response.json()
+    markdown = payload["markdown"]
     assert "Relationship Field Map" in markdown
     assert "Overview" in markdown
     assert "How Person A Activates Person B" in markdown
@@ -149,6 +150,8 @@ def test_report_endpoint():
     assert "Context Notes" in markdown
     assert "Origin note" in markdown
     assert "Technical report details" not in markdown
+    assert payload["synthesis_packet"]["lead_pattern"]
+    assert payload["synthesis_packet"]["top_ranked_patterns"]
 
 
 def test_report_enhance_unavailable_without_openai_key(monkeypatch):
@@ -175,6 +178,7 @@ def test_report_enhance_returns_markdown_shape(monkeypatch):
     def fake_enhance(request):
         assert request.markdown == "# Relationship Field Map\n\n## Overview\nStandard report."
         assert request.context.relationship_type == "ex"
+        assert request.synthesis_packet.lead_pattern.key == "synastry.sun_moon"
         return "# Relationship Field Map\n\n## Overview\nEnhanced report."
 
     monkeypatch.setattr(api, "enhance_report_markdown", fake_enhance)
@@ -184,13 +188,44 @@ def test_report_enhance_returns_markdown_shape(monkeypatch):
         json={
             "markdown": "# Relationship Field Map\n\n## Overview\nStandard report.",
             "context": {"relationship_type": "ex", "status": "past"},
+            "synthesis_packet": {
+                "top_ranked_patterns": [],
+                "repair_themes": [],
+                "composite_themes": [],
+                "friction_patterns": [],
+                "lead_pattern": {
+                    "key": "synastry.sun_moon",
+                    "title": "A Sun trine B Moon",
+                    "category": "emotional_recognition",
+                    "tier": 1,
+                    "priority": 98,
+                    "confidence": "high",
+                    "layer": "synastry",
+                },
+            },
         },
     )
 
     assert response.status_code == 200
     assert response.json() == {
-        "markdown": "# Relationship Field Map\n\n## Overview\nEnhanced report."
+        "markdown": "# Relationship Field Map\n\n## Overview\nEnhanced report.",
+        "synthesis_packet": None,
     }
+
+
+def test_report_enhance_still_accepts_missing_synthesis_packet(monkeypatch):
+    from constellation_core import api
+
+    def fake_enhance(request):
+        assert request.synthesis_packet is None
+        return request.markdown
+
+    monkeypatch.setattr(api, "enhance_report_markdown", fake_enhance)
+
+    response = client.post("/report/enhance", json={"markdown": "# Relationship Field Map"})
+
+    assert response.status_code == 200
+    assert response.json()["markdown"] == "# Relationship Field Map"
 
 
 def test_report_enhance_provider_exception_returns_safe_502(monkeypatch):
@@ -225,10 +260,16 @@ def test_report_enhance_prompt_guardrails():
     assert "do not invent placements" in prompt
     assert "keep the same main section headings" in prompt
     assert "do not invent astrology" in prompt
+    assert "synthesis packet is provided" in prompt
+    assert "deterministic priority guide" in prompt
+    assert "preserve the lead pattern" in prompt
+    assert "top ranked patterns" in prompt
+    assert "priority order" in prompt
     assert "do not introduce new aspects" in prompt
     assert "preserve the deterministic priorities" in prompt
     assert "do not turn the report into compatibility scoring" in prompt
-    assert "fate, soulmate, twin flame, destiny" in prompt
+    assert "do not turn the reading into a compatibility score" in prompt
+    assert "soulmate, fated, destined, twin flame" in prompt
     assert "do not add compatibility scores" in prompt
     assert "meant to be" in prompt
     assert "do not use raw orb numbers" in prompt
@@ -324,3 +365,4 @@ def test_saved_relationship_preserves_selected_house_system_in_report():
     assert report.status_code == 200
     assert "House system: Whole Sign" in report.json()["markdown"]
     assert "Birthplace: San Antonio, TX" in report.json()["markdown"]
+    assert report.json()["synthesis_packet"]["house_system"] == "whole_sign"

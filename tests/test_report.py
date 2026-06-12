@@ -1,5 +1,9 @@
 from constellation_core.context import RelationshipContext
-from constellation_core.report import generate_relationship_report, generate_report_from_birth_data
+from constellation_core.report import (
+    build_report_synthesis_packet,
+    generate_relationship_report,
+    generate_report_from_birth_data,
+)
 from constellation_core.schemas import (
     Angle,
     Aspect,
@@ -813,3 +817,73 @@ def test_advanced_asteroid_calculation_ids_remain_available_internally():
 
     assert "eros" in ASTEROID_IDS
     assert "psyche" in ASTEROID_IDS
+
+
+def test_synthesis_packet_uses_ranked_patterns_and_lead_logic():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="mercury", point_b="mars", aspect="square", exact_angle=90, orb=0.1),
+            Aspect(point_a="moon", point_b="venus", aspect="trine", exact_angle=120, orb=1.5),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+    context = RelationshipContext(relationship_type="romantic", status="current")
+
+    packet = build_report_synthesis_packet(relationship, context=context)
+
+    assert [pattern.priority for pattern in packet.top_ranked_patterns] == sorted(
+        [pattern.priority for pattern in packet.top_ranked_patterns], reverse=True
+    )
+    assert packet.top_ranked_patterns[0].key == "synastry.moon_venus"
+    assert packet.lead_pattern is not None
+    assert packet.lead_pattern.key == "synastry.moon_venus"
+    assert any(pattern.key == "synastry.mercury_mars" for pattern in packet.top_ranked_patterns)
+
+
+def test_synthesis_packet_respects_convergence_adjusted_ordering():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="mercury", point_b="mars", aspect="square", exact_angle=90, orb=0.1),
+            Aspect(point_a="sun", point_b="moon", aspect="trine", exact_angle=120, orb=5.9),
+            Aspect(point_a="moon", point_b="venus", aspect="trine", exact_angle=120, orb=5.9),
+            Aspect(point_a="moon", point_b="mars", aspect="square", exact_angle=90, orb=5.9),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+
+    packet = build_report_synthesis_packet(relationship)
+
+    keys = [pattern.key for pattern in packet.top_ranked_patterns]
+    assert keys.index("synastry.sun_moon") < keys.index("synastry.mercury_mars")
+    assert keys.index("synastry.moon_venus") < keys.index("synastry.mercury_mars")
+    assert packet.top_ranked_patterns[0].adjusted_priority == packet.top_ranked_patterns[0].priority
+
+
+def test_synthesis_packet_excludes_default_gated_asteroid_patterns():
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("A"),
+        person_b=_synthetic_chart("B"),
+        synastry_aspects=[
+            Aspect(point_a="eros", point_b="psyche", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="juno", point_b="venus", aspect="conjunction", exact_angle=0, orb=0.1),
+            Aspect(point_a="sun", point_b="moon", aspect="trine", exact_angle=120, orb=1.0),
+        ],
+        house_overlays=[],
+        composite=None,
+        composite_aspects=[],
+    )
+
+    packet = build_report_synthesis_packet(relationship)
+    text = packet.model_dump_json().lower()
+
+    assert "eros" not in text
+    assert "psyche" not in text
+    assert "synastry.asteroid.juno.venus" in text
