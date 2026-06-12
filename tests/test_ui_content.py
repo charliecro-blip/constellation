@@ -263,3 +263,81 @@ def test_constellation_patterns_copy_avoids_bad_language_and_ranking():
     ):
         assert forbidden not in lower_source
     assert "better or worse" in source
+
+
+def test_saved_relationship_management_actions_and_copy_are_present():
+    html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    for expected in (
+        "New Relationship",
+        "Save Relationship",
+        "Update Relationship",
+        "Regenerate Map",
+        "Delete Relationship",
+        "Latest Relationship Map",
+        "Developer diagnostics",
+    ):
+        assert expected in html or expected in source
+    assert 'id="relationship_mode_title"' in html
+    assert 'id="relationship_mode_detail"' in html
+    assert "Editing saved relationship" in source
+    assert "function openSavedRelationship" in source
+    assert 'method: "PATCH"' in source
+    assert 'method: "DELETE"' in source
+
+
+def test_new_relationship_clears_selection_report_and_birthplace_state():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+    flow = source.split("function startNewRelationship")[1].split("function setReportStatus")[0]
+
+    assert "currentSavedRelationship = null" in flow
+    assert "setForm(defaultState)" in flow
+    assert 'resetPlaceSearchState("a")' in flow
+    assert 'resetPlaceSearchState("b")' in flow
+    assert "clearReportState()" in flow
+    assert "currentSynthesisPacket = null" in source
+    assert "renderDiagnostics(null)" in source
+    assert "Generate a relationship map to see the formatted reading." in source
+    assert 'house_system: "placidus"' in source
+
+
+def test_saved_relationship_load_update_delete_and_regenerate_refresh_patterns():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    assert "async function openSavedRelationship" in source
+    assert 'fetch(`/birth-profiles/${relationship.person_a_id}`)' in source
+    assert 'fetch(`/birth-profiles/${relationship.person_b_id}`)' in source
+    assert "birthProfileToFormValues" in source
+    assert "async function updateSavedRelationship" in source
+    assert 'fetch(`/saved-relationships/${currentSavedRelationship.id}`' in source
+    assert "async function deleteCurrentRelationship" in source
+    assert "window.confirm" in source
+    assert "await loadConstellation()" in source
+    regenerate_flow = source.split('regenerateRelationshipButton.addEventListener("click"')[1].split('deleteRelationshipButton.addEventListener("click"')[0]
+    assert "await updateSavedRelationship()" in regenerate_flow
+    assert "await generateSavedReport(relationship.id)" in regenerate_flow
+    assert "await loadConstellation()" in regenerate_flow
+
+
+def test_mobile_saved_relationship_flow_scrolls_sensibly():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    assert 'document.getElementById("report-section")?.scrollIntoView({ behavior: "smooth", block: "start" })' in source
+    assert 'document.getElementById("relationship-form")?.scrollIntoView({ behavior: "smooth", block: "start" })' in source
+    assert 'document.getElementById("you-section")?.scrollIntoView({ behavior: "smooth", block: "start" })' in source
+
+
+def test_ui_avoids_standard_enhanced_and_score_language():
+    html = Path("packages/astro-core/constellation_core/static/index.html").read_text().lower()
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text().lower()
+
+    for forbidden in (
+        "standard report",
+        "enhanced report",
+        "ai report",
+        "compatibility score",
+        "match score",
+    ):
+        assert forbidden not in html
+        assert forbidden not in source

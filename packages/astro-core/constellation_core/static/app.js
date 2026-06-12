@@ -4,6 +4,13 @@ const preview = document.getElementById("preview");
 const markdown = document.getElementById("markdown");
 const markdownTab = document.getElementById("markdown-tab");
 const generateButton = document.getElementById("generate");
+const saveRelationshipButton = document.getElementById("save_relationship");
+const regenerateRelationshipButton = document.getElementById("regenerate_relationship");
+const deleteRelationshipButton = document.getElementById("delete_relationship");
+const newRelationshipButton = document.getElementById("new_relationship");
+const newRelationshipTopButton = document.getElementById("new_relationship_top");
+const relationshipModeTitle = document.getElementById("relationship_mode_title");
+const relationshipModeDetail = document.getElementById("relationship_mode_detail");
 const providerStatus = document.getElementById("provider-status");
 const reportStatusEl = document.getElementById("report_status");
 const downloadLink = document.getElementById("download");
@@ -93,6 +100,8 @@ function setForm(values) {
   }
   updateTimeKnown("a");
   updateTimeKnown("b");
+  syncPlaceSelectionFromForm("a");
+  syncPlaceSelectionFromForm("b");
 }
 
 function formValues() {
@@ -133,6 +142,7 @@ function setPlaceWarning(prefix, message) {
 }
 
 function clearPlaceSelection(prefix) {
+  const query = fieldValue(`${prefix}_place_query`).trim();
   form.elements[`${prefix}_latitude`].value = "";
   form.elements[`${prefix}_longitude`].value = "";
   form.elements[`${prefix}_timezone`].value = "";
@@ -142,7 +152,7 @@ function clearPlaceSelection(prefix) {
   if (label) label.classList.add("hidden");
   searchResults[prefix] = [];
   placeSelections[prefix] = null;
-  setPlaceWarning(prefix, "Birthplace changed. Search again and select a result before generating.");
+  setPlaceWarning(prefix, query ? "Birthplace changed. Search again and select a result before generating." : "");
 }
 
 function applyPlace(prefix, place) {
@@ -152,6 +162,21 @@ function applyPlace(prefix, place) {
   form.elements[`${prefix}_place_query`].value = place.label;
   placeSelections[prefix] = { label: place.label, latitude: Number(place.latitude), longitude: Number(place.longitude), timezone: place.timezone };
   setPlaceWarning(prefix, "");
+}
+
+function syncPlaceSelectionFromForm(prefix) {
+  const label = fieldValue(`${prefix}_place_query`).trim();
+  if (label && hasCompletePlaceDetails(prefix)) {
+    placeSelections[prefix] = {
+      label,
+      latitude: Number(fieldValue(`${prefix}_latitude`)),
+      longitude: Number(fieldValue(`${prefix}_longitude`)),
+      timezone: fieldValue(`${prefix}_timezone`),
+    };
+    setPlaceWarning(prefix, "");
+    return;
+  }
+  placeSelections[prefix] = null;
 }
 
 function populateSearchResults(prefix, results) {
@@ -383,9 +408,75 @@ async function createSavedRelationship() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(relationshipPayload(personA.id, personB.id)),
   });
-  if (!response.ok) throw new Error("Could not save relationship");
-  currentSavedRelationship = await response.json();
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.detail || "Could not save relationship");
+  currentSavedRelationship = payload;
+  updateRelationshipMode();
   return currentSavedRelationship;
+}
+
+function updateSavedRelationshipPayload() {
+  return { person_a: person("a"), person_b: person("b"), ...buildContext() };
+}
+
+async function updateSavedRelationship() {
+  if (!currentSavedRelationship) return createSavedRelationship();
+  const response = await fetch(`/saved-relationships/${currentSavedRelationship.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updateSavedRelationshipPayload()),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.detail || "Could not update relationship");
+  currentSavedRelationship = payload;
+  updateRelationshipMode();
+  return currentSavedRelationship;
+}
+
+function clearReportState() {
+  enhancementRequestId += 1;
+  currentMarkdown = "";
+  currentSynthesisPacket = null;
+  renderDiagnostics(null);
+  markdown.textContent = "Generate a relationship map to see Markdown.";
+  preview.innerHTML = "Generate a relationship map to see the formatted reading.";
+  setReportStatus("");
+  if (currentDownloadUrl) URL.revokeObjectURL(currentDownloadUrl);
+  currentDownloadUrl = "";
+  downloadLink.removeAttribute("href");
+  downloadLink.classList.add("hidden");
+}
+
+function updateRelationshipMode() {
+  const editing = Boolean(currentSavedRelationship);
+  relationshipModeTitle.textContent = editing ? "Editing saved relationship" : "New Relationship";
+  relationshipModeDetail.textContent = editing ? "Update the saved birth data or context, then regenerate the map when ready." : "Start a clean relationship map.";
+  generateButton.textContent = editing ? "Update and Regenerate Map" : "Generate Relationship Map";
+  saveRelationshipButton.textContent = editing ? "Update Relationship" : "Save Relationship";
+  regenerateRelationshipButton.classList.toggle("hidden", !editing);
+  deleteRelationshipButton.classList.toggle("hidden", !editing);
+}
+
+function resetPlaceSearchState(prefix) {
+  const select = form.elements[`${prefix}_place_result`];
+  const label = document.getElementById(`${prefix}_place_result_label`);
+  if (select) select.innerHTML = '<option value="">Search to see options</option>';
+  if (label) label.classList.add("hidden");
+  searchResults[prefix] = [];
+  placeSelections[prefix] = null;
+  setPlaceWarning(prefix, "");
+}
+
+function startNewRelationship() {
+  currentSavedRelationship = null;
+  setForm(defaultState);
+  resetPlaceSearchState("a");
+  resetPlaceSearchState("b");
+  clearReportState();
+  updateRelationshipMode();
+  statusEl.textContent = "New Relationship ready.";
+  document.getElementById("you-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  form.elements.a_name?.focus();
 }
 
 function setReportStatus(message) {
@@ -429,6 +520,62 @@ async function enhanceReportMarkdown(standardMarkdown, synthesisPacket = null) {
     setReportMarkdown(standardMarkdown);
     setReportStatus("Relationship Map ready.");
   }
+}
+
+function birthProfileToFormValues(prefix, profile) {
+  const values = {};
+  values[`${prefix}_name`] = profile.display_name || "";
+  values[`${prefix}_date`] = profile.birth_date || "";
+  values[`${prefix}_time`] = profile.birth_time ? profile.birth_time.slice(0, 5) : "";
+  values[`${prefix}_time_known`] = String(profile.time_known !== false);
+  values[`${prefix}_place_query`] = profile.birthplace_label || "";
+  values[`${prefix}_latitude`] = profile.latitude ?? "";
+  values[`${prefix}_longitude`] = profile.longitude ?? "";
+  values[`${prefix}_timezone`] = profile.timezone || "";
+  return values;
+}
+
+async function openSavedRelationship(relationshipId) {
+  statusEl.textContent = "Opening saved relationship…";
+  const relationshipResponse = await fetch(`/saved-relationships/${relationshipId}`);
+  const relationship = await relationshipResponse.json();
+  if (!relationshipResponse.ok) throw new Error(relationship.detail || "Could not open saved relationship");
+  const [personAResponse, personBResponse] = await Promise.all([
+    fetch(`/birth-profiles/${relationship.person_a_id}`),
+    fetch(`/birth-profiles/${relationship.person_b_id}`),
+  ]);
+  const [personA, personB] = await Promise.all([personAResponse.json(), personBResponse.json()]);
+  if (!personAResponse.ok || !personBResponse.ok) throw new Error("Could not load saved birth data");
+  currentSavedRelationship = relationship;
+  setForm({
+    ...defaultState,
+    ...birthProfileToFormValues("a", personA),
+    ...birthProfileToFormValues("b", personB),
+    relationship_type: relationship.relationship_type || "romantic",
+    user_question: relationship.user_question || "",
+    origin_story: relationship.origin_story || "",
+    house_system: relationship.house_system || "placidus",
+  });
+  resetPlaceSearchState("a");
+  resetPlaceSearchState("b");
+  syncPlaceSelectionFromForm("a");
+  syncPlaceSelectionFromForm("b");
+  clearReportState();
+  updateRelationshipMode();
+  statusEl.textContent = "Editing saved relationship.";
+  document.getElementById("relationship-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function deleteCurrentRelationship() {
+  if (!currentSavedRelationship) return;
+  if (!window.confirm("Delete this saved relationship? This removes its saved maps from your constellation.")) return;
+  const deletedId = currentSavedRelationship.id;
+  const response = await fetch(`/saved-relationships/${deletedId}`, { method: "DELETE" });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.detail || "Could not delete relationship");
+  startNewRelationship();
+  await loadConstellation();
+  statusEl.textContent = "Relationship deleted. Your constellation is updated.";
 }
 
 function relationshipLabel(item) {
@@ -596,20 +743,39 @@ async function loadConstellation() {
     const node = document.createElement("div");
     node.className = "constellation-node";
     node.innerHTML = `<strong>${escapeHtml(relationshipLabel(rel))}</strong><div class="small-note">${new Date(rel.created_at).toLocaleString()}</div><div class="small-note">themes: ${escapeHtml(rel.known_themes.join(", ") || "none")}</div>`;
-    const action = document.createElement("button");
-    action.type = "button";
-    action.className = "secondary";
-    action.textContent = "Generate Relationship Map";
-    action.addEventListener("click", async () => {
-      statusEl.textContent = "Generating report from saved relationship…";
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const openAction = document.createElement("button");
+    openAction.type = "button";
+    openAction.className = "secondary";
+    openAction.textContent = "Open / Edit";
+    openAction.addEventListener("click", async () => {
       try {
-        await generateSavedReport(rel.id);
-        statusEl.textContent = "Saved relationship report generated.";
+        await openSavedRelationship(rel.id);
       } catch (error) {
         statusEl.textContent = error.message;
       }
     });
-    node.appendChild(action);
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "secondary";
+    action.textContent = "Regenerate Map";
+    action.addEventListener("click", async () => {
+      statusEl.textContent = "Regenerating saved relationship map…";
+      shouldScrollToReport = true;
+      try {
+        currentSavedRelationship = rel;
+        updateRelationshipMode();
+        await generateSavedReport(rel.id);
+        await loadConstellation();
+        statusEl.textContent = "Saved relationship map regenerated.";
+      } catch (error) {
+        statusEl.textContent = error.message;
+      }
+    });
+    actions.appendChild(openAction);
+    actions.appendChild(action);
+    node.appendChild(actions);
     constellationEl.appendChild(node);
   }
 }
@@ -635,10 +801,10 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   shouldScrollToReport = true;
   setReportStatus("Preparing your map…");
-  statusEl.textContent = "Saving relationship and generating report…";
+  statusEl.textContent = currentSavedRelationship ? "Updating relationship and regenerating map…" : "Saving relationship and generating map…";
   generateButton.disabled = true;
   try {
-    const relationship = await createSavedRelationship();
+    const relationship = currentSavedRelationship ? await updateSavedRelationship() : await createSavedRelationship();
     await generateSavedReport(relationship.id);
     await loadConstellation();
     saveDraft();
@@ -651,6 +817,49 @@ form.addEventListener("submit", async (event) => {
 });
 
 refreshConstellationButton.addEventListener("click", loadConstellation);
+newRelationshipButton.addEventListener("click", startNewRelationship);
+newRelationshipTopButton.addEventListener("click", startNewRelationship);
+saveRelationshipButton.addEventListener("click", async () => {
+  saveRelationshipButton.disabled = true;
+  const wasEditing = Boolean(currentSavedRelationship);
+  statusEl.textContent = wasEditing ? "Updating relationship…" : "Saving relationship…";
+  try {
+    await updateSavedRelationship();
+    await loadConstellation();
+    saveDraft();
+    statusEl.textContent = wasEditing ? "Relationship updated." : "Relationship saved.";
+  } catch (error) {
+    statusEl.textContent = error.message || "Save failed";
+  } finally {
+    saveRelationshipButton.disabled = false;
+  }
+});
+regenerateRelationshipButton.addEventListener("click", async () => {
+  if (!currentSavedRelationship) return;
+  regenerateRelationshipButton.disabled = true;
+  shouldScrollToReport = true;
+  statusEl.textContent = "Regenerating map from latest saved data…";
+  try {
+    const relationship = await updateSavedRelationship();
+    await generateSavedReport(relationship.id);
+    await loadConstellation();
+    statusEl.textContent = "Relationship map regenerated.";
+  } catch (error) {
+    statusEl.textContent = error.message || "Regeneration failed";
+  } finally {
+    regenerateRelationshipButton.disabled = false;
+  }
+});
+deleteRelationshipButton.addEventListener("click", async () => {
+  deleteRelationshipButton.disabled = true;
+  try {
+    await deleteCurrentRelationship();
+  } catch (error) {
+    statusEl.textContent = error.message || "Delete failed";
+  } finally {
+    deleteRelationshipButton.disabled = false;
+  }
+});
 document.getElementById("save").addEventListener("click", () => { saveDraft(); statusEl.textContent = "Browser draft saved."; });
 document.getElementById("restore").addEventListener("click", restoreDraft);
 document.getElementById("sample").addEventListener("click", () => { setForm(sample); statusEl.textContent = "Sample relationship restored."; });
@@ -666,6 +875,7 @@ document.getElementById("a_search_button").addEventListener("click", () => searc
 document.getElementById("b_search_button").addEventListener("click", () => searchPlace("b"));
 
 setForm(defaultState);
+updateRelationshipMode();
 loadProviderStatus();
 loadPlaces().catch(() => {});
 loadConstellation().catch(() => { constellationEl.innerHTML = "Constellation view unavailable."; });

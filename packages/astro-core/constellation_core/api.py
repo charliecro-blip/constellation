@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from sqlmodel import Session, select
+from sqlmodel import Session, delete, select
 
 from .ai_enhancement import (
     EnhancementProviderError,
@@ -55,6 +55,17 @@ class BirthProfileResponse(CreateBirthProfileRequest):
     id: str
     created_at: datetime
     updated_at: datetime
+
+
+class UpdateSavedRelationshipRequest(BaseModel):
+    person_a: CreateBirthProfileRequest
+    person_b: CreateBirthProfileRequest
+    relationship_type: str
+    status: str
+    user_question: str | None = None
+    origin_story: str | None = None
+    known_themes: list[str] = Field(default_factory=list)
+    house_system: str = DEFAULT_HOUSE_SYSTEM
 
 
 class CreateSavedRelationshipRequest(BaseModel):
@@ -354,6 +365,59 @@ def create_saved_relationship(
     session.commit()
     session.refresh(relationship)
     return _relationship_response(relationship)
+
+
+
+def _update_birth_profile(profile: BirthProfile, request: CreateBirthProfileRequest) -> None:
+    for key, value in request.model_dump().items():
+        setattr(profile, key, value)
+    profile.updated_at = datetime.utcnow()
+
+
+@app.patch("/saved-relationships/{relationship_id}", response_model=SavedRelationshipResponse)
+def update_saved_relationship(
+    relationship_id: str,
+    request: UpdateSavedRelationshipRequest,
+    session: Session = Depends(get_session),
+) -> SavedRelationshipResponse:
+    relationship = session.get(SavedRelationship, relationship_id)
+    if relationship is None:
+        raise HTTPException(status_code=404, detail="Saved relationship not found")
+    person_a = session.get(BirthProfile, relationship.person_a_id)
+    person_b = session.get(BirthProfile, relationship.person_b_id)
+    if person_a is None or person_b is None:
+        raise HTTPException(status_code=404, detail="Birth profile not found")
+
+    _update_birth_profile(person_a, request.person_a)
+    _update_birth_profile(person_b, request.person_b)
+    relationship.relationship_type = request.relationship_type
+    relationship.status = request.status
+    relationship.user_question = request.user_question
+    relationship.origin_story = request.origin_story
+    relationship.known_themes_json = json.dumps(request.known_themes)
+    relationship.house_system = request.house_system
+    relationship.updated_at = datetime.utcnow()
+    session.add(person_a)
+    session.add(person_b)
+    session.add(relationship)
+    session.commit()
+    session.refresh(relationship)
+    return _relationship_response(relationship)
+
+
+@app.delete("/saved-relationships/{relationship_id}")
+def delete_saved_relationship(
+    relationship_id: str,
+    session: Session = Depends(get_session),
+) -> dict[str, str]:
+    relationship = session.get(SavedRelationship, relationship_id)
+    if relationship is None:
+        raise HTTPException(status_code=404, detail="Saved relationship not found")
+    session.exec(delete(SavedRelationshipMotif).where(SavedRelationshipMotif.relationship_id == relationship_id))
+    session.exec(delete(SavedReport).where(SavedReport.relationship_id == relationship_id))
+    session.delete(relationship)
+    session.commit()
+    return {"status": "deleted", "id": relationship_id}
 
 
 @app.get("/constellation-patterns", response_model=ConstellationPatternSummaryResponse)

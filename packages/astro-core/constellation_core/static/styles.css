@@ -91,3 +91,8 @@ pre { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, 
 .relationship-motif-group li span { color: var(--muted); }
 .constellation-empty { border-style: dashed; }
 @media (max-width: 640px) { .motif-card-list,.category-chip-list,.relationship-motif-list { grid-template-columns: 1fr; } .motif-card-header { align-items: flex-start; } }
+.form-mode-banner { border: 1px solid rgba(246, 222, 177, 0.24); border-radius: 16px; padding: 12px 14px; display: flex; justify-content: space-between; gap: 10px; align-items: center; background: rgba(246, 222, 177, 0.045); }
+.form-mode-banner strong { color: var(--gold); font-family: "Baar Sophia", "Baar Sophia Regular", Georgia, serif; }
+.form-mode-banner span { color: var(--muted); font-size: 0.84rem; }
+.danger-action { border-color: rgba(255, 185, 199, 0.35); color: #ffd2dc; }
+@media (max-width: 640px) { .form-mode-banner { align-items: flex-start; flex-direction: column; } .primary-actions { gap: 8px; } .primary-actions button { min-width: 100%; } }
