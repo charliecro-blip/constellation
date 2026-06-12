@@ -12,6 +12,7 @@ const constellationEl = document.getElementById("constellation");
 let currentMarkdown = "";
 let currentDownloadUrl = "";
 let currentSavedRelationship = null;
+let currentSynthesisPacket = null;
 let enhancementRequestId = 0;
 let searchResults = { a: [], b: [] };
 let placeSelections = { a: null, b: null };
@@ -357,14 +358,15 @@ async function generateSavedReport(relationshipId) {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "Could not generate saved report");
   const standardMarkdown = payload.markdown;
+  currentSynthesisPacket = payload.synthesis_packet || null;
   setReportMarkdown(standardMarkdown);
   setTab("preview");
   setReportStatus("Relationship Map ready.");
   scrollReportIntoViewOnce();
-  void enhanceReportMarkdown(standardMarkdown);
+  void enhanceReportMarkdown(standardMarkdown, currentSynthesisPacket);
 }
 
-async function enhanceReportMarkdown(standardMarkdown) {
+async function enhanceReportMarkdown(standardMarkdown, synthesisPacket = null) {
   const requestId = enhancementRequestId + 1;
   enhancementRequestId = requestId;
   setReportStatus("Writing your reading…");
@@ -372,7 +374,7 @@ async function enhanceReportMarkdown(standardMarkdown) {
     const response = await fetch("/report/enhance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown: standardMarkdown, context: buildContext() }),
+      body: JSON.stringify({ markdown: standardMarkdown, context: buildContext(), synthesis_packet: synthesisPacket }),
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "Reading refinement failed.");

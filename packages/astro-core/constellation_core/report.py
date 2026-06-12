@@ -15,7 +15,14 @@ from .pattern_registry import convergence_category_for, get_pattern_metadata
 from .patterns import Pattern, detect_relationship_patterns
 from .chart import DEFAULT_HOUSE_SYSTEM
 from .relationship import calculate_relationship
-from .schemas import Aspect, BirthData, Chart, RelationshipCalculation
+from .schemas import (
+    Aspect,
+    BirthData,
+    Chart,
+    RankedPatternSummary,
+    RelationshipCalculation,
+    ReportSynthesisPacket,
+)
 from .weighting import communication_context_requested, public_life_context_requested, weight_patterns
 
 
@@ -590,37 +597,7 @@ def _friction_signature(pattern: Pattern) -> str:
 
 
 def _friction_loop(patterns: list[Pattern]) -> str:
-    grouped = _patterns_by_category(patterns)
-    friction_categories = [
-        "communication",
-        "emotional_structure",
-        "angle_structure",
-        "emotional_intensity",
-        "emotional_activation",
-        "embodied_activation",
-        "intensity",
-        "action_structure",
-        "emotional_variability",
-    ]
-    selected: list[Pattern] = []
-    for category in friction_categories:
-        selected.extend(grouped.get(category, []))
-    selected.extend(
-        pattern
-        for pattern in patterns
-        if _registry_category(pattern)
-        in {
-            "communication_heat",
-            "stability_container",
-            "devotion_contract",
-            "erotic_charge",
-            "trust_depth",
-            "volatility",
-            "wounding_healing",
-        }
-        and pattern not in selected
-    )
-    selected = sorted(selected, key=lambda pattern: pattern.priority, reverse=True)
+    selected = _friction_patterns(patterns)
 
     if not selected:
         return "No single friction loop dominates the current selection. Name the strongest activation and build an agreed rhythm around it.\n\n### Repair principles\n\n" + _repair_path(patterns)
@@ -677,6 +654,93 @@ def _repair_path(patterns: list[Pattern]) -> str:
         principles.append("Name the strongest activation and agree on a workable pace.")
 
     return "\n".join(f"- {principle}" for principle in principles[:5])
+
+
+def _pattern_summary(pattern: Pattern) -> RankedPatternSummary:
+    metadata = get_pattern_metadata(pattern.key)
+    evidence_text = "; ".join(pattern.evidence) if pattern.evidence else None
+    reason = _interpret_for_section(
+        pattern,
+        "composite" if pattern.layer == "composite" else "friction" if metadata.default_section == "friction_repair" else "overview",
+    )
+    return RankedPatternSummary(
+        key=pattern.key,
+        title=pattern.title,
+        category=metadata.category or pattern.category,
+        tier=metadata.tier,
+        priority=pattern.priority,
+        adjusted_priority=pattern.priority,
+        confidence=pattern.confidence,
+        layer=pattern.layer,
+        evidence_text=evidence_text,
+        interpretive_reason=reason,
+    )
+
+
+def _friction_patterns(patterns: list[Pattern]) -> list[Pattern]:
+    grouped = _patterns_by_category(patterns)
+    friction_categories = [
+        "communication",
+        "emotional_structure",
+        "angle_structure",
+        "emotional_intensity",
+        "emotional_activation",
+        "embodied_activation",
+        "intensity",
+        "action_structure",
+        "emotional_variability",
+    ]
+    selected: list[Pattern] = []
+    for category in friction_categories:
+        selected.extend(grouped.get(category, []))
+    selected.extend(
+        pattern
+        for pattern in patterns
+        if _registry_category(pattern)
+        in {
+            "communication_heat",
+            "stability_container",
+            "devotion_contract",
+            "erotic_charge",
+            "trust_depth",
+            "volatility",
+            "wounding_healing",
+        }
+        and pattern not in selected
+    )
+    return sorted(selected, key=lambda pattern: pattern.priority, reverse=True)
+
+
+def _repair_theme_list(patterns: list[Pattern]) -> list[str]:
+    return [line.removeprefix("- ") for line in _repair_path(patterns).splitlines() if line.strip()][:5]
+
+
+def build_report_synthesis_packet(
+    relationship: RelationshipCalculation,
+    context: RelationshipContext | None = None,
+    *,
+    max_patterns: int = 7,
+) -> ReportSynthesisPacket:
+    """Build compact AI guidance from the deterministic report selection."""
+    raw_patterns = detect_relationship_patterns(relationship)
+    patterns = weight_patterns(raw_patterns, context)
+    central = _central_patterns(patterns, context)
+    composite = _composite_patterns(patterns)
+    lead = central[0] if central else (patterns[0] if patterns else None)
+
+    return ReportSynthesisPacket(
+        relationship_type=context.relationship_type if context else None,
+        status=context.status if context else None,
+        user_question=context.user_question if context else None,
+        origin_story=context.origin_story if context else None,
+        house_system=(context.house_system if context and context.house_system else relationship.person_a.house_system),
+        top_ranked_patterns=[_pattern_summary(pattern) for pattern in patterns[:max_patterns]],
+        lead_pattern=_pattern_summary(lead) if lead else None,
+        friction_patterns=[_pattern_summary(pattern) for pattern in _friction_patterns(patterns)[:3]],
+        repair_themes=_repair_theme_list(patterns),
+        composite_themes=[_pattern_summary(pattern) for pattern in composite[:3]],
+        chart_sanity_summary=_chart_check_body(relationship),
+    )
 
 
 def generate_relationship_report(

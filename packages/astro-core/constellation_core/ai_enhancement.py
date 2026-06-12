@@ -7,6 +7,8 @@ import os
 
 from pydantic import BaseModel, Field
 
+from .schemas import ReportSynthesisPacket
+
 
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_MODEL_ENV = "OPENAI_MODEL"
@@ -20,15 +22,21 @@ AI_ENHANCEMENT_SYSTEM_PROMPT = """You are writing an astrology relationship repo
 
 Rules:
 - Do not invent astrology. Do not invent placements or aspect meanings beyond the source.
+- Do not add new aspects, houses, signs, asteroids, placements, or claims.
 - Do not introduce new aspects, placements, houses, asteroids, signs, timing, or claims not present in the deterministic report.
 - Only interpret patterns that appear in the provided report.
+- When a synthesis packet is provided, treat it as the deterministic priority guide, not optional background.
+- Preserve the lead pattern from the synthesis packet unless the deterministic Markdown clearly contradicts it.
+- Use the top ranked patterns in synthesis packet priority order to shape the Overview.
+- Do not elevate secondary or supporting patterns over lead-eligible patterns.
 - Preserve the deterministic priorities; do not make supporting contacts sound more important than the selected lead themes.
 - Prefer fewer, deeper themes over scattershot coverage.
 - Keep the same main section headings.
 - Preserve the Chart Check section as concise factual bullet points; do not turn it into interpretive prose.
 - Preserve the two people's names.
+- Do not turn the reading into a compatibility score.
 - Do not turn the report into compatibility scoring; do not add compatibility scores or a compatibility score.
-- Do not use fate, soulmate, twin flame, destiny, meant-to-be, or perfect-match language.
+- Do not use soulmate, fated, destined, twin flame, fate, destiny, meant-to-be, or perfect-match language.
 - Do not say "meant to be."
 - Do not make deterministic predictions or claims about whether the relationship will last.
 - Do not mention AI, model, prompts, API, technical metadata, or backend details.
@@ -77,6 +85,7 @@ class ReportEnhancementContext(BaseModel):
 class ReportEnhancementRequest(BaseModel):
     markdown: str
     context: ReportEnhancementContext | None = None
+    synthesis_packet: ReportSynthesisPacket | None = None
 
 
 class EnhancementUnavailableError(RuntimeError):
@@ -116,16 +125,28 @@ def _context_lines(context: ReportEnhancementContext | None) -> list[str]:
 
 
 def build_enhancement_user_prompt(
-    markdown: str, context: ReportEnhancementContext | None = None
+    markdown: str,
+    context: ReportEnhancementContext | None = None,
+    synthesis_packet: ReportSynthesisPacket | None = None,
 ) -> str:
     context_lines = _context_lines(context)
     context_block = (
         "\n".join(context_lines) if context_lines else "- No additional context supplied."
     )
+    packet_block = (
+        synthesis_packet.model_dump_json(exclude_none=True, indent=2)
+        if synthesis_packet is not None
+        else "No synthesis packet supplied; preserve priorities visible in the deterministic Markdown."
+    )
     return f"""Rewrite the deterministic Markdown report below into a warmer, cohesive astrology relationship reading while following every rule in the system instructions.
 
 Available user context:
 {context_block}
+
+Deterministic synthesis packet (priority guide):
+{packet_block}
+
+Use the synthesis packet priority order to decide what leads, what supports, and what should remain secondary. Do not infer the main themes from Markdown alone when a packet is supplied.
 
 Deterministic Markdown report:
 ---
@@ -176,7 +197,9 @@ def enhance_report_markdown(
                 {"role": "system", "content": AI_ENHANCEMENT_SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": build_enhancement_user_prompt(request.markdown, request.context),
+                    "content": build_enhancement_user_prompt(
+                        request.markdown, request.context, request.synthesis_packet
+                    ),
                 },
             ],
             temperature=0.55,

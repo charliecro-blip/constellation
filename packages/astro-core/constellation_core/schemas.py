@@ -119,3 +119,34 @@ class RelationshipCalculation(BaseModel):
     house_overlays: list[HouseOverlay] = Field(default_factory=list)
     composite: Chart | None = None
     composite_aspects: list[Aspect] = Field(default_factory=list)
+
+
+class RankedPatternSummary(BaseModel):
+    """Compact deterministic pattern summary for AI report guidance."""
+
+    key: str
+    title: str
+    category: str
+    tier: int | None = None
+    priority: int
+    adjusted_priority: int | None = None
+    confidence: str
+    layer: str
+    evidence_text: str | None = None
+    interpretive_reason: str | None = None
+
+
+class ReportSynthesisPacket(BaseModel):
+    """Deterministic priorities the AI enhancer should preserve."""
+
+    relationship_type: str | None = None
+    status: str | None = None
+    user_question: str | None = None
+    origin_story: str | None = None
+    house_system: str | None = None
+    top_ranked_patterns: list[RankedPatternSummary] = Field(default_factory=list)
+    lead_pattern: RankedPatternSummary | None = None
+    friction_patterns: list[RankedPatternSummary] = Field(default_factory=list)
+    repair_themes: list[str] = Field(default_factory=list)
+    composite_themes: list[RankedPatternSummary] = Field(default_factory=list)
+    chart_sanity_summary: str | None = None

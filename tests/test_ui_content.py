@@ -90,10 +90,11 @@ def test_primary_report_flow_is_simplified_and_ai_runs_automatically():
         assert forbidden not in html
         assert forbidden not in source
     assert 'fetch("/report/enhance"' in source
-    assert "void enhanceReportMarkdown(standardMarkdown)" in source
+    assert "currentSynthesisPacket = payload.synthesis_packet || null" in source
+    assert "void enhanceReportMarkdown(standardMarkdown, currentSynthesisPacket)" in source
     assert "setReportMarkdown(standardMarkdown)" in source
     assert "const standardMarkdown = payload.markdown" in source
-    assert 'body: JSON.stringify({ markdown: standardMarkdown, context: buildContext() })' in source
+    assert 'body: JSON.stringify({ markdown: standardMarkdown, context: buildContext(), synthesis_packet: synthesisPacket })' in source
     assert 'new Blob([markdownText], { type: "text/markdown" })' in source
     assert "updateDownload(currentMarkdown)" in source
     assert '<details class="report-section"' in source

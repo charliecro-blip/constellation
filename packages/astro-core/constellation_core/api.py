@@ -30,8 +30,8 @@ from .geocoding import GeocodingStatus, PlaceSearchResponse, geocoding_status, s
 from .patterns import Pattern, detect_relationship_patterns
 from .places import PlacePreset, list_place_presets
 from .relationship import calculate_relationship
-from .report import generate_relationship_report
-from .schemas import BirthData, Chart, RelationshipCalculation
+from .report import build_report_synthesis_packet, generate_relationship_report
+from .schemas import BirthData, Chart, RelationshipCalculation, ReportSynthesisPacket
 from .web import INDEX_PATH, STATIC_DIR
 from .weighting import weight_patterns
 
@@ -118,6 +118,7 @@ class SavedReportResponse(BaseModel):
     id: str
     relationship_id: str
     markdown: str
+    synthesis_packet: ReportSynthesisPacket | None = None
     calculation_engine_version: str
     interpretation_engine_version: str
     report_template_version: str
@@ -139,6 +140,7 @@ class RelationshipResponse(BaseModel):
 
 class ReportResponse(BaseModel):
     markdown: str
+    synthesis_packet: ReportSynthesisPacket | None = None
 
 
 app = FastAPI(
@@ -205,7 +207,8 @@ def report_endpoint(request: RelationshipRequest) -> ReportResponse:
         house_system=request.house_system,
     )
     report = generate_relationship_report(calculation, context=request.context)
-    return ReportResponse(markdown=report.to_markdown())
+    synthesis_packet = build_report_synthesis_packet(calculation, context=request.context)
+    return ReportResponse(markdown=report.to_markdown(), synthesis_packet=synthesis_packet)
 
 
 @app.post("/report/enhance", response_model=ReportResponse)
@@ -341,7 +344,7 @@ def get_saved_relationship(
 @app.post("/saved-relationships/{relationship_id}/report", response_model=SavedReportResponse)
 def generate_saved_relationship_report(
     relationship_id: str, session: Session = Depends(get_session)
-) -> SavedReport:
+) -> SavedReportResponse:
     relationship = session.get(SavedRelationship, relationship_id)
     if relationship is None:
         raise HTTPException(status_code=404, detail="Saved relationship not found")
@@ -384,11 +387,22 @@ def generate_saved_relationship_report(
         house_system=relationship.house_system,
     )
     report = generate_relationship_report(calc, context=context)
+    synthesis_packet = build_report_synthesis_packet(calc, context=context)
     saved = SavedReport(relationship_id=relationship.id, markdown=report.to_markdown())
     session.add(saved)
     session.commit()
     session.refresh(saved)
-    return saved
+    return SavedReportResponse(
+        id=saved.id,
+        relationship_id=saved.relationship_id,
+        markdown=saved.markdown,
+        synthesis_packet=synthesis_packet,
+        calculation_engine_version=saved.calculation_engine_version,
+        interpretation_engine_version=saved.interpretation_engine_version,
+        report_template_version=saved.report_template_version,
+        generated_at=saved.generated_at,
+        created_at=saved.created_at,
+    )
 
 
 @app.get("/saved-relationships/{relationship_id}/reports", response_model=list[SavedReportResponse])
