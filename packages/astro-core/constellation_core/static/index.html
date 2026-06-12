@@ -24,12 +24,13 @@
     <section id="constellation-section" class="card stack">
       <div class="actions" style="justify-content: space-between; gap: 12px;">
         <div><h2>Constellation View</h2><p class="muted">Saved relationship snapshots across your field.</p></div>
-        <button class="secondary" id="refresh_constellation" type="button">Refresh</button>
+        <div class="actions"><button class="secondary" id="refresh_constellation" type="button">Refresh</button><button class="secondary" id="new_relationship_top" type="button">New Relationship</button></div>
       </div>
       <div id="constellation" class="constellation-list">Loading saved relationships…</div>
     </section>
 
     <form id="relationship-form" class="card stack">
+      <div class="form-mode-banner"><strong id="relationship_mode_title">New Relationship</strong><span id="relationship_mode_detail">Start a clean relationship map.</span></div>
       <div id="you-section" class="tight">
         <h2>Start with you</h2>
         <p class="small-note">Your birth information anchors this relationship map.</p>
@@ -77,14 +78,18 @@
       </div>
 
       <div class="actions sticky-actions primary-actions">
+        <button class="secondary" id="new_relationship" type="button">New Relationship</button>
+        <button class="secondary" id="save_relationship" type="button">Save Relationship</button>
         <button id="generate" type="submit">Generate Relationship Map</button>
+        <button class="secondary hidden" id="regenerate_relationship" type="button">Regenerate Map</button>
+        <button class="secondary danger-action hidden" id="delete_relationship" type="button">Delete Relationship</button>
       </div>
       <div id="status" class="status">Ready.</div>
       <details class="advanced-place developer-actions"><summary>Developer/testing tools</summary><div class="actions"><button class="secondary" id="save" type="button">Save browser draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample data</button></div></details>
     </form>
 
     <section id="report-section" class="card stack report-panel">
-      <h2>Relationship Map</h2>
+      <h2>Latest Relationship Map</h2>
       <p id="report_status" class="small-note" aria-live="polite"></p>
       <div id="preview" class="output-html">Generate a relationship map to see the formatted reading.</div>
       <details class="advanced-place developer-actions"><summary>Export / developer tools</summary><div class="actions" aria-label="Markdown export tools"><button class="secondary" id="markdown-tab" type="button">View Markdown</button><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download Markdown</a><button class="secondary" id="copy" type="button">Copy Markdown</button></div><p class="small-note">Interpretive prose may be refined using AI. Chart calculations remain deterministic.</p><pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre><details id="diagnostics-panel" class="advanced-place developer-actions hidden"><summary>Developer diagnostics</summary><pre id="diagnostics">Diagnostics are disabled.</pre></details></details>
