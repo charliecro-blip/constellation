@@ -28,6 +28,9 @@ let searchResults = { a: [], b: [] };
 let placeSelections = { a: null, b: null };
 let shouldScrollToReport = false;
 const draftKey = "constellation.relationshipForm.v1";
+const noReportEmptyState = `<div class="empty-state"><h3>No report generated yet</h3><p>Start with two people to generate a Relationship Map.</p><p>The map will show central themes, friction points, repair paths, and the larger field between the charts.</p></div>`;
+const noSavedRelationshipsEmptyState = `<div class="empty-state constellation-empty"><h4>Your constellation is still forming.</h4><p class="small-note">Save relationships to begin seeing recurring patterns across your field.</p></div>`;
+const noPatternsEmptyState = "Patterns will appear here once you’ve generated and saved more maps.";
 const constellationPatternsEmptyState = "Your constellation is still forming. Save a relationship and generate a Relationship Map to begin seeing recurring patterns.";
 const categoryDescriptions = {
   emotional_recognition: "Where someone feels familiar, legible, or emotionally known.",
@@ -439,7 +442,7 @@ function clearReportState() {
   currentSynthesisPacket = null;
   renderDiagnostics(null);
   markdown.textContent = "Generate a relationship map to see Markdown.";
-  preview.innerHTML = "Generate a relationship map to see the formatted reading.";
+  preview.innerHTML = noReportEmptyState;
   setReportStatus("");
   if (currentDownloadUrl) URL.revokeObjectURL(currentDownloadUrl);
   currentDownloadUrl = "";
@@ -451,7 +454,7 @@ function updateRelationshipMode() {
   const editing = Boolean(currentSavedRelationship);
   relationshipModeTitle.textContent = editing ? "Editing saved relationship" : "New Relationship";
   relationshipModeDetail.textContent = editing ? "Update the saved birth data or context, then regenerate the map when ready." : "Start a clean relationship map.";
-  generateButton.textContent = editing ? "Update and Regenerate Map" : "Generate Relationship Map";
+  generateButton.textContent = editing ? "Regenerate Map" : "Generate Map";
   saveRelationshipButton.textContent = editing ? "Update Relationship" : "Save Relationship";
   regenerateRelationshipButton.classList.toggle("hidden", !editing);
   deleteRelationshipButton.classList.toggle("hidden", !editing);
@@ -582,6 +585,21 @@ function relationshipLabel(item) {
   return `${item.relationship_type} • ${item.status}`;
 }
 
+async function viewLatestMap(relationshipId) {
+  statusEl.textContent = "Opening latest saved map…";
+  const response = await fetch(`/saved-relationships/${relationshipId}/reports`);
+  const reports = await response.json();
+  if (!response.ok) throw new Error(reports.detail || "Could not open latest map");
+  if (!reports.length) throw new Error("Generate a map for this saved relationship first.");
+  const latest = reports[0];
+  currentSynthesisPacket = latest.synthesis_packet || null;
+  renderDiagnostics(latest.diagnostics || null);
+  setReportMarkdown(latest.markdown);
+  setTab("preview");
+  setReportStatus("Latest Relationship Map loaded.");
+  document.getElementById("report-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 async function fetchConstellationPatterns() {
   try {
     const response = await fetch("/constellation-patterns");
@@ -670,17 +688,17 @@ function renderConstellationPatterns(summary) {
   }
 
   if (!summary.relationship_count) {
-    return `<section class="pattern-summary constellation-empty"><h3>Constellation Patterns</h3><h4>Your constellation is still forming.</h4><p class="small-note">Save a relationship and generate a Relationship Map to begin seeing recurring patterns.</p></section>`;
+    return `<section class="pattern-summary constellation-empty"><h3>Constellation Patterns</h3><h4>Your constellation is still forming.</h4><p class="small-note">Save relationships to begin seeing recurring patterns across your field.</p><p class="small-note">${noPatternsEmptyState}</p></section>`;
   }
 
   if (!summary.has_enough_data) {
-    return `<section class="pattern-summary constellation-empty"><h3>Constellation Patterns</h3><h4>Still forming</h4><p class="small-note">One map is active. Add more saved maps to see what repeats across your field.</p></section>`;
+    return `<section class="pattern-summary constellation-empty"><h3>Constellation Patterns</h3><h4>Still forming</h4><p class="small-note">One map is active. Add more saved maps to see broader patterns in your constellation.</p><p class="small-note">${noPatternsEmptyState}</p></section>`;
   }
 
   const hasMotifs = (summary.recurring_motifs && summary.recurring_motifs.length) || (summary.top_motif_categories && summary.top_motif_categories.length);
   const motifCards = summary.recurring_motifs && summary.recurring_motifs.length
     ? summary.recurring_motifs.map(renderRecurringMotifCard).join("")
-    : '<p class="small-note">Generate Relationship Maps for your saved relationships to begin seeing recurring patterns.</p>';
+    : '<div class="empty-state constellation-empty"><h4>No Constellation Patterns yet</h4><p class="small-note">Saved relationships exist but no reports are ready yet.</p><p class="small-note">Generate maps for your saved relationships to begin seeing what repeats.</p><p class="small-note">Patterns will appear here once you’ve generated and saved more maps.</p></div>';
   const themeLine = summary.known_theme_counts.length
     ? `<p class="small-note">Recurring named themes: ${escapeHtml(summary.known_theme_counts.map((item) => item.theme).join(", "))}.</p>`
     : '<p class="small-note">No recurring named themes have been saved yet.</p>';
@@ -735,7 +753,7 @@ async function loadConstellation() {
   }
   const relationships = await relResponse.json();
   if (!relationships.length) {
-    constellationEl.innerHTML = `${renderConstellationPatterns(patternSummary)}<p class="small-note">No saved relationships yet. Save one to start your constellation.</p>`;
+    constellationEl.innerHTML = `${renderConstellationPatterns(patternSummary)}${noSavedRelationshipsEmptyState}`;
     return;
   }
   constellationEl.innerHTML = renderConstellationPatterns(patternSummary);
@@ -748,10 +766,21 @@ async function loadConstellation() {
     const openAction = document.createElement("button");
     openAction.type = "button";
     openAction.className = "secondary";
-    openAction.textContent = "Open / Edit";
+    openAction.textContent = "Update Relationship";
     openAction.addEventListener("click", async () => {
       try {
         await openSavedRelationship(rel.id);
+      } catch (error) {
+        statusEl.textContent = error.message;
+      }
+    });
+    const viewAction = document.createElement("button");
+    viewAction.type = "button";
+    viewAction.className = "secondary";
+    viewAction.textContent = "View Latest Map";
+    viewAction.addEventListener("click", async () => {
+      try {
+        await viewLatestMap(rel.id);
       } catch (error) {
         statusEl.textContent = error.message;
       }
@@ -774,6 +803,7 @@ async function loadConstellation() {
       }
     });
     actions.appendChild(openAction);
+    actions.appendChild(viewAction);
     actions.appendChild(action);
     node.appendChild(actions);
     constellationEl.appendChild(node);

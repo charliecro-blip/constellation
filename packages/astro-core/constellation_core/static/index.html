@@ -11,8 +11,9 @@
   <header>
     <div class="eyebrow">Constellation</div>
     <h1>Your relationship observatory</h1>
-    <p class="tagline">Map the people who shape your life through astrology, timing, and relational patterning.</p>
-    <p class="muted">Start with your own birth information, add someone important, and map the connection in your constellation.</p>
+    <p class="tagline">Constellation maps the patterns between people.</p>
+    <p class="muted">Create Relationship Maps to understand individual bonds, then save them to see what keeps repeating across your relational field.</p>
+    <p class="muted">No scoring. No fate claims. Just relational patterns, timing, and places where the bond asks for attention.</p>
     <div class="start-grid">
       <a href="#you-section" class="quick-link">Add yourself</a>
       <a href="#someone-section" class="quick-link">Add a relationship</a>
@@ -20,10 +21,27 @@
     </div>
   </header>
 
+  <section class="onboarding-grid" aria-label="First-time guidance">
+    <section class="card intro-card stack">
+      <h2>How it works</h2>
+      <ol class="step-list">
+        <li>Enter two birth charts.</li>
+        <li>Add relationship context if you want a more focused reading.</li>
+        <li>Generate a Relationship Map.</li>
+        <li>Save important relationships.</li>
+        <li>Watch recurring patterns emerge in Constellation Patterns.</li>
+      </ol>
+    </section>
+    <section class="card trust-card stack">
+      <h2>How to read this</h2>
+      <p class="small-note">Constellation uses astrology as a symbolic pattern language. It does not decide whether a relationship is good, bad, permanent, or inevitable.</p>
+    </section>
+  </section>
+
   <section class="grid">
     <section id="constellation-section" class="card stack">
       <div class="actions" style="justify-content: space-between; gap: 12px;">
-        <div><h2>Constellation View</h2><p class="muted">Saved relationship snapshots across your field.</p></div>
+        <div><h2>Constellation Patterns</h2><p class="muted">Saved relationships become a wider view of what repeats across your field over time.</p></div>
         <div class="actions"><button class="secondary" id="refresh_constellation" type="button">Refresh</button><button class="secondary" id="new_relationship_top" type="button">New Relationship</button></div>
       </div>
       <div id="constellation" class="constellation-list">Loading saved relationships…</div>
@@ -70,17 +88,17 @@
       <div class="tight">
         <h2>Map this relationship</h2>
         <div class="context-grid">
-          <label>What kind of connection is this?<select name="relationship_type"><option value="romantic" selected>Romantic / current</option><option value="dating_exploring">Dating / exploring</option><option value="ex">Ex</option><option value="unresolved_connection">Unresolved connection</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="child">Child</option><option value="family_other">Family / other</option><option value="admired_figure">Admired figure / mentor</option><option value="other">Other</option></select></label>
+          <label>What kind of connection is this?<span class="field-help">Context helps the map know what kind of bond this is: romantic, creative, unresolved, new, long-term, or still forming.</span><select name="relationship_type"><option value="romantic" selected>Romantic / current</option><option value="dating_exploring">Dating / exploring</option><option value="ex">Ex</option><option value="unresolved_connection">Unresolved connection</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="child">Child</option><option value="family_other">Family / other</option><option value="admired_figure">Admired figure / mentor</option><option value="other">Other</option></select></label>
         </div>
-        <label>What are you hoping to understand?<textarea name="user_question" placeholder="What is the dynamic between us?"></textarea></label>
-        <label>Anything important about this connection?<textarea name="origin_story" placeholder="Add context if you want a more grounded reading."></textarea></label>
+        <label>What are you hoping to understand?<span class="field-help">Optional. Ask what you most want this map to clarify.</span><textarea name="user_question" placeholder="What is the dynamic between us?"></textarea></label>
+        <label>Anything important about this connection?<span class="field-help">Optional. A few words about how this connection began or what it feels like now.</span><textarea name="origin_story" placeholder="Add context if you want a more grounded reading."></textarea></label>
         <details class="advanced-place"><summary>Advanced: chart settings</summary><label>House system<select name="house_system"><option value="whole_sign">Whole Sign</option><option value="placidus" selected>Placidus</option><option value="porphyry">Porphyry</option><option value="regiomontanus">Regiomontanus</option><option value="equal">Equal</option></select></label></details>
       </div>
 
       <div class="actions sticky-actions primary-actions">
         <button class="secondary" id="new_relationship" type="button">New Relationship</button>
         <button class="secondary" id="save_relationship" type="button">Save Relationship</button>
-        <button id="generate" type="submit">Generate Relationship Map</button>
+        <button id="generate" type="submit">Generate Map</button>
         <button class="secondary hidden" id="regenerate_relationship" type="button">Regenerate Map</button>
         <button class="secondary danger-action hidden" id="delete_relationship" type="button">Delete Relationship</button>
       </div>
@@ -91,7 +109,7 @@
     <section id="report-section" class="card stack report-panel">
       <h2>Latest Relationship Map</h2>
       <p id="report_status" class="small-note" aria-live="polite"></p>
-      <div id="preview" class="output-html">Generate a relationship map to see the formatted reading.</div>
+      <div id="preview" class="output-html empty-state"><h3>No report generated yet</h3><p>Start with two people to generate a Relationship Map.</p><p>The map will show central themes, friction points, repair paths, and the larger field between the charts.</p></div>
       <details class="advanced-place developer-actions"><summary>Export / developer tools</summary><div class="actions" aria-label="Markdown export tools"><button class="secondary" id="markdown-tab" type="button">View Markdown</button><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download Markdown</a><button class="secondary" id="copy" type="button">Copy Markdown</button></div><p class="small-note">Interpretive prose may be refined using AI. Chart calculations remain deterministic.</p><pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre><details id="diagnostics-panel" class="advanced-place developer-actions hidden"><summary>Developer diagnostics</summary><pre id="diagnostics">Diagnostics are disabled.</pre></details></details>
     </section>
   </section>
