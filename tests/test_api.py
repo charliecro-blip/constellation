@@ -224,6 +224,11 @@ def test_report_enhance_prompt_guardrails():
     prompt = AI_ENHANCEMENT_SYSTEM_PROMPT.lower()
     assert "do not invent placements" in prompt
     assert "keep the same main section headings" in prompt
+    assert "do not invent astrology" in prompt
+    assert "do not introduce new aspects" in prompt
+    assert "preserve the deterministic priorities" in prompt
+    assert "do not turn the report into compatibility scoring" in prompt
+    assert "fate, soulmate, twin flame, destiny" in prompt
     assert "do not add compatibility scores" in prompt
     assert "meant to be" in prompt
     assert "do not use raw orb numbers" in prompt
@@ -249,7 +254,9 @@ def test_report_enhance_prompt_guardrails():
     assert "highlights" in prompt
     assert "suggests" in prompt
     assert "journey" in prompt
-    assert "direct relational language" in prompt
+    assert "concrete relational language" in prompt
+    assert "theme → felt experience → shadow → repair → agency" in prompt
+    assert "fewer, deeper themes" in prompt
     assert "first overview paragraph" in prompt
     assert "do not over-soften difficult dynamics" in prompt
     assert "precise, warm, and human" in prompt

@@ -545,6 +545,45 @@ def _chart_check_body(relationship: RelationshipCalculation) -> str:
         lines.append("")
     return "\n".join(lines).strip()
 
+def _registry_category(pattern: Pattern) -> str:
+    return get_pattern_metadata(pattern.key).category
+
+
+def _friction_signature(pattern: Pattern) -> str:
+    category = _registry_category(pattern)
+    if category == "communication_heat":
+        return (
+            f"{_interpret_for_section(pattern, 'friction')} The friction signature is not merely disagreement; "
+            "it is the gap between intention, tone, timing, and impact."
+        )
+    if category == "stability_container" or pattern.category in {"emotional_structure", "action_structure", "angle_structure"}:
+        return (
+            f"{_interpret_for_section(pattern, 'friction')} The friction signature often feels like care becoming pressure, "
+            "or steadiness being received as restriction."
+        )
+    if category == "devotion_contract":
+        return (
+            f"{_interpret_for_section(pattern, 'friction')} The bond asks for commitment to become behavioral, "
+            "not only emotional or implied."
+        )
+    if category == "erotic_charge":
+        return (
+            f"{_interpret_for_section(pattern, 'friction')} Chemistry is real here, but intensity needs pacing "
+            "before either person treats charge as capacity."
+        )
+    if category == "trust_depth":
+        return (
+            f"{_interpret_for_section(pattern, 'friction')} Vulnerability should move at the speed of earned trust, "
+            "not at the speed of the strongest feeling."
+        )
+    if category == "volatility":
+        return (
+            f"{_interpret_for_section(pattern, 'friction')} Distance and reconnection need an agreed rhythm so the "
+            "push-pull does not become the whole relationship."
+        )
+    return _interpret_for_section(pattern, "friction")
+
+
 def _friction_loop(patterns: list[Pattern]) -> str:
     grouped = _patterns_by_category(patterns)
     friction_categories = [
@@ -561,6 +600,21 @@ def _friction_loop(patterns: list[Pattern]) -> str:
     selected: list[Pattern] = []
     for category in friction_categories:
         selected.extend(grouped.get(category, []))
+    selected.extend(
+        pattern
+        for pattern in patterns
+        if _registry_category(pattern)
+        in {
+            "communication_heat",
+            "stability_container",
+            "devotion_contract",
+            "erotic_charge",
+            "trust_depth",
+            "volatility",
+            "wounding_healing",
+        }
+        and pattern not in selected
+    )
     selected = sorted(selected, key=lambda pattern: pattern.priority, reverse=True)
 
     if not selected:
@@ -570,7 +624,7 @@ def _friction_loop(patterns: list[Pattern]) -> str:
     for pattern in selected[:3]:
         lines.append(f"### {pattern.title}")
         lines.append("")
-        lines.append(f"{_strength_phrase(pattern)} {_interpret_for_section(pattern, 'friction')}")
+        lines.append(f"{_strength_phrase(pattern)} {_friction_signature(pattern)}")
         lines.append("")
     lines.append("### Repair principles")
     lines.append("")
@@ -578,24 +632,46 @@ def _friction_loop(patterns: list[Pattern]) -> str:
     return "\n".join(lines).strip()
 
 
+REPAIR_PRINCIPLES_BY_CATEGORY = {
+    "emotional_recognition": "Do not assume the other person knows what you feel just because the connection feels familiar; build a shared emotional vocabulary.",
+    "erotic_charge": "Chemistry is real, but it should be paced; do not mistake intensity alone for long-term capacity.",
+    "trust_depth": "Build trust deliberately, in pace with the vulnerability and intensity the contact brings.",
+    "communication_heat": "Name the gap between intention and impact; avoid treating tone issues as proof of incompatibility.",
+    "stability_container": "Ask whether structure feels supportive or restrictive, then name expectations directly.",
+    "volatility": "Clarify what each person needs during distance or cool-down periods; do not make the push-pull rhythm the whole relationship.",
+    "projection_mirror": "Ask what is being seen in the other person, and whether it belongs partly to the observer.",
+    "idealization": "Ask what is being seen in the other person, and whether it belongs partly to the observer.",
+    "private_roots": "Distinguish present relationship needs from old family, home, or belonging templates.",
+    "devotion_contract": "Clarify what commitment means behaviorally, not just emotionally.",
+    "wounding_healing": "Handle tenderness carefully; avoid implying that pain equals depth.",
+}
+
+
 def _repair_path(patterns: list[Pattern]) -> str:
-    categories = {pattern.category for pattern in patterns[:8]}
-    principles = []
-    if "communication" in categories:
-        principles.append("Slow the conversation enough that heat can become clarity.")
-    if "emotional_structure" in categories or "bond_structure" in categories or "angle_structure" in categories:
-        principles.append("Check whether structure is acting as container or constraint.")
-    if "intensity" in categories or "emotional_intensity" in categories or "attraction_intensity" in categories:
+    registry_categories = [_registry_category(pattern) for pattern in patterns[:10]]
+    legacy_categories = {pattern.category for pattern in patterns[:10]}
+    principles: list[str] = []
+
+    for category in registry_categories:
+        principle = REPAIR_PRINCIPLES_BY_CATEGORY.get(category)
+        if principle and principle not in principles:
+            principles.append(principle)
+
+    if "communication" in legacy_categories and REPAIR_PRINCIPLES_BY_CATEGORY["communication_heat"] not in principles:
+        principles.append(REPAIR_PRINCIPLES_BY_CATEGORY["communication_heat"])
+    if legacy_categories.intersection({"emotional_structure", "bond_structure", "angle_structure", "action_structure"}) and REPAIR_PRINCIPLES_BY_CATEGORY["stability_container"] not in principles:
+        principles.append(REPAIR_PRINCIPLES_BY_CATEGORY["stability_container"])
+    if legacy_categories.intersection({"intensity", "emotional_intensity", "attraction_intensity"}) and REPAIR_PRINCIPLES_BY_CATEGORY["trust_depth"] not in principles:
         principles.append("Intensity needs repair capacity; it is not proof of safety.")
-    if "emotional_variability" in categories:
-        principles.append("Make room for space without turning distance into abandonment.")
-    if "daily_life" in categories:
+    if "emotional_variability" in legacy_categories and REPAIR_PRINCIPLES_BY_CATEGORY["volatility"] not in principles:
+        principles.append(REPAIR_PRINCIPLES_BY_CATEGORY["volatility"])
+    if "daily_life" in legacy_categories:
         principles.append("Bring repair into ordinary routines, not only big conversations.")
 
     if not principles:
         principles.append("Name the strongest activation and agree on a workable pace.")
 
-    return "\n".join(f"- {principle}" for principle in principles)
+    return "\n".join(f"- {principle}" for principle in principles[:5])
 
 
 def generate_relationship_report(
