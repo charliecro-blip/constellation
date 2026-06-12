@@ -148,8 +148,9 @@ def test_header_styles_are_compact_and_prevent_overflow():
 def test_constellation_patterns_ui_content_is_present_and_safe():
     source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
 
-    assert "Recurring patterns" in source
-    assert "Save two or more relationships to see recurring patterns across your constellation." in source
+    assert "Constellation Patterns" in source
+    assert "Recurring motifs" in source
+    assert "Your constellation is still forming." in source
     assert 'fetch("/constellation-patterns")' in source
     assert "saved relationships analyzed" in source
     assert "Relationship types" in source
@@ -188,3 +189,77 @@ def test_report_scrolls_once_after_standard_report():
     enhancement_flow = source.split("async function enhanceReportMarkdown")[1].split("function relationshipLabel")[0]
     assert "scrollReportIntoViewOnce()" in standard_flow
     assert "scrollReportIntoViewOnce()" not in enhancement_flow
+
+
+def test_constellation_patterns_structured_motif_cards_are_polished():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+    pattern_source = source.split("function renderConstellationPatterns")[1].split("async function loadConstellation")[0]
+
+    assert "renderRecurringMotifCard" in source
+    assert "motif-card" in source
+    assert "motif.label" in source
+    assert "categoryLabel(motif)" in source
+    assert "savedMapCountLabel(motif.count)" in source
+    assert "Appears in:" in source
+    assert "people.join(\" · \")" in source
+    assert "renderEvidence(motif.evidence)" in source
+    assert "Evidence snippets" in source
+    assert "diagnostics" not in pattern_source.lower()
+
+
+def test_constellation_patterns_section_hierarchy_and_empty_states():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    for expected in (
+        "Constellation Patterns",
+        "What keeps showing up in your relational field?",
+        "Currently emerging",
+        "Recurring motifs",
+        "Relationship-specific motifs",
+        "Still forming",
+        "Your constellation is still forming.",
+        "Save a relationship and generate a Relationship Map to begin seeing recurring patterns.",
+        "Generate Relationship Maps for your saved relationships to begin seeing recurring patterns.",
+        "One map is active. Add more saved maps to see what repeats across your field.",
+    ):
+        assert expected in source
+
+
+def test_constellation_patterns_category_descriptions_render():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    for expected in (
+        "Where someone feels familiar, legible, or emotionally known.",
+        "Where attraction, pursuit, chemistry, or creative heat concentrates.",
+        "Where commitment, time, limits, or responsibility shape the bond.",
+        "Where vulnerability, honesty, and deeper psychological contact are emphasized.",
+        "Where language, timing, nervous systems, or conflict patterns matter.",
+        "Where home, family patterns, memory, or attachment history are activated.",
+        "Where loyalty, vows, care, or relational obligation become central.",
+        "Where the other person reflects disowned or amplified parts of the self.",
+        "Where the bond shows pathways for working through friction.",
+        "categoryDescription(item.category, item.description)",
+    ):
+        assert expected in source
+
+
+def test_constellation_patterns_copy_avoids_bad_language_and_ranking():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+    pattern_source = source.split("function renderConstellationPatterns")[1].split("async function loadConstellation")[0]
+    lower_source = pattern_source.lower()
+
+    for forbidden in (
+        "compatibility score",
+        "best match",
+        "worst match",
+        "soulmate",
+        "twin flame",
+        "destined",
+        "fated",
+        "meant to be",
+        "toxic",
+        "doomed",
+        "rank people",
+    ):
+        assert forbidden not in lower_source
+    assert "better or worse" in source

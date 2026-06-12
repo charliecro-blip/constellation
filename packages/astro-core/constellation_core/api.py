@@ -121,13 +121,31 @@ class PatternMotifResponse(BaseModel):
     people: list[str]
     summary_label: str
     category: str | None = None
+    category_label: str | None = None
+    description: str | None = None
+    evidence: list[str] = Field(default_factory=list)
     relationship_ids: list[str] = Field(default_factory=list)
 
 
 class MotifCategoryCountResponse(BaseModel):
     category: str
     label: str
+    description: str | None = None
     count: int
+
+
+class RelationshipSpecificMotifResponse(BaseModel):
+    title: str
+    category: str
+    category_label: str
+    description: str
+    evidence: str | None = None
+
+
+class RelationshipMotifGroupResponse(BaseModel):
+    relationship_id: str
+    label: str
+    motifs: list[RelationshipSpecificMotifResponse]
 
 
 class ConstellationPatternSummaryResponse(BaseModel):
@@ -138,6 +156,7 @@ class ConstellationPatternSummaryResponse(BaseModel):
     known_theme_counts: list[PatternKnownThemeResponse]
     recurring_motifs: list[PatternMotifResponse]
     top_motif_categories: list[MotifCategoryCountResponse] = Field(default_factory=list)
+    relationship_motifs: list[RelationshipMotifGroupResponse] = Field(default_factory=list)
     plain_language_summary: str
 
 
@@ -366,6 +385,7 @@ def constellation_patterns_endpoint(
                         "category": motif.category,
                         "title": motif.title,
                         "relationship_id": motif.relationship_id,
+                        "evidence_text": motif.evidence_text,
                     }
                     for motif in stored_motifs
                 ],
