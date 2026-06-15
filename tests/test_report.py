@@ -1,5 +1,6 @@
 from constellation_core.context import RelationshipContext
 from constellation_core.report import (
+    build_report_diagnostics,
     build_report_synthesis_packet,
     generate_relationship_report,
     generate_report_from_birth_data,
@@ -1222,3 +1223,27 @@ def test_temperament_weaves_mercury_detail_moon_profile_repair_and_prompt_guardr
     assert "soulmate" not in markdown.lower()
     assert "twin flame" not in markdown.lower()
     assert "unless they are supplied by deterministic temperament data" in AI_ENHANCEMENT_SYSTEM_PROMPT
+
+
+def test_relationship_ruler_context_surfaces_in_report_detail_diagnostics_and_packet():
+    chart_a = _synthetic_chart("Charlie").model_copy(update={"placements": {"venus": _placement("venus", 280, "Capricorn", house=6)}})
+    chart_b = _synthetic_chart("Ellis").model_copy(update={"placements": {"saturn": _placement("saturn", 281, "Capricorn", house=6), "mars": _placement("mars", 215, "Scorpio", house=5)}, "angles": {"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)}})
+    relationship = RelationshipCalculation(person_a=chart_a, person_b=chart_b, synastry_aspects=[Aspect(point_a="venus", point_b="saturn", aspect="conjunction", exact_angle=0, orb=0.5)], house_overlays=[])
+
+    report = generate_relationship_report(relationship)
+    detail_text = " ".join(detail.read_more for detail in report.dynamic_details)
+    diagnostics = build_report_diagnostics(relationship)
+    packet = build_report_synthesis_packet(relationship)
+
+    assert "7th-house ruler" in report.to_markdown()
+    assert "chart-specific relationship significator" in detail_text
+    assert diagnostics.relationship_rulership_summary["person_b"]["relationship_axis"]["descendant_ruler"]["planet"] == "Saturn"
+    assert diagnostics.relationship_rulership_summary["cross_activations"]
+    assert packet.relationship_rulership_summary["cross_activations"]
+    joined = report.to_markdown().lower() + detail_text.lower()
+    assert "compatibility score" not in joined
+    assert "soulmate" not in joined
+    assert "twin flame" not in joined
+    assert "destined" not in joined
+    assert "fated" not in joined
+    assert "meant to be" not in joined

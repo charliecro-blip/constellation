@@ -21,6 +21,7 @@ from .pattern_registry import convergence_category_for, get_pattern_metadata
 from .patterns import ASTEROID_CENTRAL_TARGETS, ASTEROID_POINTS, Pattern, _aspect_word, detect_relationship_patterns
 from .chart import DEFAULT_HOUSE_SYSTEM
 from .relationship import calculate_relationship
+from .rulerships import relationship_house_rulers, relationship_significator_summary
 from .schemas import (
     Aspect,
     AsteroidPolicyDiagnostics,
@@ -323,6 +324,12 @@ def _profile_body(chart: Chart, patterns: list[Pattern]) -> str:
     lines: list[str] = []
     if anchors:
         lines.append(f"- **Attachment style:** {chart.name} meets relationship through {', '.join(anchors)}. The Ascendant/Descendant axis describes how closeness begins, what feels inviting, and what can get projected onto a partner.")
+        axis = relationship_significator_summary(chart).get("relationship_axis", {})
+        desc = axis.get("descendant")
+        desc_ruler = (axis.get("descendant_ruler") or {}) if isinstance(axis, dict) else {}
+        if desc and desc_ruler:
+            house = f" in the {_ordinal(desc_ruler.get('house'))} house" if desc_ruler.get("house") else ""
+            lines.append(f"- **Partnership ruler:** With {desc} on the Descendant, {chart.name} often meets partnership through {_display_body(str(desc_ruler.get('planet', '')))} themes. The 7th-house ruler placed in {desc_ruler.get('sign')}{house} shows where mirroring, loyalty, boundaries, attraction, or negotiation become personally specific rather than generic.")
     else:
         lines.append(f"- **Attachment style:** {chart.name}'s birth time data does not give a reliable Ascendant/Descendant axis here, so this profile leans on the relational planets rather than angles.")
 
@@ -868,11 +875,31 @@ def _related_titles(pattern: Pattern, all_patterns: list[Pattern]) -> list[str]:
     return related
 
 
+def _relationship_ruler_note_for_aspect(relationship: RelationshipCalculation, aspect: Aspect) -> str | None:
+    rulers = {
+        "person_a": relationship_house_rulers(relationship.person_a),
+        "person_b": relationship_house_rulers(relationship.person_b),
+    }
+    labels = {
+        "descendant_ruler": "Descendant/7th-house ruler",
+        "romance_ruler": "5th-house ruler",
+        "intimacy_ruler": "8th-house ruler",
+        "ascendant_ruler": "Ascendant ruler",
+    }
+    checks = [("person_b", aspect.point_b.lower(), relationship.person_b.name), ("person_a", aspect.point_a.lower(), relationship.person_a.name)]
+    for owner, point, name in checks:
+        for key, ruler in rulers[owner].items():
+            if point == ruler and key in labels:
+                return f"This is not only a generic planet contact: {_display_body(ruler)} rules {name}'s {labels[key]}, so the aspect touches a chart-specific relationship significator."
+    return None
+
+
 def _dynamic_detail_for_pattern(relationship: RelationshipCalculation, pattern: Pattern, all_patterns: list[Pattern], section: str) -> DynamicDetail:
     aspect = _aspect_for_pattern(relationship, pattern)
     technical: list[str] = [*pattern.evidence]
     context_bits: list[str] = []
     if aspect and pattern.layer == "synastry":
+        ruler_note = _relationship_ruler_note_for_aspect(relationship, aspect)
         for chart, body in [(relationship.person_a, aspect.point_a.lower()), (relationship.person_b, aspect.point_b.lower())]:
             if bit := _placement_detail_context(chart, body):
                 context_bits.append(bit)
@@ -880,8 +907,12 @@ def _dynamic_detail_for_pattern(relationship: RelationshipCalculation, pattern: 
         if len(context_bits) == 2:
             bridge = _temperament_bridge_for_aspect(relationship, aspect)
             read_more = f"{context_bits[0]} {context_bits[1]} {bridge} The {_aspect_word(aspect.aspect)} is therefore not just a generic {aspect.point_a}/{aspect.point_b} contact; it describes how these two natal channels meet in this particular bond."
+            if ruler_note:
+                read_more += " " + ruler_note
         else:
             read_more = "This contact matters because it ties a central synastry signature to the lived style of each person's natal chart rather than treating the aspect in isolation."
+            if ruler_note:
+                read_more += " " + ruler_note
     elif pattern.layer == "house_overlay":
         read_more = "This overlay shows where one person's planet enters the other's lived house terrain. It matters most when it repeats a larger motif in the map rather than standing alone."
     elif pattern.key == "composite.t_square":
@@ -1187,6 +1218,11 @@ def build_report_synthesis_packet(
         chart_sanity_summary=_chart_check_body(relationship),
         dynamic_details=build_dynamic_details(relationship, patterns, context),
         temperament_summary=compare_temperaments(relationship.person_a, relationship.person_b),
+        relationship_rulership_summary={
+            "person_a": relationship_significator_summary(relationship.person_a),
+            "person_b": relationship_significator_summary(relationship.person_b),
+            "cross_activations": [pattern.evidence[0] for pattern in patterns if pattern.key.startswith("synastry.relationship_ruler") or pattern.key == "synastry.descendant_contact"][:8],
+        },
     )
 
 
@@ -1306,6 +1342,7 @@ def _synthesis_packet_summary(packet: ReportSynthesisPacket) -> dict[str, object
         "repair_theme_count": len(packet.repair_themes),
         "has_chart_sanity_summary": bool(packet.chart_sanity_summary),
         "has_temperament_summary": bool(packet.temperament_summary),
+        "relationship_rulership_summary": packet.relationship_rulership_summary,
     }
 
 
@@ -1366,6 +1403,11 @@ def build_report_diagnostics(
         ),
         ai_synthesis_packet_summary=_synthesis_packet_summary(packet),
         temperament_summary=compare_temperaments(relationship.person_a, relationship.person_b),
+        relationship_rulership_summary={
+            "person_a": relationship_significator_summary(relationship.person_a),
+            "person_b": relationship_significator_summary(relationship.person_b),
+            "cross_activations": [pattern.evidence[0] for pattern in patterns if pattern.key.startswith("synastry.relationship_ruler") or pattern.key == "synastry.descendant_contact"][:8],
+        },
     )
 
 

@@ -372,3 +372,28 @@ def test_constellation_patterns_prefer_structured_motifs_and_group_people_by_cat
         "Where commitment, time, limits, or responsibility shape the bond."
     )
     assert "Your saved maps currently emphasize" in summary["plain_language_summary"]
+
+
+def test_relationship_house_rulerships_and_activation_detection():
+    from constellation_core.rulerships import relationship_significator_summary, sign_ruler
+    from constellation_core.schemas import Angle, Aspect, BirthData, Chart, Placement, RelationshipCalculation
+    from constellation_core.patterns import detect_relationship_patterns
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    a = Chart(name="A", birth=birth, julian_day_ut=None, house_system="whole_sign", placements={"venus": placement("venus", 280, "Capricorn", 6)}, angles={"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)})
+    b = Chart(name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign", placements={"saturn": placement("saturn", 281, "Capricorn", 6), "mars": placement("mars", 215, "Scorpio", 5)}, angles={"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)})
+    relationship = RelationshipCalculation(person_a=a, person_b=b, synastry_aspects=[Aspect(point_a="venus", point_b="saturn", aspect="conjunction", exact_angle=0, orb=0.5)], house_overlays=[])
+
+    summary = relationship_significator_summary(b)
+    assert sign_ruler("Capricorn") == "saturn"
+    assert summary["relationship_axis"]["descendant"] == "Capricorn"
+    assert summary["relationship_axis"]["descendant_ruler"]["planet"] == "Saturn"
+    assert summary["romance_significator"]["ruler"]["planet"] == "Mars"
+    assert summary["intimacy_significator"]["ruler"]["planet"] == "Saturn"
+    patterns = detect_relationship_patterns(relationship)
+    assert any(pattern.key == "synastry.relationship_ruler.descendant_ruler" for pattern in patterns)
+    assert any("7th-house ruler" in " ".join(pattern.evidence) for pattern in patterns)

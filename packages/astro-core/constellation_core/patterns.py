@@ -19,6 +19,7 @@ from .asteroid_policy import (
     SUPPORTED_ASTEROID_POINTS,
 )
 from .schemas import Aspect, Chart, HouseOverlay, RelationshipCalculation
+from .rulerships import descendant_sign, relationship_house_rulers
 from .zodiac import shortest_arc
 
 
@@ -668,9 +669,85 @@ def detect_composite_patterns(composite: Chart, composite_aspects: list[Aspect])
 
     return patterns
 
+
+def _relationship_ruler_patterns(relationship: RelationshipCalculation) -> list[Pattern]:
+    patterns: list[Pattern] = []
+    ruler_specs = {
+        "descendant_ruler": ("7th-house ruler", "familiar_pull", 62),
+        "romance_ruler": ("5th-house ruler", "erotic_charge", 48),
+        "intimacy_ruler": ("8th-house ruler", "trust_depth", 46),
+        "ascendant_ruler": ("Ascendant ruler", "projection_mirror", 44),
+    }
+    charts = {"person_a": relationship.person_a, "person_b": relationship.person_b}
+    names = {"person_a": relationship.person_a.name, "person_b": relationship.person_b.name}
+    rulers = {owner: relationship_house_rulers(chart) for owner, chart in charts.items()}
+    for aspect in relationship.synastry_aspects:
+        if aspect.aspect not in {"conjunction", "opposition", "square", "trine", "sextile"}:
+            continue
+        for owner, activator, ruler_point, activator_point in [
+            ("person_b", "person_a", aspect.point_b.lower(), aspect.point_a.lower()),
+            ("person_a", "person_b", aspect.point_a.lower(), aspect.point_b.lower()),
+        ]:
+            for ruler_key, ruler in rulers[owner].items():
+                if ruler_point != ruler or ruler_key not in ruler_specs:
+                    continue
+                label, category, base_priority = ruler_specs[ruler_key]
+                personal_bonus = 8 if activator_point in {"sun", "moon", "venus", "mars"} and ruler_key == "descendant_ruler" else 0
+                hard_bonus = 6 if aspect.aspect in {"conjunction", "opposition"} else 0
+                patterns.append(Pattern(
+                    id=f"relationship_ruler_{activator}_to_{owner}_{ruler_key}_{activator_point}_{ruler}_{aspect.aspect}",
+                    layer="synastry",
+                    category=category,
+                    priority=min(92, base_priority + personal_bonus + hard_bonus + _bonus(aspect)),
+                    title=f"{names[activator]}'s {_display_point(activator_point)} {_aspect_word(aspect.aspect)} {names[owner]}'s {_display_point(ruler)} ({label})",
+                    evidence=[f"{_evidence(aspect, relationship)}; {_display_point(ruler)} rules {names[owner]}'s {label}"],
+                    key=f"synastry.relationship_ruler.{ruler_key}",
+                    confidence="high" if aspect.orb <= 3 else "medium",
+                ))
+        # Descendant contact is represented as a conjunction/opposition to the Ascendant axis.
+        for owner, activator, angle_point, activator_point in [
+            ("person_b", "person_a", aspect.point_b.lower(), aspect.point_a.lower()),
+            ("person_a", "person_b", aspect.point_a.lower(), aspect.point_b.lower()),
+        ]:
+            if angle_point != "ascendant" or aspect.aspect not in {"conjunction", "opposition"}:
+                continue
+            desc = descendant_sign(charts[owner])
+            contact = "Descendant" if aspect.aspect == "opposition" else "Ascendant/Descendant axis"
+            patterns.append(Pattern(
+                id=f"relationship_descendant_{activator}_to_{owner}_{activator_point}_{aspect.aspect}",
+                layer="synastry",
+                category="projection_mirror",
+                priority=min(94, 78 + (8 if activator_point == "venus" else 5 if activator_point in {"sun", "moon"} else 0) + _bonus(aspect)),
+                title=f"{names[activator]}'s {_display_point(activator_point)} {_aspect_word(aspect.aspect)} {names[owner]}'s {contact}",
+                evidence=[f"{_evidence(aspect, relationship)}; {names[owner]}'s Descendant sign is {desc}" if desc else _evidence(aspect, relationship)],
+                key="synastry.descendant_contact",
+                confidence="high",
+            ))
+    # Concise reciprocal marker when both 7th rulers are activated in the selected aspect set.
+    activated = {"person_a": False, "person_b": False}
+    for pattern in patterns:
+        if pattern.key == "synastry.relationship_ruler.descendant_ruler":
+            if f"{relationship.person_a.name}'s 7th-house ruler" in pattern.evidence[0]:
+                activated["person_a"] = True
+            if f"{relationship.person_b.name}'s 7th-house ruler" in pattern.evidence[0]:
+                activated["person_b"] = True
+    if all(activated.values()):
+        patterns.append(Pattern(
+            id="relationship_ruler_reciprocal_7th",
+            layer="synastry",
+            category="familiar_pull",
+            priority=88,
+            title="Reciprocal 7th-house ruler activation",
+            evidence=["Both charts have the 7th-house ruler contacted by the other person."],
+            key="synastry.relationship_ruler.reciprocal_7th",
+            confidence="high",
+        ))
+    return patterns
+
 def detect_relationship_patterns(relationship: RelationshipCalculation) -> list[Pattern]:
     patterns = detect_synastry_patterns(relationship)
     patterns.extend(detect_house_overlay_patterns(relationship))
+    patterns.extend(_relationship_ruler_patterns(relationship))
     if relationship.composite is not None:
         patterns.extend(detect_composite_patterns(relationship.composite, relationship.composite_aspects))
     return sorted(patterns, key=lambda pattern: pattern.priority, reverse=True)

@@ -20,3 +20,14 @@ Communication signatures can move up when the user asks about communication, con
 ## Output discipline
 
 Ranking is an internal editorial tool. Reports should surface the few strongest themes, synthesize convergent evidence, and omit patterns below threshold. A clean report with fewer grounded themes is better than a long report that treats every contact as equally important.
+
+## Relationship-house rulership as context
+
+Relationship-house rulers are context multipliers, not standalone verdicts. Constellation uses the traditional sign-ruler map for this lightweight layer so rulership can clarify why an otherwise ordinary synastry contact feels personally relevant in one chart.
+
+- The **7th-house ruler** qualifies partnership relevance: contacts to it can explain why a person feels seen, chosen, mirrored, or pulled into one-to-one negotiation.
+- The **5th-house ruler** qualifies romance, play, flirtation, pleasure, creative risk, and erotic aliveness.
+- The **8th-house ruler** qualifies trust, vulnerability, exposure, intimacy, and shared consequence.
+- Ascendant/Descendant ruler contacts can support familiar pull or projection-mirror themes when the rest of the map already points there.
+
+Rulership does not replace synastry, composite patterns, overlays, temperament, or convergence weighting. It explains why a planet matters more in a specific natal chart than it would as a generic planet-aspect keyword. Reports should mention rulership only when it helps prioritize or interpret selected dynamics, and should avoid turning the relationship profile into a long traditional astrology inventory.
