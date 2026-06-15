@@ -102,3 +102,13 @@ pre { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, 
 .feedback-choice-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .feedback-choice-row label { width: auto; display: inline-flex; flex-direction: row; gap: 6px; align-items: center; color: var(--muted); }
 .feedback-choice-row input { width: auto; }
+.intro-copy { max-width: 58rem; }
+.guardrail-copy { color: #f2ddbf; font-size: 0.88rem; line-height: 1.45; }
+.how-it-works { border: 1px solid rgba(246, 222, 177, 0.18); border-radius: 16px; padding: 10px 12px; background: rgba(255,255,255,0.025); }
+.how-it-works summary { cursor: pointer; color: var(--gold); font-weight: 850; }
+.how-it-works ol { margin: 10px 0 8px 1.1rem; padding: 0; color: var(--muted); line-height: 1.45; font-size: 0.88rem; }
+.how-it-works p { color: var(--muted); font-size: 0.82rem; }
+.field-helper { color: var(--muted); font-size: 0.76rem; font-weight: 500; line-height: 1.35; }
+.empty-state { display: grid; gap: 8px; color: var(--muted); }
+.empty-state strong { color: var(--ink); }
+@media (max-width: 640px) { .how-it-works ol { font-size: 0.84rem; } }
