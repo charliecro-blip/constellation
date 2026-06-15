@@ -218,6 +218,7 @@ class ReportDiagnostics(BaseModel):
     asteroid_policy_summary: AsteroidPolicyDiagnostics
     ai_synthesis_packet_summary: dict[str, object] | None = None
     temperament_summary: dict[str, object] | None = None
+    relationship_rulership_summary: dict[str, object] | None = None
 
 
 class ReportSynthesisPacket(BaseModel):
@@ -236,3 +237,4 @@ class ReportSynthesisPacket(BaseModel):
     chart_sanity_summary: str | None = None
     dynamic_details: list[DynamicDetail] = Field(default_factory=list)
     temperament_summary: dict[str, object] | None = None
+    relationship_rulership_summary: dict[str, object] | None = None

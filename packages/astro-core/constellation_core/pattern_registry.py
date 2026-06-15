@@ -253,6 +253,23 @@ PATTERN_REGISTRY: dict[str, PatternMetadata] = {
         "Composite Moon-Uranus describes emotional variability, space needs, and nervous-system charge.",
         lead_eligible=False,
     ),
+
+    "synastry.relationship_ruler": _metadata(
+        "synastry.relationship_ruler",
+        2,
+        "familiar_pull",
+        "central",
+        "A partner contacts a chart-specific relationship-house ruler, qualifying the generic aspect as personally relevant.",
+        lead_eligible=False,
+    ),
+    "synastry.descendant_contact": _metadata(
+        "synastry.descendant_contact",
+        2,
+        "projection_mirror",
+        "central",
+        "A partner contacts the Descendant by conjunction/opposition through the Ascendant axis.",
+        lead_eligible=False,
+    ),
     # Tier 3: supporting signatures and texture.
     "synastry.mercury_mars": _metadata(
         "synastry.mercury_mars",
@@ -356,6 +373,19 @@ def get_pattern_metadata(pattern_key: str) -> PatternMetadata:
         return PATTERN_REGISTRY[canonical_key]
     if canonical_key.startswith("composite.stellium."):
         return PATTERN_REGISTRY["composite.stellium"]
+    if canonical_key.startswith("synastry.relationship_ruler."):
+        base = PATTERN_REGISTRY["synastry.relationship_ruler"]
+        if canonical_key.endswith(".romance_ruler"):
+            return replace(base, key=pattern_key, category="erotic_charge")
+        if canonical_key.endswith(".intimacy_ruler"):
+            return replace(base, key=pattern_key, category="trust_depth")
+        if canonical_key.endswith(".descendant_ruler") or canonical_key.endswith(".reciprocal_7th"):
+            return replace(base, key=pattern_key, category="familiar_pull")
+        if canonical_key.endswith(".ascendant_ruler"):
+            return replace(base, key=pattern_key, category="projection_mirror")
+        return base
+    if canonical_key.startswith("synastry.descendant_contact"):
+        return PATTERN_REGISTRY["synastry.descendant_contact"]
     if canonical_key.startswith("overlay.house_"):
         return PATTERN_REGISTRY.get(canonical_key, PATTERN_REGISTRY["house_overlay"])
     return replace(FALLBACK_PATTERN_METADATA, key=pattern_key)
