@@ -11,13 +11,25 @@
   <header>
     <div class="eyebrow">Constellation</div>
     <h1>Your relationship observatory</h1>
-    <p class="tagline">Map the people who shape your life through astrology, timing, and relational patterning.</p>
-    <p class="muted">Start with your own birth information, add someone important, and map the connection in your constellation.</p>
+    <p class="tagline">Constellation maps the patterns between people.</p>
+    <p class="muted intro-copy">Create Relationship Maps to understand individual bonds, then save them to see what keeps repeating across your relational field.</p>
+    <p class="guardrail-copy">No compatibility scores. No fate claims. Just relational patterns, timing, and places where the bond asks for attention.</p>
     <div class="start-grid">
       <a href="#you-section" class="quick-link">Add yourself</a>
       <a href="#someone-section" class="quick-link">Add a relationship</a>
       <a href="#constellation-section" class="quick-link">View constellation (optional)</a>
     </div>
+    <details class="how-it-works">
+      <summary>How it works</summary>
+      <ol>
+        <li>Enter two birth charts.</li>
+        <li>Add relationship context if you want a more focused reading.</li>
+        <li>Generate a Relationship Map.</li>
+        <li>Save important relationships.</li>
+        <li>Watch recurring patterns emerge in Constellation Patterns.</li>
+      </ol>
+      <p>Constellation uses astrology as a symbolic pattern language. It does not decide whether a relationship is good, bad, doomed, or meant to be.</p>
+    </details>
   </header>
 
   <section class="grid">
@@ -70,10 +82,10 @@
       <div class="tight">
         <h2>Map this relationship</h2>
         <div class="context-grid">
-          <label>What kind of connection is this?<select name="relationship_type"><option value="romantic" selected>Romantic / current</option><option value="dating_exploring">Dating / exploring</option><option value="ex">Ex</option><option value="unresolved_connection">Unresolved connection</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="child">Child</option><option value="family_other">Family / other</option><option value="admired_figure">Admired figure / mentor</option><option value="other">Other</option></select></label>
+          <label>What kind of connection is this?<span class="field-helper">Context helps the map know what kind of bond this is: romantic, creative, unresolved, new, long-term, or still forming.</span><select name="relationship_type"><option value="romantic" selected>Romantic / current</option><option value="dating_exploring">Dating / exploring</option><option value="ex">Ex</option><option value="unresolved_connection">Unresolved connection</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="child">Child</option><option value="family_other">Family / other</option><option value="admired_figure">Admired figure / mentor</option><option value="other">Other</option></select></label>
         </div>
-        <label>What are you hoping to understand?<textarea name="user_question" placeholder="What is the dynamic between us?"></textarea></label>
-        <label>Anything important about this connection?<textarea name="origin_story" placeholder="Add context if you want a more grounded reading."></textarea></label>
+        <label>What are you hoping to understand?<span class="field-helper">Optional. Ask what you most want this map to clarify.</span><textarea name="user_question" placeholder="What is the dynamic between us?"></textarea></label>
+        <label>Anything important about this connection?<span class="field-helper">Optional. A few words about how this connection began or what it feels like now.</span><textarea name="origin_story" placeholder="Add context if you want a more grounded reading."></textarea></label>
         <details class="advanced-place"><summary>Advanced: chart settings</summary><label>House system<select name="house_system"><option value="whole_sign">Whole Sign</option><option value="placidus" selected>Placidus</option><option value="porphyry">Porphyry</option><option value="regiomontanus">Regiomontanus</option><option value="equal">Equal</option></select></label></details>
       </div>
 
@@ -85,13 +97,13 @@
         <button class="secondary danger-action hidden" id="delete_relationship" type="button">Delete Relationship</button>
       </div>
       <div id="status" class="status">Ready.</div>
-      <details class="advanced-place developer-actions"><summary>Developer/testing tools</summary><div class="actions"><button class="secondary" id="save" type="button">Save browser draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample data</button></div></details>
+      <details class="advanced-place developer-actions"><summary>Developer diagnostics</summary><div class="actions"><button class="secondary" id="save" type="button">Save browser draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample data</button></div></details>
     </form>
 
     <section id="report-section" class="card stack report-panel">
       <h2>Latest Relationship Map</h2>
       <p id="report_status" class="small-note" aria-live="polite"></p>
-      <div id="preview" class="output-html">Generate a relationship map to see the formatted reading.</div>
+      <div id="preview" class="output-html empty-state"><strong>Start with two people to generate a Relationship Map.</strong><p>The map will show central themes, friction points, repair paths, and the larger field between the charts.</p></div>
       <details id="feedback-panel" class="feedback-panel hidden">
         <summary>How did this map land?</summary>
         <form id="feedback-form" class="feedback-form stack">

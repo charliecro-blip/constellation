@@ -30,10 +30,8 @@ PERSON_B = {
 def test_index_serves_prototype_ui():
     response = client.get("/")
     assert response.status_code == 200
-    assert (
-        "Map the people who shape your life through astrology, timing, and relational patterning."
-        in response.text
-    )
+    assert "Constellation maps the patterns between people." in response.text
+    assert "Create Relationship Maps to understand individual bonds" in response.text
     assert "Start with you" in response.text
     assert "Add someone to your constellation" in response.text
     assert ("Your Constellation" in response.text) or ("Constellation View" in response.text)

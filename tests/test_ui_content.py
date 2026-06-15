@@ -17,10 +17,9 @@ def test_metadata_not_prominent_report_section_label():
 def test_homepage_hero_subtitle_updated_without_repeated_observatory():
     html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
     assert "Your relationship observatory" in html
-    assert (
-        "Map the people who shape your life through astrology, timing, and relational patterning."
-        in html
-    )
+    assert "Constellation maps the patterns between people." in html
+    assert "Create Relationship Maps to understand individual bonds" in html
+    assert "No compatibility scores. No fate claims." in html
     assert "An observatory for all your human relationships." not in html
     tagline = html.split('<p class="tagline">')[1].split("</p>")[0]
     assert "observatory" not in tagline.lower()
@@ -218,9 +217,10 @@ def test_constellation_patterns_section_hierarchy_and_empty_states():
         "Relationship-specific motifs",
         "Still forming",
         "Your constellation is still forming.",
-        "Save a relationship and generate a Relationship Map to begin seeing recurring patterns.",
-        "Generate Relationship Maps for your saved relationships to begin seeing recurring patterns.",
-        "One map is active. Add more saved maps to see what repeats across your field.",
+        "Save relationships to begin seeing recurring patterns across your field.",
+        "Generate maps for your saved relationships to begin seeing what repeats.",
+        "One map is active. Add more saved maps to see broader patterns in your constellation.",
+        "Patterns will appear here once you’ve generated and saved more maps.",
     ):
         assert expected in source
 
@@ -298,7 +298,8 @@ def test_new_relationship_clears_selection_report_and_birthplace_state():
     assert "clearReportState()" in flow
     assert "currentSynthesisPacket = null" in source
     assert "renderDiagnostics(null)" in source
-    assert "Generate a relationship map to see the formatted reading." in source
+    assert "Start with two people to generate a Relationship Map." in source
+    assert "The map will show central themes, friction points, repair paths" in source
     assert 'house_system: "placidus"' in source
 
 
@@ -332,11 +333,11 @@ def test_ui_avoids_standard_enhanced_and_score_language():
     html = Path("packages/astro-core/constellation_core/static/index.html").read_text().lower()
     source = Path("packages/astro-core/constellation_core/static/app.js").read_text().lower()
 
+    assert "no compatibility scores." in html
     for forbidden in (
         "standard report",
         "enhanced report",
         "ai report",
-        "compatibility score",
         "match score",
     ):
         assert forbidden not in html
@@ -375,3 +376,46 @@ def test_feedback_ui_avoids_score_and_fated_language():
     assert "destined" not in feedback_html
     assert "meant-to-be" not in feedback_html
     assert "meant to be" not in feedback_html
+
+
+def test_onboarding_empty_states_and_helper_copy_render():
+    html = Path("packages/astro-core/constellation_core/static/index.html").read_text()
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    for expected in (
+        "Constellation maps the patterns between people.",
+        "Create Relationship Maps to understand individual bonds",
+        "How it works",
+        "Enter two birth charts.",
+        "Watch recurring patterns emerge in Constellation Patterns.",
+        "Start with two people to generate a Relationship Map.",
+        "The map will show central themes, friction points, repair paths",
+        "Context helps the map know what kind of bond this is",
+        "Optional. Ask what you most want this map to clarify.",
+        "Optional. A few words about how this connection began",
+        "Constellation uses astrology as a symbolic pattern language.",
+    ):
+        assert expected in html
+
+    for expected in (
+        "Your constellation is still forming. Save relationships to begin seeing recurring patterns across your field.",
+        "Generate maps for your saved relationships to begin seeing what repeats.",
+        "Patterns will appear here once you’ve generated and saved more maps.",
+        "One map is active. Add more saved maps to see broader patterns in your constellation.",
+    ):
+        assert expected in source
+
+
+def test_global_ui_copy_avoids_disallowed_report_and_fate_language():
+    html = Path("packages/astro-core/constellation_core/static/index.html").read_text().lower()
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text().lower()
+    combined = html + source
+
+    for forbidden in (
+        "soulmate",
+        "twin flame",
+        "standard report",
+        "enhanced report",
+        "ai report",
+    ):
+        assert forbidden not in combined
