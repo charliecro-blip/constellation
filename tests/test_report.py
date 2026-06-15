@@ -1127,3 +1127,98 @@ def test_composite_dynamic_details_name_t_square_and_mars_pluto_repair_themes():
 
     assert "opposition" in joined and "apex" in joined and "pressure point" in joined
     assert "pacing" in joined and "trust" in joined and "power" in joined and "escalate" in joined
+
+
+def test_temperament_helpers_and_packet_surface_compact_translation_context():
+    from constellation_core.temperament import chart_temperament_summary, compare_temperaments
+
+    chart_a = _synthetic_chart("A").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 250, "Sagittarius", house=6),
+                "moon": _placement("moon", 285, "Capricorn", house=8),
+                "mercury": _placement("mercury", 252, "Sagittarius", house=6),
+                "venus": _placement("venus", 182, "Libra", house=5),
+                "mars": _placement("mars", 215, "Scorpio", house=5),
+            }
+        }
+    )
+    chart_b = _synthetic_chart("B").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 160, "Virgo", house=5),
+                "moon": _placement("moon", 75, "Gemini", house=4),
+                "mercury": _placement("mercury", 165, "Virgo", house=5),
+                "venus": _placement("venus", 150, "Virgo", house=5),
+                "mars": _placement("mars", 185, "Libra", house=6),
+            }
+        }
+    )
+    relationship = RelationshipCalculation(
+        person_a=chart_a,
+        person_b=chart_b,
+        synastry_aspects=[Aspect(point_a="mercury", point_b="mercury", aspect="square", exact_angle=90, orb=0.6)],
+    )
+
+    a_summary = chart_temperament_summary(chart_a)
+    comparison = compare_temperaments(chart_a, chart_b)
+    packet = build_report_synthesis_packet(relationship)
+    diagnostics = __import__("constellation_core.report", fromlist=["build_report_diagnostics"]).build_report_diagnostics(relationship)
+
+    assert a_summary["elements"]["fire"] >= 2
+    assert a_summary["modalities"]["mutable"] >= 2
+    assert a_summary["moon"] == {"sign": "Capricorn", "element": "earth", "modality": "cardinal", "house": 8}
+    assert "mutable" in comparison["shared_modalities"]
+    assert packet.temperament_summary is not None
+    assert packet.temperament_summary["person_a"]["mercury"]["element"] == "fire"
+    assert diagnostics.temperament_summary is not None
+    assert diagnostics.ai_synthesis_packet_summary["has_temperament_summary"] is True
+
+
+def test_temperament_weaves_mercury_detail_moon_profile_repair_and_prompt_guardrail():
+    from constellation_core.ai_enhancement import AI_ENHANCEMENT_SYSTEM_PROMPT
+
+    chart_a = _synthetic_chart("Charlie").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 250, "Sagittarius", house=6),
+                "moon": _placement("moon", 285, "Capricorn", house=8),
+                "mercury": _placement("mercury", 252, "Sagittarius", house=6),
+                "venus": _placement("venus", 182, "Libra", house=5),
+                "mars": _placement("mars", 215, "Scorpio", house=5),
+            }
+        }
+    )
+    chart_b = _synthetic_chart("Ellis").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 160, "Virgo", house=5),
+                "moon": _placement("moon", 75, "Gemini", house=4),
+                "mercury": _placement("mercury", 165, "Virgo", house=5),
+                "venus": _placement("venus", 150, "Virgo", house=5),
+                "mars": _placement("mars", 185, "Libra", house=6),
+            }
+        }
+    )
+    relationship = RelationshipCalculation(
+        person_a=chart_a,
+        person_b=chart_b,
+        synastry_aspects=[Aspect(point_a="mercury", point_b="mercury", aspect="square", exact_angle=90, orb=0.6)],
+    )
+
+    report = generate_relationship_report(relationship)
+    markdown = report.to_markdown()
+    mercury_detail = next(detail for detail in report.dynamic_details if "Mercury" in detail.title)
+
+    assert "mutable fire" in mercury_detail.read_more
+    assert "mutable earth" in mercury_detail.read_more
+    assert "Sagittarius Mercury in the 6th house" in mercury_detail.read_more
+    assert "Virgo Mercury in the 5th house" in mercury_detail.read_more
+    assert "Capricorn" in markdown and "cardinal earth emotional style" in markdown
+    assert "Gemini" in markdown and "mutable air emotional style" in markdown
+    assert "Where Mercury is emphasized, repair works best through precision" in markdown
+    assert "Fire signs are passionate and earth signs are practical" not in markdown
+    assert "compatibility score" not in markdown.lower()
+    assert "soulmate" not in markdown.lower()
+    assert "twin flame" not in markdown.lower()
+    assert "unless they are supplied by deterministic temperament data" in AI_ENHANCEMENT_SYSTEM_PROMPT

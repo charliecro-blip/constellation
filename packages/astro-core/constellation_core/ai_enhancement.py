@@ -47,6 +47,8 @@ Rules:
 - Do not add medical, legal, financial, or crisis advice.
 - Do not use raw orb numbers.
 - Do not use generic astrology glossary language.
+- Do not introduce element or modality claims unless they are supplied by deterministic temperament data in the report or synthesis packet.
+- Use element and modality only to explain selected dynamics; do not create a standalone cookbook temperament reading.
 - Avoid generic AI phrases and vague connective language, including: "navigate the complexities", "provide a baseline", "unique entity", "thrives on", "fosters", "invites both", "highlighting how", "highlights", "suggests", and "journey".
 - Rewrite toward concrete relational language and direct relational language that names what each person tends to feel, provoke, protect, resist, or reveal.
 - Use the movement theme → felt experience → shadow → repair → agency when developing major themes.

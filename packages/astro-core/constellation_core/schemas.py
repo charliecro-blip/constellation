@@ -217,6 +217,7 @@ class ReportDiagnostics(BaseModel):
     motif_persistence_summary: list[ReportPatternDiagnostics] = Field(default_factory=list)
     asteroid_policy_summary: AsteroidPolicyDiagnostics
     ai_synthesis_packet_summary: dict[str, object] | None = None
+    temperament_summary: dict[str, object] | None = None
 
 
 class ReportSynthesisPacket(BaseModel):
@@ -234,3 +235,4 @@ class ReportSynthesisPacket(BaseModel):
     composite_themes: list[RankedPatternSummary] = Field(default_factory=list)
     chart_sanity_summary: str | None = None
     dynamic_details: list[DynamicDetail] = Field(default_factory=list)
+    temperament_summary: dict[str, object] | None = None
