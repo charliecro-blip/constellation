@@ -16,6 +16,7 @@ from .asteroid_policy import ADVANCED_ASTEROIDS, DEFAULT_ASTEROID_ORB, DEFAULT_R
 from .context import RelationshipContext
 from .interpretations import interpret_pattern
 from .natal_profile import SIGN_ELEMENTS, SIGN_MODES
+from .temperament import compact_temperament_text, compare_temperaments
 from .pattern_registry import convergence_category_for, get_pattern_metadata
 from .patterns import ASTEROID_CENTRAL_TARGETS, ASTEROID_POINTS, Pattern, _aspect_word, detect_relationship_patterns
 from .chart import DEFAULT_HOUSE_SYSTEM
@@ -327,12 +328,14 @@ def _profile_body(chart: Chart, patterns: list[Pattern]) -> str:
 
     moon = _placement_phrase(chart, "moon")
     moon_placement = chart.placements.get("moon")
-    if moon_placement and moon_placement.sign == "Capricorn":
+    if moon_placement:
+        moon_tone = _element_mode(moon_placement.sign)
+        moon_texture = _moon_temperament_texture(moon_placement.sign)
         lines.append(
-            f"- **Emotional need:** {moon} describes sensitivity protected by self-control. Safety comes through reliability, competence, kept promises, and proof over time; care may be shown through responsibility, while needing openly can take trust and patience."
+            f"- **Emotional need:** {moon} is a {moon_tone} emotional style. {moon_texture} Regulation, safety, and reassurance should be read through that lived tone rather than reduced to a generic need for closeness."
         )
     else:
-        lines.append(f"- **Emotional need:** {moon or 'The Moon placement is not available in this chart extract'}, so regulation, safety, and reassurance should be read through that emotional tone rather than reduced to a generic need for closeness.")
+        lines.append("- **Emotional need:** The Moon placement is not available in this chart extract, so regulation, safety, and reassurance should not be over-specified.")
 
     desire_parts = [item for item in [_placement_phrase(chart, "venus"), _placement_phrase(chart, "mars")] if item]
     if desire_parts:
@@ -471,7 +474,8 @@ def _placement_context(chart: Chart, body: str) -> str:
     if placement is None:
         return f"{_possessive(chart.name)} {_display_body(body)}"
     house = f" in the {_ordinal(placement.house)} house" if placement.house is not None else ""
-    return f"{_possessive(chart.name)} {placement.sign} {_display_body(body)}{house}"
+    tone = _element_mode(placement.sign)
+    return f"{_possessive(chart.name)} {placement.sign} {_display_body(body)}{house} ({tone})"
 
 
 def _synastry_aspect_for_pattern(relationship: RelationshipCalculation, pattern: Pattern) -> Aspect | None:
@@ -555,6 +559,26 @@ def _mode(chart: Chart, body: str) -> str | None:
     return SIGN_MODES.get(placement.sign) if placement else None
 
 
+def _moon_temperament_texture(sign: str) -> str:
+    element = SIGN_ELEMENTS.get(sign)
+    mode = SIGN_MODES.get(sign)
+    if sign == "Capricorn":
+        return "Care often moves through reliability, competence, kept promises, and proof over time; sensitivity protected by self-control may be contained, and loyalty deepens once safety is earned."
+    if sign == "Gemini":
+        return "Feeling often processes through language, movement, curiosity, responsiveness, and naming what is happening; variability does not automatically mean shallowness."
+    if element == "earth":
+        return "Care tends to need consistency, embodiment, practical follow-through, and time to trust what is reliable."
+    if element == "air":
+        return "Care tends to need language, perspective, responsiveness, and enough room to think feelings through."
+    if element == "fire":
+        return "Care tends to need warmth, directness, movement, courage, and permission for feeling to become action."
+    if element == "water":
+        return "Care tends to need attunement, privacy, memory, softness, and room for feelings to arrive before they are explained."
+    if mode == "fixed":
+        return "Emotional safety often grows through continuity and consistency."
+    return "Emotional safety is shaped by the sign's element and modality."
+
+
 def _comparison_notes(relationship: RelationshipCalculation) -> list[str]:
     a_chart = relationship.person_a
     b_chart = relationship.person_b
@@ -617,6 +641,7 @@ def _overview(relationship: RelationshipCalculation, central: list[Pattern], com
         }
     ]
     comparison_notes = _comparison_notes(relationship)
+    temperament_text = compact_temperament_text(compare_temperaments(relationship.person_a, relationship.person_b))
 
     paragraphs: list[str] = []
     if affirmative:
@@ -649,6 +674,10 @@ def _overview(relationship: RelationshipCalculation, central: list[Pattern], com
             "Chart-to-chart comparison makes the field feel "
             + ", ".join(comparison_notes)
             + ". Use this as synthesis support, not as a score."
+        )
+    elif temperament_text:
+        paragraphs.append(
+            "The clearest temperament support is " + temperament_text + ". This is useful only as translation context for the selected dynamics, not as a standalone element reading."
         )
 
     pressure = next((pattern for pattern in friction if pattern not in affirmative), None)
@@ -796,7 +825,21 @@ def _placement_detail_context(chart: Chart, body: str) -> str | None:
         "saturn": "limits, accountability, and time",
         "pluto": "power, vulnerability, and deep change",
     }.get(body, "relational sensitivity")
-    return f"{chart.name}'s {_display_body(body)} is in {placement.sign}{house} ({_element_mode(placement.sign)}), making this point a channel for {role}."
+    return f"{chart.name}'s {placement.sign} {_display_body(body)}{house} ({_element_mode(placement.sign)}) is a channel for {role}."
+
+
+def _temperament_bridge_for_aspect(relationship: RelationshipCalculation, aspect: Aspect) -> str:
+    a = relationship.person_a.placements.get(aspect.point_a.lower())
+    b = relationship.person_b.placements.get(aspect.point_b.lower())
+    if not a or not b:
+        return ""
+    a_tone = _element_mode(a.sign)
+    b_tone = _element_mode(b.sign)
+    if a_tone == b_tone:
+        return f"Both channels share {a_tone}, so the aspect has a common operating language even when the contact is tense."
+    if SIGN_MODES.get(a.sign) == SIGN_MODES.get(b.sign):
+        return f"This is {a_tone} meeting {b_tone}: the shared {SIGN_MODES.get(a.sign)} modality can adapt or shift, while the element difference asks for translation."
+    return f"This is {a_tone} meeting {b_tone}, so pacing and elemental style are part of the lived contact."
 
 
 def _aspect_for_pattern(relationship: RelationshipCalculation, pattern: Pattern) -> Aspect | None:
@@ -835,7 +878,8 @@ def _dynamic_detail_for_pattern(relationship: RelationshipCalculation, pattern: 
                 context_bits.append(bit)
                 technical.append(bit)
         if len(context_bits) == 2:
-            read_more = f"{context_bits[0]} {context_bits[1]} The {_aspect_word(aspect.aspect)} is therefore not just a generic {aspect.point_a}/{aspect.point_b} contact; it describes how these two natal channels meet in this particular bond."
+            bridge = _temperament_bridge_for_aspect(relationship, aspect)
+            read_more = f"{context_bits[0]} {context_bits[1]} {bridge} The {_aspect_word(aspect.aspect)} is therefore not just a generic {aspect.point_a}/{aspect.point_b} contact; it describes how these two natal channels meet in this particular bond."
         else:
             read_more = "This contact matters because it ties a central synastry signature to the lived style of each person's natal chart rather than treating the aspect in isolation."
     elif pattern.layer == "house_overlay":
@@ -1039,11 +1083,22 @@ def _repair_path(patterns: list[Pattern]) -> str:
         principles.append(REPAIR_PRINCIPLES_BY_CATEGORY["volatility"])
     if "daily_life" in legacy_categories:
         principles.append("Bring repair into ordinary routines, not only big conversations.")
+    principles.extend(_temperament_repair_principles(patterns))
 
     if not principles:
         principles.append("Name the strongest activation and agree on a workable pace.")
 
     return "\n".join(f"- {principle}" for principle in principles[:5])
+
+
+def _temperament_repair_principles(patterns: list[Pattern]) -> list[str]:
+    text = " ".join(pattern.title for pattern in patterns[:10]).lower()
+    principles: list[str] = []
+    if "mercury" in text:
+        principles.append("Where Mercury is emphasized, repair works best through precision, naming, translation, and checking assumptions before arguing conclusions.")
+    if "moon" in text:
+        principles.append("Where Moon contacts are emphasized, distinguish explaining a feeling from actually giving it time to be felt and soothed.")
+    return principles[:2]
 
 
 def _pattern_summary(pattern: Pattern) -> RankedPatternSummary:
@@ -1131,6 +1186,7 @@ def build_report_synthesis_packet(
         composite_themes=[_pattern_summary(pattern) for pattern in composite[:3]],
         chart_sanity_summary=_chart_check_body(relationship),
         dynamic_details=build_dynamic_details(relationship, patterns, context),
+        temperament_summary=compare_temperaments(relationship.person_a, relationship.person_b),
     )
 
 
@@ -1249,6 +1305,7 @@ def _synthesis_packet_summary(packet: ReportSynthesisPacket) -> dict[str, object
         "composite_theme_keys": [pattern.key for pattern in packet.composite_themes],
         "repair_theme_count": len(packet.repair_themes),
         "has_chart_sanity_summary": bool(packet.chart_sanity_summary),
+        "has_temperament_summary": bool(packet.temperament_summary),
     }
 
 
@@ -1308,6 +1365,7 @@ def build_report_diagnostics(
             advanced_asteroids_suppressed=sorted(ADVANCED_ASTEROIDS),
         ),
         ai_synthesis_packet_summary=_synthesis_packet_summary(packet),
+        temperament_summary=compare_temperaments(relationship.person_a, relationship.person_b),
     )
 
 
