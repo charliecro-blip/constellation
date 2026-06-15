@@ -1032,3 +1032,98 @@ def test_relationship_map_affirmative_lead_overlays_and_chart_specific_repair():
     assert "destined" not in markdown.lower()
     assert "fated" not in markdown.lower()
     assert "meant to be" not in markdown.lower()
+
+
+def test_report_dynamic_details_are_selective_natalized_and_connected():
+    chart_a = _synthetic_chart("Charlie").model_copy(
+        update={
+            "placements": {
+                "mercury": _placement("mercury", 252, "Sagittarius", house=6),
+                "mars": _placement("mars", 250, "Sagittarius", house=6),
+                "venus": _placement("venus", 182, "Libra", house=5),
+            }
+        }
+    )
+    chart_b = _synthetic_chart("Ellis").model_copy(
+        update={
+            "placements": {
+                "mercury": _placement("mercury", 165, "Virgo", house=5),
+                "mars": _placement("mars", 185, "Libra", house=6),
+                "venus": _placement("venus", 150, "Virgo", house=5),
+            }
+        }
+    )
+    composite = _synthetic_chart("Composite").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 10, "Aries"),
+                "moon": _placement("moon", 100, "Cancer"),
+                "saturn": _placement("saturn", 190, "Libra"),
+                "mars": _placement("mars", 280, "Capricorn"),
+                "pluto": _placement("pluto", 281, "Capricorn"),
+            }
+        }
+    )
+    relationship = RelationshipCalculation(
+        person_a=chart_a,
+        person_b=chart_b,
+        synastry_aspects=[
+            Aspect(point_a="mars", point_b="mercury", aspect="square", exact_angle=90, orb=0.2),
+            Aspect(point_a="mercury", point_b="mercury", aspect="square", exact_angle=90, orb=0.4),
+            Aspect(point_a="venus", point_b="mars", aspect="sextile", exact_angle=60, orb=5.8),
+        ],
+        house_overlays=[HouseOverlay(planet_owner="person_a", house_owner="person_b", body="venus", house=7, body_longitude=182)],
+        composite=composite,
+        composite_aspects=[
+            Aspect(point_a="sun", point_b="saturn", aspect="opposition", exact_angle=180, orb=0.3),
+            Aspect(point_a="moon", point_b="sun", aspect="square", exact_angle=90, orb=0.5),
+            Aspect(point_a="moon", point_b="saturn", aspect="square", exact_angle=90, orb=0.5),
+            Aspect(point_a="mars", point_b="pluto", aspect="conjunction", exact_angle=0, orb=0.2),
+        ],
+    )
+
+    report = generate_relationship_report(relationship)
+    details = report.dynamic_details
+    all_text = " ".join([detail.read_more for detail in details] + [" ".join(detail.technical_factors) for detail in details])
+
+    assert 1 <= len(details) < 10
+    assert any(detail.kind == "synastry_aspect" for detail in details)
+    assert "Sagittarius" in all_text and "Virgo" in all_text
+    assert "mutable fire" in all_text and "mutable earth" in all_text
+    assert any(detail.related_dynamics for detail in details)
+    assert "Generic element filler" not in all_text
+    assert "right now" not in all_text.lower()
+    assert "compatibility score" not in all_text.lower()
+    assert "soulmate" not in all_text.lower()
+
+
+def test_composite_dynamic_details_name_t_square_and_mars_pluto_repair_themes():
+    composite = _synthetic_chart("Composite").model_copy(
+        update={
+            "placements": {
+                "sun": _placement("sun", 10, "Aries"),
+                "moon": _placement("moon", 100, "Cancer"),
+                "saturn": _placement("saturn", 190, "Libra"),
+                "mars": _placement("mars", 280, "Capricorn"),
+                "pluto": _placement("pluto", 281, "Capricorn"),
+            }
+        }
+    )
+    relationship = RelationshipCalculation(
+        person_a=_synthetic_chart("Charlie"),
+        person_b=_synthetic_chart("Ellis"),
+        synastry_aspects=[],
+        composite=composite,
+        composite_aspects=[
+            Aspect(point_a="sun", point_b="saturn", aspect="opposition", exact_angle=180, orb=0.3),
+            Aspect(point_a="moon", point_b="sun", aspect="square", exact_angle=90, orb=0.5),
+            Aspect(point_a="moon", point_b="saturn", aspect="square", exact_angle=90, orb=0.5),
+            Aspect(point_a="mars", point_b="pluto", aspect="conjunction", exact_angle=0, orb=0.2),
+        ],
+    )
+
+    details_by_key = {detail.kind + detail.title: detail.read_more for detail in generate_relationship_report(relationship).dynamic_details}
+    joined = " ".join(details_by_key.values()).lower()
+
+    assert "opposition" in joined and "apex" in joined and "pressure point" in joined
+    assert "pacing" in joined and "trust" in joined and "power" in joined and "escalate" in joined

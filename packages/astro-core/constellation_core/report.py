@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .asteroid_policy import ADVANCED_ASTEROIDS, DEFAULT_ASTEROID_ORB, DEFAULT_REPORT_ASTEROIDS, RELATIONSHIP_RELEVANT_HOUSES
 from .context import RelationshipContext
@@ -26,6 +26,7 @@ from .schemas import (
     BirthData,
     Chart,
     ChartSanityDiagnostics,
+    DynamicDetail,
     RankedPatternSummary,
     RelationshipCalculation,
     ReportDiagnostics,
@@ -43,6 +44,7 @@ class ReportSection(BaseModel):
 class RelationshipReport(BaseModel):
     title: str
     sections: list[ReportSection]
+    dynamic_details: list[DynamicDetail] = Field(default_factory=list)
 
     def to_markdown(self) -> str:
         lines = [f"# {self.title}", ""]
@@ -763,6 +765,123 @@ def _composite_field_body(composite: list[Pattern]) -> str:
     return "\n\n".join(paragraphs)
 
 
+
+def _detail_kind(pattern: Pattern) -> str:
+    if pattern.layer == "house_overlay":
+        return "house_overlay"
+    if pattern.layer == "composite":
+        return "composite_pattern" if pattern.key in {"composite.t_square", "composite.conjunction_cluster"} or pattern.key.startswith("composite.stellium.") else "composite_aspect"
+    if "angle" in pattern.key or "ascendant" in pattern.key or "midheaven" in pattern.key:
+        return "angle_contact"
+    return "synastry_aspect"
+
+
+def _element_mode(sign: str) -> str:
+    mode = SIGN_MODES.get(sign)
+    element = SIGN_ELEMENTS.get(sign)
+    return f"{mode} {element}" if mode and element else sign
+
+
+def _placement_detail_context(chart: Chart, body: str) -> str | None:
+    placement = chart.placements.get(body)
+    if placement is None:
+        return None
+    house = f" in the {_ordinal(placement.house)} house" if placement.house is not None else ""
+    role = {
+        "sun": "identity and vitality",
+        "moon": "safety needs and emotional regulation",
+        "mercury": "language, listening, and nervous-system pacing",
+        "venus": "affection, pleasure, attraction, and receiving",
+        "mars": "desire, assertion, conflict style, and action",
+        "saturn": "limits, accountability, and time",
+        "pluto": "power, vulnerability, and deep change",
+    }.get(body, "relational sensitivity")
+    return f"{chart.name}'s {_display_body(body)} is in {placement.sign}{house} ({_element_mode(placement.sign)}), making this point a channel for {role}."
+
+
+def _aspect_for_pattern(relationship: RelationshipCalculation, pattern: Pattern) -> Aspect | None:
+    for aspect in relationship.synastry_aspects:
+        title = f"{relationship.person_a.name}'s {_display_body(aspect.point_a)} {_aspect_word(aspect.aspect)} {relationship.person_b.name}'s {_display_body(aspect.point_b)}"
+        if title == pattern.title:
+            return aspect
+    for aspect in relationship.composite_aspects:
+        title = f"Composite {_display_body(aspect.point_a)} {_aspect_word(aspect.aspect)} {_display_body(aspect.point_b)}"
+        if title == pattern.title:
+            return aspect
+    return None
+
+
+def _related_titles(pattern: Pattern, all_patterns: list[Pattern]) -> list[str]:
+    tokens = {part for part in pattern.key.replace('.', '_').split('_') if part in {"moon", "mercury", "venus", "mars", "saturn", "pluto", "sun"}}
+    related = []
+    for other in all_patterns:
+        if other.id == pattern.id:
+            continue
+        other_tokens = set(other.key.replace('.', '_').split('_'))
+        if tokens & other_tokens or convergence_category_for(other) == convergence_category_for(pattern):
+            related.append(other.title)
+        if len(related) >= 4:
+            break
+    return related
+
+
+def _dynamic_detail_for_pattern(relationship: RelationshipCalculation, pattern: Pattern, all_patterns: list[Pattern], section: str) -> DynamicDetail:
+    aspect = _aspect_for_pattern(relationship, pattern)
+    technical: list[str] = [*pattern.evidence]
+    context_bits: list[str] = []
+    if aspect and pattern.layer == "synastry":
+        for chart, body in [(relationship.person_a, aspect.point_a.lower()), (relationship.person_b, aspect.point_b.lower())]:
+            if bit := _placement_detail_context(chart, body):
+                context_bits.append(bit)
+                technical.append(bit)
+        if len(context_bits) == 2:
+            read_more = f"{context_bits[0]} {context_bits[1]} The {_aspect_word(aspect.aspect)} is therefore not just a generic {aspect.point_a}/{aspect.point_b} contact; it describes how these two natal channels meet in this particular bond."
+        else:
+            read_more = "This contact matters because it ties a central synastry signature to the lived style of each person's natal chart rather than treating the aspect in isolation."
+    elif pattern.layer == "house_overlay":
+        read_more = "This overlay shows where one person's planet enters the other's lived house terrain. It matters most when it repeats a larger motif in the map rather than standing alone."
+    elif pattern.key == "composite.t_square":
+        evidence = pattern.evidence[0] if pattern.evidence else pattern.title
+        read_more = f"{evidence}. In a T-square, the opposition names the polarity the relationship keeps trying to hold, while the apex or pressure point shows where that tension tends to discharge behaviorally. The repair principle is to slow the apex response, name both sides of the opposition, and connect this pressure back to matching synastry themes before reacting."
+    elif pattern.key == "composite.mars_pluto":
+        read_more = "Composite Mars/Pluto amplifies desire, will, sexuality, creative force, and the overlap between power and vulnerability. This can make the bond difficult to keep casual and can escalate quickly when fear or control enters the room, so pacing, consent, trust, and deliberate de-escalation are part of the medicine of the aspect."
+    else:
+        read_more = f"{_interpret_for_section(pattern, 'composite' if pattern.layer == 'composite' else 'general')} Read as part of the whole map, this dynamic gains meaning through its repetitions, house emphasis, and related signatures rather than as a standalone label."
+    related = _related_titles(pattern, all_patterns)
+    if related:
+        read_more += f" Related dynamics to compare: {', '.join(related[:3])}."
+    return DynamicDetail(
+        id=f"detail-{pattern.id}",
+        title=pattern.title,
+        kind=_detail_kind(pattern),
+        summary=_interpret_for_section(pattern, "overview" if section == "Overview" else "general"),
+        read_more=read_more,
+        technical_factors=technical[:6],
+        related_dynamics=related,
+        repair_prompt=REPAIR_PRINCIPLES_BY_CATEGORY.get(_registry_category(pattern)),
+        motif_category=convergence_category_for(pattern),
+        priority=pattern.priority,
+        section=section,
+    )
+
+
+def build_dynamic_details(relationship: RelationshipCalculation, patterns: list[Pattern], context: RelationshipContext | None = None) -> list[DynamicDetail]:
+    central = _central_patterns(patterns, context)[:6]
+    composite = _composite_patterns(patterns)[:4]
+    friction = _friction_patterns(patterns)[:3]
+    overlays = [p for p in patterns if p.layer == "house_overlay" and p.priority >= 62][:4]
+    ordered: list[tuple[Pattern, str]] = [(p, "Overview") for p in central] + [(p, "House overlays") for p in overlays] + [(p, "Composite Field") for p in composite] + [(p, "Friction and Repair") for p in friction]
+    details: list[DynamicDetail] = []
+    seen: set[str] = set()
+    for pattern, section in ordered:
+        if pattern.id in seen:
+            continue
+        seen.add(pattern.id)
+        details.append(_dynamic_detail_for_pattern(relationship, pattern, patterns, section))
+        if len(details) >= 12:
+            break
+    return details
+
 def _context_note(context: RelationshipContext | None) -> str | None:
     if context is None or not (context.user_question or context.origin_story or context.known_themes):
         return None
@@ -1011,6 +1130,7 @@ def build_report_synthesis_packet(
         repair_themes=_repair_theme_list(patterns),
         composite_themes=[_pattern_summary(pattern) for pattern in composite[:3]],
         chart_sanity_summary=_chart_check_body(relationship),
+        dynamic_details=build_dynamic_details(relationship, patterns, context),
     )
 
 
@@ -1241,7 +1361,7 @@ def generate_relationship_report(
     if context_body:
         sections.append(ReportSection(title="Context Notes", body=context_body))
 
-    return RelationshipReport(title=title, sections=sections)
+    return RelationshipReport(title=title, sections=sections, dynamic_details=build_dynamic_details(relationship, patterns, context))
 
 def generate_report_from_birth_data(
     person_a: BirthData,

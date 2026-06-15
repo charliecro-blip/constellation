@@ -419,3 +419,12 @@ def test_global_ui_copy_avoids_disallowed_report_and_fate_language():
         "ai report",
     ):
         assert forbidden not in combined
+
+
+def test_ui_renders_dynamic_detail_read_more_controls():
+    source = Path("packages/astro-core/constellation_core/static/app.js").read_text()
+
+    assert "function dynamicDetailHtml(detail)" in source
+    assert "Read more" in source
+    assert "detailsByTitle.get(heading)" in source
+    assert "payload.dynamic_details || []" in source

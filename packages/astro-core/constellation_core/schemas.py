@@ -137,6 +137,30 @@ class RankedPatternSummary(BaseModel):
 
 
 
+class DynamicDetail(BaseModel):
+    """Expandable interpretive context for a central relationship dynamic."""
+
+    id: str
+    title: str
+    kind: Literal[
+        "synastry_aspect",
+        "house_overlay",
+        "angle_contact",
+        "composite_aspect",
+        "composite_pattern",
+        "motif",
+        "profile_theme",
+    ]
+    summary: str
+    read_more: str
+    technical_factors: list[str] = Field(default_factory=list)
+    related_dynamics: list[str] = Field(default_factory=list)
+    repair_prompt: str | None = None
+    motif_category: str | None = None
+    priority: int
+    section: str
+
+
 class ReportPatternDiagnostics(BaseModel):
     """Compact developer-facing view of a ranked deterministic pattern."""
 
@@ -209,3 +233,4 @@ class ReportSynthesisPacket(BaseModel):
     repair_themes: list[str] = Field(default_factory=list)
     composite_themes: list[RankedPatternSummary] = Field(default_factory=list)
     chart_sanity_summary: str | None = None
+    dynamic_details: list[DynamicDetail] = Field(default_factory=list)
