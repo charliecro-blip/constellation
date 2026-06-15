@@ -27,6 +27,7 @@ let currentMarkdown = "";
 let currentDownloadUrl = "";
 let currentSavedRelationship = null;
 let currentSynthesisPacket = null;
+let currentDynamicDetails = [];
 let currentDiagnostics = null;
 let currentSavedReportId = null;
 let enhancementRequestId = 0;
@@ -294,12 +295,22 @@ function inlineMarkdown(value) {
   return escapeHtml(value).replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 }
 
-function markdownToHtml(md) {
+function dynamicDetailHtml(detail) {
+  const factors = (detail.technical_factors || []).map((item) => `<li>${inlineMarkdown(item)}</li>`).join("");
+  const related = (detail.related_dynamics || []).slice(0, 4).map((item) => `<li>${inlineMarkdown(item)}</li>`).join("");
+  const factorsBlock = factors ? `<h4>Technical factors</h4><ul>${factors}</ul>` : "";
+  const relatedBlock = related ? `<h4>Related dynamics</h4><ul>${related}</ul>` : "";
+  const repair = detail.repair_prompt ? `<p><strong>Repair prompt:</strong> ${inlineMarkdown(detail.repair_prompt)}</p>` : "";
+  return `<details class="dynamic-detail"><summary>Read more</summary><p>${inlineMarkdown(detail.read_more || detail.summary || "")}</p>${factorsBlock}${relatedBlock}${repair}</details>`;
+}
+
+function markdownToHtml(md, dynamicDetails = []) {
   const lines = md.split("\n");
   let html = "";
   let inList = false;
   let inDetails = false;
   const defaultOpenSections = new Set(["Overview", "Composite Field"]);
+  const detailsByTitle = new Map((dynamicDetails || []).map((detail) => [detail.title, detail]));
   function closeList() {
     if (inList) {
       html += "</ul>";
@@ -330,7 +341,10 @@ function markdownToHtml(md) {
       inDetails = true;
     } else if (line.startsWith("### ")) {
       closeList();
-      html += `<h3>${inlineMarkdown(line.slice(4))}</h3>`;
+      const heading = line.slice(4);
+      html += `<h3>${inlineMarkdown(heading)}</h3>`;
+      const detail = detailsByTitle.get(heading);
+      if (detail) html += dynamicDetailHtml(detail);
     } else if (line.startsWith("- ")) {
       if (!inList) {
         html += "<ul>";
@@ -457,10 +471,11 @@ function setTab(which) {
   markdownTab.textContent = showMarkdown ? "Hide Markdown" : "View Markdown";
 }
 
-function setReportMarkdown(markdownText) {
+function setReportMarkdown(markdownText, dynamicDetails = currentDynamicDetails) {
   currentMarkdown = markdownText;
+  currentDynamicDetails = dynamicDetails || [];
   markdown.textContent = currentMarkdown;
-  preview.innerHTML = markdownToHtml(currentMarkdown);
+  preview.innerHTML = markdownToHtml(currentMarkdown, currentDynamicDetails);
   updateDownload(currentMarkdown);
 }
 
@@ -524,6 +539,7 @@ function clearReportState() {
   enhancementRequestId += 1;
   currentMarkdown = "";
   currentSynthesisPacket = null;
+  currentDynamicDetails = [];
   currentSavedReportId = null;
   renderDiagnostics(null);
   resetFeedbackState();
@@ -581,6 +597,7 @@ async function generateSavedReport(relationshipId) {
   const standardMarkdown = payload.markdown;
   currentSavedReportId = payload.id || null;
   currentSynthesisPacket = payload.synthesis_packet || null;
+  currentDynamicDetails = payload.dynamic_details || [];
   renderDiagnostics(payload.diagnostics || null);
   setReportMarkdown(standardMarkdown);
   setTab("preview");
@@ -603,12 +620,12 @@ async function enhanceReportMarkdown(standardMarkdown, synthesisPacket = null) {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "Reading refinement failed.");
     if (requestId !== enhancementRequestId) return;
-    setReportMarkdown(payload.markdown);
+    setReportMarkdown(payload.markdown, currentDynamicDetails);
     setTab("preview");
     setReportStatus("Relationship Map ready.");
   } catch (error) {
     if (requestId !== enhancementRequestId) return;
-    setReportMarkdown(standardMarkdown);
+    setReportMarkdown(standardMarkdown, currentDynamicDetails);
     setReportStatus("Relationship Map ready.");
   }
 }

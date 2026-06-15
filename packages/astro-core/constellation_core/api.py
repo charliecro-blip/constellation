@@ -32,7 +32,7 @@ from .patterns import Pattern, detect_relationship_patterns
 from .places import PlacePreset, list_place_presets
 from .relationship import calculate_relationship
 from .report import build_report_diagnostics, build_report_synthesis_packet, generate_relationship_report
-from .schemas import BirthData, Chart, RelationshipCalculation, ReportDiagnostics, ReportSynthesisPacket
+from .schemas import BirthData, Chart, DynamicDetail, RelationshipCalculation, ReportDiagnostics, ReportSynthesisPacket
 from .web import INDEX_PATH, STATIC_DIR
 from .weighting import weight_patterns
 
@@ -240,6 +240,7 @@ class SavedReportResponse(BaseModel):
     id: str
     relationship_id: str
     markdown: str
+    dynamic_details: list[DynamicDetail] = Field(default_factory=list)
     synthesis_packet: ReportSynthesisPacket | None = None
     diagnostics: ReportDiagnostics | None = None
     calculation_engine_version: str
@@ -263,6 +264,7 @@ class RelationshipResponse(BaseModel):
 
 class ReportResponse(BaseModel):
     markdown: str
+    dynamic_details: list[DynamicDetail] = Field(default_factory=list)
     synthesis_packet: ReportSynthesisPacket | None = None
     diagnostics: ReportDiagnostics | None = None
 
@@ -345,7 +347,7 @@ def report_endpoint(
         if include_diagnostics
         else None
     )
-    return ReportResponse(markdown=report.to_markdown(), synthesis_packet=synthesis_packet, diagnostics=diagnostics)
+    return ReportResponse(markdown=report.to_markdown(), dynamic_details=report.dynamic_details, synthesis_packet=synthesis_packet, diagnostics=diagnostics)
 
 
 @app.post("/report/enhance", response_model=ReportEnhancementResponse)
@@ -712,6 +714,7 @@ def generate_saved_relationship_report(
         id=saved.id,
         relationship_id=saved.relationship_id,
         markdown=saved.markdown,
+        dynamic_details=report.dynamic_details,
         synthesis_packet=synthesis_packet,
         diagnostics=diagnostics,
         calculation_engine_version=saved.calculation_engine_version,
