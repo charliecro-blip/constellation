@@ -1313,9 +1313,6 @@ def test_diagnostics_distinguishes_cross_activations_from_reciprocal_contacts():
 
 def test_synthesis_packet_ruler_activations_are_selective():
     """Synthesis packet should only include high-priority ruler evidence (≥70), max 4 items."""
-    from constellation_core.patterns import Pattern
-    from constellation_core.weighting import weight_patterns
-
     chart_a = _synthetic_chart("Charlie").model_copy(update={
         "placements": {"venus": _placement("venus", 280, "Capricorn", house=6)},
         "angles": {"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},

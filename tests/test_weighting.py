@@ -205,3 +205,64 @@ def test_weighting_language_does_not_introduce_compatibility_score_or_meant_to_b
 
     assert "compatibility score" not in source
     assert "meant to be" not in source
+
+
+def test_12th_house_overlay_receives_steeper_penalty_than_romantic_houses():
+    """12th house overlay must score lower than 7th/5th/8th overlays — not in the romantic tier."""
+    house_12 = _pattern("overlay.house_12", layer="house_overlay", category="hidden_field", priority=58)
+    house_7 = _pattern("overlay.house_7", layer="house_overlay", category="partnership", priority=64)
+    house_5 = _pattern("overlay.house_5", layer="house_overlay", category="romance_creativity", priority=56)
+    house_8 = _pattern("overlay.house_8", layer="house_overlay", category="intimacy_depth", priority=62)
+
+    patterns = [house_12, house_7, house_5, house_8]
+    weighted = {p.key: p for p in weight_patterns(patterns)}
+
+    # 12th must score lower than all three romantic overlays.
+    assert weighted["overlay.house_12"].priority < weighted["overlay.house_7"].priority
+    assert weighted["overlay.house_12"].priority < weighted["overlay.house_5"].priority
+    assert weighted["overlay.house_12"].priority < weighted["overlay.house_8"].priority
+
+
+def test_mars_mars_water_earth_opposition_receives_extra_penalty():
+    """Mars opposite Mars in water-earth sign pairs should score lower than fire-air pairs."""
+    from constellation_core.weighting import WATER_EARTH_OPPOSITION_PAIRS
+
+    # Confirm the constant covers all three pairs.
+    assert frozenset({"pisces", "virgo"}) in WATER_EARTH_OPPOSITION_PAIRS
+    assert frozenset({"scorpio", "taurus"}) in WATER_EARTH_OPPOSITION_PAIRS
+    assert frozenset({"cancer", "capricorn"}) in WATER_EARTH_OPPOSITION_PAIRS
+
+    water_earth = _pattern(
+        "synastry.mars_mars_opposition",
+        category="volatility",
+        priority=70,
+        evidence=["A's Mars opposite B's Mars; orb 1.0; Mars signs: scorpio/taurus"],
+    )
+    fire_air = _pattern(
+        "synastry.mars_mars_opposition",
+        category="volatility",
+        priority=70,
+        pattern_id="mars_mars_fire_air",
+        evidence=["A's Mars opposite B's Mars; orb 1.0; Mars signs: aries/libra"],
+    )
+
+    weighted_we = weight_patterns([water_earth])[0]
+    weighted_fa = weight_patterns([fire_air])[0]
+    assert weighted_we.priority < weighted_fa.priority
+
+
+def test_sun_sun_conjunction_scores_below_sun_moon():
+    """Sun conjunct Sun (friend signal) must score below Sun-Moon for romantic priority."""
+    sun_sun = _pattern("synastry.sun_sun_conjunction", category="recognition", priority=55)
+    sun_moon = _pattern("synastry.sun_moon", category="recognition", priority=84)
+
+    weighted = {p.key: p for p in weight_patterns([sun_sun, sun_moon])}
+    assert weighted["synastry.sun_sun_conjunction"].priority < weighted["synastry.sun_moon"].priority
+
+
+def test_sun_sun_conjunction_below_synthesis_packet_threshold():
+    """Sun conjunct Sun should not reach the synthesis packet inclusion threshold (70)."""
+    sun_sun = _pattern("synastry.sun_sun_conjunction", category="recognition", priority=55,
+                       evidence=["A's Sun conjunct B's Sun; orb 0.5"])
+    weighted = weight_patterns([sun_sun])[0]
+    assert weighted.priority < 70

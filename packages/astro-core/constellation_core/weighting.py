@@ -16,6 +16,13 @@ from .scoring_weights import CONVERGENCE_MULTIPLIERS
 from .patterns import Pattern
 
 
+# Water-earth opposition pairs where Mars opposite Mars is hardest (Eddington Worst doctrine).
+WATER_EARTH_OPPOSITION_PAIRS: frozenset[frozenset[str]] = frozenset({
+    frozenset({"pisces", "virgo"}),
+    frozenset({"scorpio", "taurus"}),
+    frozenset({"cancer", "capricorn"}),
+})
+
 CAREER_KEYWORDS = {
     "career",
     "work",
@@ -252,6 +259,11 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
                 tier_boost += 12
             if pattern.key == "overlay.house_8":
                 tier_boost += 8
+            # 12th house overlays are psychologically potent but ambiguous — not romantic.
+            # Eddington doctrine: 12th house overlay ≠ romantic-house tier (5th/7th/8th).
+            # Steeper penalty than generic non-romantic houses to reflect ambiguous-not-romantic status.
+            if pattern.key == "overlay.house_12":
+                tier_boost -= 16  # net -22 total (on top of the -6 above)
             if "node" in pattern.id:
                 tier_boost -= 18
         if pattern.key.startswith("composite.nodes_on_"):
@@ -266,6 +278,15 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
         # Tier 3 texture + down-rank exactness-only overclaims
         if pattern.key == "composite.mars_pluto":
             tier_boost -= 8
+        # Mars opposite Mars in water-earth opposition pairs scores harder (Eddington Worst).
+        # Sign pair is embedded in evidence as "Mars signs: sign_a/sign_b" by the detector.
+        if pattern.key == "synastry.mars_mars_opposition":
+            ev_text = " ".join(pattern.evidence).lower()
+            signs_match = re.search(r"mars signs: (\w+)/(\w+)", ev_text)
+            if signs_match:
+                sign_pair = frozenset({signs_match.group(1), signs_match.group(2)})
+                if sign_pair in WATER_EARTH_OPPOSITION_PAIRS:
+                    tier_boost -= 6
         if romantic_context and is_mc_pattern and not career_context:
             tier_boost -= 24
         if romantic_context and pattern.category == "communication" and not communication_context and category_counts.get("communication", 0) < 3 and "Ascendant" not in pattern.title and "Moon" not in pattern.title and "Sun" not in pattern.title:

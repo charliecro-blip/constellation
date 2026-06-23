@@ -359,6 +359,91 @@ def detect_synastry_patterns(relationship: RelationshipCalculation) -> list[Patt
                 key="synastry.mars_saturn",
             ))
 
+        # Sun conjunct Sun: friend/recognition signal, not a marriage/partnership indicator.
+        # Jung empirical data (via Eddington): ranks #49/50 in most-observed marital aspects.
+        # Base priority 55 keeps it below the synthesis packet threshold (70).
+        if pts == {"sun"} and aspect.aspect == "conjunction":
+            patterns.append(_synastry_pattern(
+                aspect,
+                relationship,
+                pattern_id="synastry_sun_sun_conjunction",
+                category="recognition",
+                priority=55,
+                key="synastry.sun_sun_conjunction",
+                confidence="medium",
+            ))
+
+        # Mars opposite Mars: conflict-of-will pattern. Embed Mars signs for water-earth
+        # penalty check in weighting.py.
+        if pts == {"mars"} and aspect.aspect == "opposition":
+            mars_a = relationship.person_a.placements.get("mars")
+            mars_b = relationship.person_b.placements.get("mars")
+            sign_note = (
+                f"; Mars signs: {mars_a.sign.lower()}/{mars_b.sign.lower()}"
+                if mars_a and mars_b
+                else ""
+            )
+            patterns.append(Pattern(
+                id="synastry_mars_mars_opposition",
+                layer="synastry",
+                category="volatility",
+                priority=min(100, 64 + _bonus(aspect)),
+                title=_synastry_title(aspect, relationship),
+                evidence=[_evidence(aspect, relationship) + sign_note],
+                key="synastry.mars_mars_opposition",
+                confidence="medium",
+            ))
+
+    return patterns
+
+
+PERSONAL_PLANETS = {"sun", "moon", "mercury", "venus", "mars"}
+
+
+def _detect_stellium_gap(relationship: RelationshipCalculation) -> list[Pattern]:
+    """Detect if one person has 3+ personal planets in one sign with no partner planet there.
+
+    Informational only (priority 40) — surfaces in diagnostics, not in the main report.
+    Doctrine: Eddington Worst — a stellium without a partner conjunction tends to produce
+    low-resonance synastry. NOT a compatibility score element; house overlays can override.
+    """
+    patterns: list[Pattern] = []
+    for owner, other, owner_chart, other_chart in [
+        ("person_a", "person_b", relationship.person_a, relationship.person_b),
+        ("person_b", "person_a", relationship.person_b, relationship.person_a),
+    ]:
+        sign_counts: dict[str, list[str]] = {}
+        for body, placement in owner_chart.placements.items():
+            if body not in PERSONAL_PLANETS:
+                continue
+            sign_counts.setdefault(placement.sign, []).append(body)
+
+        for sign, bodies in sign_counts.items():
+            if len(bodies) < 3:
+                continue
+            other_signs = {
+                p.sign for b, p in other_chart.placements.items()
+                if b in PERSONAL_PLANETS
+            }
+            if sign in other_signs:
+                continue
+            body_labels = [_display_point(b) for b in sorted(bodies)]
+            bodies_str = ", ".join(body_labels)
+            patterns.append(Pattern(
+                id=f"stellium_gap_{owner}_{sign.lower()}",
+                layer="synastry",
+                category="informational",
+                priority=40,
+                title=f"{owner_chart.name}'s {sign} stellium ({bodies_str}) — no {other_chart.name} planet in {sign}",
+                evidence=[
+                    f"{owner_chart.name} has {bodies_str} in {sign}; "
+                    f"{other_chart.name} has no personal planet there. "
+                    f"A partner planet conjunct a stellium sign tends to increase felt resonance — "
+                    f"strong house overlays can compensate for this gap."
+                ],
+                key="synastry.stellium_resonance.missing",
+                confidence="medium",
+            ))
     return patterns
 
 
@@ -767,6 +852,7 @@ def detect_relationship_patterns(relationship: RelationshipCalculation) -> list[
     patterns = detect_synastry_patterns(relationship)
     patterns.extend(detect_house_overlay_patterns(relationship))
     patterns.extend(_relationship_ruler_patterns(relationship))
+    patterns.extend(_detect_stellium_gap(relationship))
     if relationship.composite is not None:
         patterns.extend(detect_composite_patterns(relationship.composite, relationship.composite_aspects))
     return sorted(patterns, key=lambda pattern: pattern.priority, reverse=True)

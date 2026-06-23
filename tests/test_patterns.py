@@ -563,3 +563,130 @@ def test_ruler_contact_keys_do_not_include_composite_rulerships():
     patterns = detect_relationship_patterns(relationship)
     composite_ruler_keys = [p.key for p in patterns if "composite" in p.key and "ruler" in p.key]
     assert composite_ruler_keys == []
+
+
+def test_sun_sun_conjunction_detected_at_low_priority():
+    from constellation_core.schemas import Aspect, BirthData, Chart, Placement, RelationshipCalculation
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    a = Chart(name="A", birth=birth, julian_day_ut=None, house_system="whole_sign",
+              placements={"sun": placement("sun", 15, "Aries", 1)}, angles={})
+    b = Chart(name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign",
+              placements={"sun": placement("sun", 16, "Aries", 1)}, angles={})
+    relationship = RelationshipCalculation(
+        person_a=a, person_b=b,
+        synastry_aspects=[Aspect(point_a="sun", point_b="sun", aspect="conjunction", exact_angle=0, orb=1.0)],
+        house_overlays=[],
+    )
+    patterns = detect_relationship_patterns(relationship)
+    sun_sun = next((p for p in patterns if p.key == "synastry.sun_sun_conjunction"), None)
+    assert sun_sun is not None
+    # Base priority 55 + _bonus(orb=1.0)=9 = 64; must stay below 70.
+    assert sun_sun.priority < 70
+
+
+def test_mars_mars_opposition_detected_with_sign_note():
+    from constellation_core.schemas import Aspect, BirthData, Chart, Placement, RelationshipCalculation
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    a = Chart(name="A", birth=birth, julian_day_ut=None, house_system="whole_sign",
+              placements={"mars": placement("mars", 210, "Scorpio", 1)}, angles={})
+    b = Chart(name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign",
+              placements={"mars": placement("mars", 30, "Taurus", 7)}, angles={})
+    relationship = RelationshipCalculation(
+        person_a=a, person_b=b,
+        synastry_aspects=[Aspect(point_a="mars", point_b="mars", aspect="opposition", exact_angle=0, orb=1.5)],
+        house_overlays=[],
+    )
+    patterns = detect_relationship_patterns(relationship)
+    mm = next((p for p in patterns if p.key == "synastry.mars_mars_opposition"), None)
+    assert mm is not None
+    assert "mars signs:" in " ".join(mm.evidence).lower()
+    assert "scorpio" in " ".join(mm.evidence).lower()
+    assert "taurus" in " ".join(mm.evidence).lower()
+
+
+def test_stellium_gap_detected_when_partner_has_no_planet_in_sign():
+    from constellation_core.schemas import BirthData, Chart, Placement, RelationshipCalculation
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    # A has Sun, Moon, Venus all in Taurus; B has no Taurus planets.
+    a = Chart(name="A", birth=birth, julian_day_ut=None, house_system="whole_sign",
+              placements={
+                  "sun": placement("sun", 40, "Taurus", 1),
+                  "moon": placement("moon", 45, "Taurus", 1),
+                  "venus": placement("venus", 50, "Taurus", 1),
+              }, angles={})
+    b = Chart(name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign",
+              placements={"sun": placement("sun", 100, "Cancer", 3)}, angles={})
+    relationship = RelationshipCalculation(person_a=a, person_b=b, synastry_aspects=[], house_overlays=[])
+
+    patterns = detect_relationship_patterns(relationship)
+    gap = next((p for p in patterns if p.key == "synastry.stellium_resonance.missing"), None)
+    assert gap is not None
+    assert gap.priority == 40
+    assert gap.category == "informational"
+    assert "Taurus" in gap.title
+
+
+def test_stellium_gap_not_detected_when_partner_has_planet_in_sign():
+    from constellation_core.schemas import BirthData, Chart, Placement, RelationshipCalculation
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    a = Chart(name="A", birth=birth, julian_day_ut=None, house_system="whole_sign",
+              placements={
+                  "sun": placement("sun", 40, "Taurus", 1),
+                  "moon": placement("moon", 45, "Taurus", 1),
+                  "venus": placement("venus", 50, "Taurus", 1),
+              }, angles={})
+    # B has Mars in Taurus — gap should not fire.
+    b = Chart(name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign",
+              placements={"mars": placement("mars", 42, "Taurus", 1)}, angles={})
+    relationship = RelationshipCalculation(person_a=a, person_b=b, synastry_aspects=[], house_overlays=[])
+
+    patterns = detect_relationship_patterns(relationship)
+    assert not any(p.key == "synastry.stellium_resonance.missing" for p in patterns)
+
+
+def test_stellium_gap_does_not_reach_synthesis_packet_threshold():
+    """Stellium gap is diagnostics-only; priority 40 must stay below the synthesis packet threshold (70)."""
+    from constellation_core.schemas import BirthData, Chart, Placement, RelationshipCalculation
+    from constellation_core.weighting import weight_patterns
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    a = Chart(name="A", birth=birth, julian_day_ut=None, house_system="whole_sign",
+              placements={
+                  "sun": placement("sun", 40, "Taurus", 1),
+                  "moon": placement("moon", 45, "Taurus", 1),
+                  "venus": placement("venus", 50, "Taurus", 1),
+              }, angles={})
+    b = Chart(name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign",
+              placements={"sun": placement("sun", 100, "Cancer", 3)}, angles={})
+    relationship = RelationshipCalculation(person_a=a, person_b=b, synastry_aspects=[], house_overlays=[])
+
+    patterns = detect_relationship_patterns(relationship)
+    weighted = weight_patterns(patterns)
+    gap_patterns = [p for p in weighted if p.key == "synastry.stellium_resonance.missing"]
+    assert gap_patterns
+    for gap in gap_patterns:
+        assert gap.priority < 70

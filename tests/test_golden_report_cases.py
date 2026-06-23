@@ -74,7 +74,10 @@ def test_emotional_recognition_leads_over_minor_communication_heat():
 
     assert snapshot["lead_category"] == "emotional_recognition"
     assert snapshot["lead_pattern"] == "synastry.sun_moon"
-    assert "communication_heat" in snapshot["top_categories"]
+    # Mercury-Mars must not lead — that's the core doctrine assertion.
+    # Ruler-contact patterns (erotic_charge, trust_depth) legitimately outrank down-weighted
+    # Mercury-Mars in a romantic context without a communication question, so communication_heat
+    # may no longer appear in the top 3 after the rulership layer was added.
     assert snapshot["mercury_mars_led"] is False
 
 
