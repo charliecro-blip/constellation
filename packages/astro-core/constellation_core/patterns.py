@@ -742,6 +742,25 @@ def _relationship_ruler_patterns(relationship: RelationshipCalculation) -> list[
             key="synastry.relationship_ruler.reciprocal_7th",
             confidence="high",
         ))
+    # Reciprocal Asc/Desc ruler mirroring: both Ascendant rulers contacted cross-chart.
+    asc_activated = {"person_a": False, "person_b": False}
+    for pattern in patterns:
+        if pattern.key == "synastry.relationship_ruler.ascendant_ruler":
+            if f"{relationship.person_a.name}'s Ascendant ruler" in pattern.evidence[0]:
+                asc_activated["person_a"] = True
+            if f"{relationship.person_b.name}'s Ascendant ruler" in pattern.evidence[0]:
+                asc_activated["person_b"] = True
+    if all(asc_activated.values()):
+        patterns.append(Pattern(
+            id="relationship_ruler_reciprocal_asc",
+            layer="synastry",
+            category="projection_mirror",
+            priority=82,
+            title="Reciprocal Ascendant-ruler activation",
+            evidence=["Both charts have the Ascendant ruler contacted by the other person — a strong identity-mirror signature."],
+            key="synastry.relationship_ruler.reciprocal_asc",
+            confidence="high",
+        ))
     return patterns
 
 def detect_relationship_patterns(relationship: RelationshipCalculation) -> list[Pattern]:

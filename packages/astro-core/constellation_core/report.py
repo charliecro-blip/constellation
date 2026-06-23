@@ -1221,7 +1221,13 @@ def build_report_synthesis_packet(
         relationship_rulership_summary={
             "person_a": relationship_significator_summary(relationship.person_a),
             "person_b": relationship_significator_summary(relationship.person_b),
-            "cross_activations": [pattern.evidence[0] for pattern in patterns if pattern.key.startswith("synastry.relationship_ruler") or pattern.key == "synastry.descendant_contact"][:8],
+            # High-priority ruler activations only — avoids sending a full technical dump to the AI enhancer.
+            "cross_activations": [
+                pattern.evidence[0]
+                for pattern in patterns
+                if (pattern.key.startswith("synastry.relationship_ruler") or pattern.key == "synastry.descendant_contact")
+                and pattern.priority >= 70
+            ][:4],
         },
     )
 
@@ -1406,7 +1412,19 @@ def build_report_diagnostics(
         relationship_rulership_summary={
             "person_a": relationship_significator_summary(relationship.person_a),
             "person_b": relationship_significator_summary(relationship.person_b),
-            "cross_activations": [pattern.evidence[0] for pattern in patterns if pattern.key.startswith("synastry.relationship_ruler") or pattern.key == "synastry.descendant_contact"][:8],
+            # All ruler activations for diagnostics inspection.
+            "cross_activations": [
+                pattern.evidence[0]
+                for pattern in patterns
+                if (pattern.key.startswith("synastry.relationship_ruler") or pattern.key == "synastry.descendant_contact")
+                and pattern.key not in {"synastry.relationship_ruler.reciprocal_7th", "synastry.relationship_ruler.reciprocal_asc"}
+            ][:8],
+            # Reciprocal contacts called out separately for clarity.
+            "reciprocal_contacts": [
+                pattern.evidence[0]
+                for pattern in patterns
+                if pattern.key in {"synastry.relationship_ruler.reciprocal_7th", "synastry.relationship_ruler.reciprocal_asc"}
+            ],
         },
     )
 

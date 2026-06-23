@@ -25,3 +25,4 @@ The goal is to make strong relationship themes legible without turning astrology
 - [Asteroid policy](asteroid_policy.md)
 - [Report voice guide](report_voice_guide.md)
 - [Architecture map](architecture_map.md)
+- [Relationship rulerships](relationship_rulerships.md)

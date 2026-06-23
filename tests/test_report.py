@@ -1247,3 +1247,114 @@ def test_relationship_ruler_context_surfaces_in_report_detail_diagnostics_and_pa
     assert "destined" not in joined
     assert "fated" not in joined
     assert "meant to be" not in joined
+
+
+def test_ruler_contact_weighting_is_conservative():
+    """Ruler contacts should boost priority but not leap over a tight Tier 1 synastry."""
+    from constellation_core.patterns import Pattern
+    from constellation_core.weighting import RULER_CONTACT_MULTIPLIERS, weight_patterns
+
+    # Tight Tier 1: venus_ascendant at priority 80, orb 0.5.
+    tier1 = Pattern(
+        id="synastry.venus_ascendant_test",
+        layer="synastry",
+        category="angle_luminary",
+        priority=80,
+        title="A's Venus conjuncts B's Ascendant",
+        evidence=["Venus conjunct Ascendant, orb 0.5"],
+        key="synastry.venus_ascendant",
+        confidence="high",
+    )
+    # Ruler pattern at modest base priority.
+    ruler = Pattern(
+        id="ruler_test",
+        layer="synastry",
+        category="familiar_pull",
+        priority=62,
+        title="A's Sun trines B's Saturn (7th-house ruler)",
+        evidence=["Sun trine Saturn, orb 2.0; Saturn rules B's 7th-house ruler"],
+        key="synastry.relationship_ruler.descendant_ruler",
+        confidence="medium",
+    )
+    weighted = weight_patterns([tier1, ruler])
+    weighted_by_key = {p.key: p for p in weighted}
+
+    # Tier 1 should still outrank the ruler contact after weighting.
+    assert weighted_by_key["synastry.venus_ascendant"].priority > weighted_by_key["synastry.relationship_ruler.descendant_ruler"].priority
+
+    # Confirm multipliers are conservative — none exceed 1.25.
+    for multiplier in RULER_CONTACT_MULTIPLIERS.values():
+        assert multiplier <= 1.25
+
+
+def test_diagnostics_distinguishes_cross_activations_from_reciprocal_contacts():
+    chart_a = _synthetic_chart("Charlie").model_copy(update={
+        "placements": {"venus": _placement("venus", 280, "Capricorn", house=6)},
+        "angles": {"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    })
+    chart_b = _synthetic_chart("Ellis").model_copy(update={
+        "placements": {"saturn": _placement("saturn", 281, "Capricorn", house=6), "mars": _placement("mars", 215, "Scorpio", house=5)},
+        "angles": {"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    })
+    relationship = RelationshipCalculation(
+        person_a=chart_a, person_b=chart_b,
+        synastry_aspects=[Aspect(point_a="venus", point_b="saturn", aspect="conjunction", exact_angle=0, orb=0.5)],
+        house_overlays=[],
+    )
+    diagnostics = build_report_diagnostics(relationship)
+    summary = diagnostics.relationship_rulership_summary
+
+    assert "cross_activations" in summary
+    assert "reciprocal_contacts" in summary
+    # cross_activations should not include reciprocal pattern evidence.
+    for ev in summary["cross_activations"]:
+        assert "reciprocal" not in ev.lower()
+
+
+def test_synthesis_packet_ruler_activations_are_selective():
+    """Synthesis packet should only include high-priority ruler evidence (≥70), max 4 items."""
+    from constellation_core.patterns import Pattern
+    from constellation_core.weighting import weight_patterns
+
+    chart_a = _synthetic_chart("Charlie").model_copy(update={
+        "placements": {"venus": _placement("venus", 280, "Capricorn", house=6)},
+        "angles": {"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    })
+    chart_b = _synthetic_chart("Ellis").model_copy(update={
+        "placements": {"saturn": _placement("saturn", 281, "Capricorn", house=6), "mars": _placement("mars", 215, "Scorpio", house=5)},
+        "angles": {"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    })
+    relationship = RelationshipCalculation(
+        person_a=chart_a, person_b=chart_b,
+        synastry_aspects=[Aspect(point_a="venus", point_b="saturn", aspect="conjunction", exact_angle=0, orb=0.5)],
+        house_overlays=[],
+    )
+    packet = build_report_synthesis_packet(relationship)
+    activations = packet.relationship_rulership_summary.get("cross_activations", [])
+    # At most 4 items.
+    assert len(activations) <= 4
+
+
+def test_ruler_context_no_forbidden_language():
+    """Ruler-related prose must never produce compatibility scores or fate language."""
+    chart_a = _synthetic_chart("Charlie").model_copy(update={
+        "placements": {"venus": _placement("venus", 280, "Capricorn", house=6)},
+        "angles": {"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    })
+    chart_b = _synthetic_chart("Ellis").model_copy(update={
+        "placements": {"saturn": _placement("saturn", 281, "Capricorn", house=6)},
+        "angles": {"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    })
+    relationship = RelationshipCalculation(
+        person_a=chart_a, person_b=chart_b,
+        synastry_aspects=[Aspect(point_a="venus", point_b="saturn", aspect="conjunction", exact_angle=0, orb=0.5)],
+        house_overlays=[],
+    )
+    report = generate_relationship_report(relationship)
+    md = report.to_markdown().lower()
+    detail_text = " ".join(d.read_more for d in report.dynamic_details).lower()
+    combined = md + detail_text
+
+    forbidden = ["compatibility score", "soulmate", "twin flame", "destined", "fated", "meant to be", "toxic", "doomed"]
+    for phrase in forbidden:
+        assert phrase not in combined, f"Forbidden phrase found in ruler-context report: '{phrase}'"

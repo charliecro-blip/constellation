@@ -397,3 +397,169 @@ def test_relationship_house_rulerships_and_activation_detection():
     patterns = detect_relationship_patterns(relationship)
     assert any(pattern.key == "synastry.relationship_ruler.descendant_ruler" for pattern in patterns)
     assert any("7th-house ruler" in " ".join(pattern.evidence) for pattern in patterns)
+
+
+def test_traditional_ruler_map_is_complete_and_traditional_only():
+    from constellation_core.rulerships import TRADITIONAL_SIGN_RULERS
+
+    expected = {
+        "aries": "mars",
+        "taurus": "venus",
+        "gemini": "mercury",
+        "cancer": "moon",
+        "leo": "sun",
+        "virgo": "mercury",
+        "libra": "venus",
+        "scorpio": "mars",
+        "sagittarius": "jupiter",
+        "capricorn": "saturn",
+        "aquarius": "saturn",
+        "pisces": "jupiter",
+    }
+    assert TRADITIONAL_SIGN_RULERS == expected
+    # No modern co-rulers (uranus, neptune, pluto) in the default map.
+    assert "uranus" not in TRADITIONAL_SIGN_RULERS.values()
+    assert "neptune" not in TRADITIONAL_SIGN_RULERS.values()
+    assert "pluto" not in TRADITIONAL_SIGN_RULERS.values()
+
+
+def test_rulership_layer_skipped_when_house_data_missing():
+    from constellation_core.rulerships import relationship_house_rulers, relationship_significator_summary
+    from constellation_core.schemas import BirthData, Chart
+
+    birth = BirthData(name="X", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+    chart_no_angles = Chart(
+        name="X", birth=birth, julian_day_ut=None, house_system="whole_sign",
+        placements={}, angles={},
+    )
+    rulers = relationship_house_rulers(chart_no_angles)
+    assert rulers == {}
+
+    summary = relationship_significator_summary(chart_no_angles)
+    assert summary["relationship_axis"]["ascendant"] is None
+    assert summary["relationship_axis"]["ascendant_ruler"] is None
+
+
+def test_5th_and_8th_ruler_contacts_detected():
+    from constellation_core.schemas import Angle, Aspect, BirthData, Chart, Placement, RelationshipCalculation
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    # B has Cancer Asc → 5th house Scorpio (ruler Mars), 8th house Aquarius (ruler Saturn).
+    a = Chart(
+        name="A", birth=birth, julian_day_ut=None, house_system="whole_sign",
+        placements={"moon": placement("moon", 215, "Scorpio", 5)},
+        angles={"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    )
+    b = Chart(
+        name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign",
+        placements={
+            "mars": placement("mars", 210, "Scorpio", 5),
+            "saturn": placement("saturn", 300, "Aquarius", 8),
+        },
+        angles={"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    )
+    # A's Moon conjuncts B's Mars (5th ruler) and A's Moon also trines B's Saturn (8th ruler).
+    relationship = RelationshipCalculation(
+        person_a=a, person_b=b,
+        synastry_aspects=[
+            Aspect(point_a="moon", point_b="mars", aspect="conjunction", exact_angle=0, orb=0.8),
+            Aspect(point_a="moon", point_b="saturn", aspect="trine", exact_angle=0, orb=1.2),
+        ],
+        house_overlays=[],
+    )
+    patterns = detect_relationship_patterns(relationship)
+    keys = [p.key for p in patterns]
+    assert "synastry.relationship_ruler.romance_ruler" in keys
+    assert "synastry.relationship_ruler.intimacy_ruler" in keys
+
+
+def test_reciprocal_7th_ruler_detected_when_both_contacted():
+    from constellation_core.schemas import Angle, Aspect, BirthData, Chart, Placement, RelationshipCalculation
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    # Both have Cancer Asc → Capricorn Desc (Saturn rules 7th for both).
+    a = Chart(
+        name="A", birth=birth, julian_day_ut=None, house_system="whole_sign",
+        placements={"venus": placement("venus", 280, "Capricorn", 7), "saturn": placement("saturn", 282, "Capricorn", 7)},
+        angles={"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    )
+    b = Chart(
+        name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign",
+        placements={"venus": placement("venus", 280, "Capricorn", 7), "saturn": placement("saturn", 282, "Capricorn", 7)},
+        angles={"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)},
+    )
+    # A's Venus contacts B's Saturn (B's 7th ruler); B's Venus contacts A's Saturn (A's 7th ruler).
+    relationship = RelationshipCalculation(
+        person_a=a, person_b=b,
+        synastry_aspects=[
+            Aspect(point_a="venus", point_b="saturn", aspect="conjunction", exact_angle=0, orb=0.5),
+            Aspect(point_a="saturn", point_b="venus", aspect="conjunction", exact_angle=0, orb=0.5),
+        ],
+        house_overlays=[],
+    )
+    patterns = detect_relationship_patterns(relationship)
+    assert any(p.key == "synastry.relationship_ruler.reciprocal_7th" for p in patterns)
+
+
+def test_reciprocal_asc_ruler_detected_when_both_asc_rulers_contacted():
+    from constellation_core.schemas import Angle, Aspect, BirthData, Chart, Placement, RelationshipCalculation
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    # A: Aries Asc → Mars rules Asc. B: Taurus Asc → Venus rules Asc.
+    a = Chart(
+        name="A", birth=birth, julian_day_ut=None, house_system="whole_sign",
+        placements={"mars": placement("mars", 30, "Taurus", 2), "venus": placement("venus", 40, "Taurus", 2)},
+        angles={"ascendant": Angle(name="Ascendant", longitude=0, sign="Aries", sign_index=0, degree=0)},
+    )
+    b = Chart(
+        name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign",
+        placements={"venus": placement("venus", 30, "Taurus", 1), "mars": placement("mars", 1, "Aries", 12)},
+        angles={"ascendant": Angle(name="Ascendant", longitude=30, sign="Taurus", sign_index=1, degree=0)},
+    )
+    # A's Venus (=B's Asc ruler) contacts B's Mars; B's Mars (=A's Asc ruler) contacts A's Venus.
+    relationship = RelationshipCalculation(
+        person_a=a, person_b=b,
+        synastry_aspects=[
+            Aspect(point_a="venus", point_b="mars", aspect="conjunction", exact_angle=0, orb=1.0),
+            Aspect(point_a="mars", point_b="venus", aspect="conjunction", exact_angle=0, orb=1.0),
+        ],
+        house_overlays=[],
+    )
+    patterns = detect_relationship_patterns(relationship)
+    assert any(p.key == "synastry.relationship_ruler.reciprocal_asc" for p in patterns)
+
+
+def test_ruler_contact_keys_do_not_include_composite_rulerships():
+    from constellation_core.schemas import Angle, Aspect, BirthData, Chart, Placement, RelationshipCalculation
+
+    birth = BirthData(name="A", date="1990-01-01", time="12:00", latitude=0, longitude=0, timezone="UTC")
+
+    def placement(body, longitude, sign, house=None):
+        return Placement(body=body, longitude=longitude, sign=sign, sign_index=int(longitude // 30), degree=longitude % 30, house=house)
+
+    a = Chart(name="A", birth=birth, julian_day_ut=None, house_system="whole_sign",
+              placements={"venus": placement("venus", 280, "Capricorn", 7)},
+              angles={"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)})
+    b = Chart(name="B", birth=birth.model_copy(update={"name": "B"}), julian_day_ut=None, house_system="whole_sign",
+              placements={"saturn": placement("saturn", 281, "Capricorn", 7)},
+              angles={"ascendant": Angle(name="Ascendant", longitude=90, sign="Cancer", sign_index=3, degree=0)})
+    relationship = RelationshipCalculation(
+        person_a=a, person_b=b,
+        synastry_aspects=[Aspect(point_a="venus", point_b="saturn", aspect="conjunction", exact_angle=0, orb=0.5)],
+        house_overlays=[],
+    )
+    patterns = detect_relationship_patterns(relationship)
+    composite_ruler_keys = [p.key for p in patterns if "composite" in p.key and "ruler" in p.key]
+    assert composite_ruler_keys == []

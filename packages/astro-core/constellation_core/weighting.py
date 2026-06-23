@@ -42,6 +42,19 @@ COMMUNICATION_KEYWORDS = {
 }
 
 
+# Applied after convergence so ruler contacts amplify rather than replace base scoring.
+# Multipliers are conservative: a ruler contact on a modest synastry aspect should
+# not leap over a tighter Tier 1 pattern unless convergence also supports it.
+RULER_CONTACT_MULTIPLIERS: dict[str, float] = {
+    "synastry.relationship_ruler.descendant_ruler": 1.20,
+    "synastry.relationship_ruler.romance_ruler": 1.15,
+    "synastry.relationship_ruler.intimacy_ruler": 1.10,
+    "synastry.relationship_ruler.ascendant_ruler": 1.10,
+    "synastry.relationship_ruler.reciprocal_7th": 1.10,
+    "synastry.relationship_ruler.reciprocal_asc": 1.12,
+    "synastry.descendant_contact": 1.20,
+}
+
 ROMANTIC_BOOSTS = {
     "attraction": 8,
     "desire": 8,
@@ -272,6 +285,7 @@ def weight_patterns(patterns: list[Pattern], context: RelationshipContext | None
 
         adjusted_priority = max(0, pattern.priority + boost + tier_boost + orb_adjustment)
         convergence_multiplier = convergence_multiplier_for(pattern, patterns)
-        new_priority = min(100, round(adjusted_priority * convergence_multiplier))
+        ruler_multiplier = RULER_CONTACT_MULTIPLIERS.get(pattern.key, 1.0)
+        new_priority = min(100, round(adjusted_priority * convergence_multiplier * ruler_multiplier))
         weighted.append(pattern.model_copy(update={"priority": new_priority}))
     return sorted(weighted, key=lambda pattern: pattern.priority, reverse=True)
