@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Constellation — App Wireframe</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #F4F1EC;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+    color: #1A1A2E;
+  }
+
+  h1 {
+    font-family: 'Georgia', serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+    color: #1A1A2E;
+  }
+  .subtitle {
+    font-size: 0.8rem;
+    color: #888;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+
+  /* Screen nav */
+  #snav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    max-width: 680px;
+    margin-bottom: 1.5rem;
+  }
+  .sn-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid #D0C8BC;
+    cursor: pointer;
+    background: transparent;
+    color: #888;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .sn-btn:hover { color: #1A1A2E; border-color: #AAA; }
+  .sn-btn.active {
+    background: #fff;
+    border-color: #C9A84C;
+    color: #1A1A2E;
+    font-weight: 500;
+  }
+
+  /* Phone frame */
+  .phone {
+    background: #0C1220;
+    border-radius: 36px;
+    border: 5px solid #1A2238;
+    width: 300px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+  }
+  .status-bar {
+    background: #0C1220;
+    padding: 10px 18px 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .status-bar span { color: #3D4A68; font-size: 11px; }
+  .status-bar .icons { display: flex; gap: 5px; color: #3D4A68; font-size: 11px; }
+  #screen-area {
+    height: 520px;
+    background: #0C1220;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  #screen-area::-webkit-scrollbar { display: none; }
+  .bottom-nav {
+    background: #0C1220;
+    border-top: 0.5px solid #1A2338;
+    padding: 8px 0 16px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: center;
+  }
+  .bn {
+    text-align: center;
+    cursor: pointer;
+    padding: 4px 0;
+    color: #3D4A68;
+    font-size: 9px;
+    transition: color 0.15s;
+  }
+  .bn i { display: block; font-size: 18px; margin-bottom: 2px; }
+  .bn.active { color: #C9A84C; }
+  .plus-btn {
+    text-align: center;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .plus-circle {
+    width: 34px; height: 34px;
+    background: #C9A84C;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto;
+  }
+  .plus-circle i { color: #0C1220; font-size: 16px; }
+
+  /* Description */
+  #sdesc {
+    max-width: 300px;
+    margin: 14px auto 0;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #666;
+  }
+
+  /* Branding panel */
+  .branding {
+    max-width: 680px;
+    width: 100%;
+    margin-top: 4rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  .brand-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.25rem;
+    border: 1px solid #E8E2D8;
+  }
+  .brand-card h3 {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #C9A84C;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+  }
+  .brand-card p { font-size: 12px; line-height: 1.65; color: #555; }
+  .swatch-row { display: flex; gap: 6px; margin-top: 0.75rem; flex-wrap: wrap; }
+  .swatch {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 1px solid rgba(0,0,0,0.1);
+    position: relative;
+  }
+  .swatch:hover::after {
+    content: attr(data-label);
+    position: absolute;
+    bottom: 32px; left: 50%;
+    transform: translateX(-50%);
+    background: #1A1A2E;
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .type-row { display: flex; flex-direction: column; gap: 4px; margin-top: 0.5rem; }
+  .type-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #555; }
+  .type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<h1>Constellation</h1>
+<p class="subtitle">App wireframe &amp; design direction</p>
+
+<div id="snav"></div>
+
+<div class="phone">
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="icons">
+      <i class="fa-solid fa-wifi"></i>
+      <i class="fa-solid fa-battery-half"></i>
+    </div>
+  </div>
+
+  <div id="screen-area"></div>
+
+  <div class="bottom-nav">
+    <div id="bn0" class="bn active" onclick="show(0)">
+      <i class="fa-regular fa-star"></i>
+      home
+    </div>
+    <div id="bn2" class="bn" onclick="show(2)">
+      <i class="fa-solid fa-users"></i>
+      people
+    </div>
+    <div class="plus-btn" onclick="show(1)">
+      <div class="plus-circle"><i class="fa-solid fa-plus"></i></div>
+    </div>
+    <div id="bn6" class="bn" onclick="show(6)">
+      <i class="fa-solid fa-diagram-project"></i>
+      patterns
+    </div>
+    <div id="bnu" class="bn">
+      <i class="fa-regular fa-circle-user"></i>
+      you
+    </div>
+  </div>
+</div>
+
+<div id="sdesc"></div>
+
+<!-- Branding section -->
+<div class="branding">
+  <div class="brand-card" style="grid-column: 1 / -1;">
+    <h3>Brand direction</h3>
+    <p>Constellation is an intimate, intelligent app for understanding the dynamics between people. The visual language should feel considered, literary, and slightly cosmic — not mystical or New Age. Think midnight observatory meets personal journal. Every design decision should serve the sense that the user is being given something real.</p>
+  </div>
+
+  <div class="brand-card">
+    <h3>Color — base palette</h3>
+    <p>Midnight backgrounds, warm cream text, amber gold for insight and action.</p>
+    <div class="swatch-row">
+      <div class="swatch" style="background:#0C1220" data-label="Midnight #0C1220"></div>
+      <div class="swatch" style="background:#131C30" data-label="Card #131C30"></div>
+      <div class="swatch" style="background:#1A2338" data-label="Border #1A2338"></div>
+      <div class="swatch" style="background:#C9A84C" data-label="Gold #C9A84C"></div>
+      <div class="swatch" style="background:#EAE4D8" data-label="Cream #EAE4D8"></div>
+      <div class="swatch" style="background:#6E7A96" data-label="Muted #6E7A96"></div>
+    </div>
+  </div>
+
+  <div class="brand-card">
+    <h3>Color — relationship types</h3>
+    <p>Type colors carry through badges, borders, constellation dots, and share cards.</p>
+    <div class="type-row">
+      <div class="type-item"><div class="type-dot" style="background:#C47A8A"></div>Romantic — rose</div>
+      <div class="type-item"><div class="type-dot" style="background:#A86080"></div>Committed — deep rose</div>
+      <div class="type-item"><div class="type-dot" style="background:#5AADA0"></div>Family — teal</div>
+      <div class="type-item"><div class="type-dot" style="background:#6A9BC4"></div>Friendship — blue</div>
+      <div class="type-item"><div class="type-dot" style="background:#7A8B9B"></div>Professional — slate</div>
+      <div class="type-item"><div class="type-dot" style="background:#505A72"></div>Ex — grey</div>
+    </div>
+  </div>
+
+  <div class="brand-card">
+    <h3>Typography</h3>
+    <p><strong>Display / interpretive prose:</strong> Cormorant Garamond (or similar humanist serif) — italic for pull quotes and The Bond; regular weight for body pattern text. This is where the app's intelligence lives.<br><br>
+    <strong>UI chrome:</strong> Clean geometric sans (Inter, DM Sans) for navigation labels, timestamps, badges, type labels, and button text. The contrast between the two is intentional: serif = meaning, sans = navigation.</p>
+  </div>
+
+  <div class="brand-card">
+    <h3>Voice &amp; copy</h3>
+    <p>Short, declarative, slightly literary. Never clinical, never mystical.<br><br>
+    <em>"Your world"</em> — not "Your dashboard"<br>
+    <em>"The Bond"</em> — not "Overview" or "Summary"<br>
+    <em>"What do you want to understand?"</em> — not "Select topic"<br>
+    <em>"This keeps showing up"</em> — not "Pattern detected"<br><br>
+    Report prose should read like a thoughtful person wrote it after careful reflection, not like a horoscope and not like a data readout.</p>
+  </div>
+
+  <div class="brand-card">
+    <h3>App icon &amp; wordmark</h3>
+    <p><strong>Icon:</strong> A single six-point asterisk or three-node constellation mark on deep midnight. Simple enough to read at 44px. Avoid zodiac wheels and planet imagery — that's the category cliché.<br><br>
+    <strong>Wordmark:</strong> "CONSTELLATION" in Cormorant Garamond, all-caps, generous tracking, set next to or beneath the asterisk mark. Gold on midnight for app launch and splash. Dark on cream for light-mode marketing contexts.</p>
+  </div>
+
+  <div class="brand-card" style="grid-column: 1 / -1;">
+    <h3>7 key screens — what each one does</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;margin-top:0.25rem">
+      <div>
+        <p><strong style="font-size:11px">Home / Hub</strong><br>
+        Saved relationships as a living star map. The user is the center node. Type badges color-code each connection. Recent insights below as return entry points. The constellation visual is literal — it names what the app is.</p>
+      </div>
+      <div>
+        <p><strong style="font-size:11px">Type selection</strong><br>
+        First step of every new reading. Sets the doctrine layer for the entire report — which patterns surface, which suppress, and what vocabulary is used. Must happen before names are entered.</p>
+      </div>
+      <div>
+        <p><strong style="font-size:11px">People picker / vault</strong><br>
+        Enter birth data once, it persists. Birth time clearly marked optional with explicit note on what's unavailable without it. The vault is the primary retention driver — people come back because their people are already here.</p>
+      </div>
+      <div>
+        <p><strong style="font-size:11px">Report surface</strong><br>
+        "The Bond" opens every report — 2-3 sentences naming the core of the connection. Pattern cards follow with a five-dot signal strength. The surface hooks; depth is behind Read More. Type badge persists throughout.</p>
+      </div>
+      <div>
+        <p><strong style="font-size:11px">Question mode</strong><br>
+        Users don't re-read reports. They return during a specific moment — a conflict, a distance, a question. Theme pills pull and reframe the relevant patterns without requiring a full re-read. The retention feature.</p>
+      </div>
+      <div>
+        <p><strong style="font-size:11px">Share / Insight card</strong><br>
+        A single resonant pull-quote designed to share. User picks which pattern to surface, previews the card, and sends it — to the person in the report (converts a new user) or publicly. Every share is an acquisition opportunity.</p>
+      </div>
+      <div>
+        <p><strong style="font-size:11px">Constellation view</strong><br>
+        Unlocks after 3+ readings. Shows what keeps appearing across all saved relationships. Not a personality test — a relational mirror. "Saturn keeps appearing across your closest connections." The self-pattern seeker's killer feature.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const G='#C9A84C',BG='#0C1220',CA='#131C30',BO='#1A2338';
+const TX='#EAE4D8',T2='#6E7A96',T3='#3D4A68';
+const PK='#C47A8A',TL='#5AADA0',BL='#6A9BC4',SL='#7A8B9B',GR='#505A72';
+
+function badge(label,col){return`<span style="background:${col}22;color:${col};font-size:9px;padding:1px 7px;border-radius:5px;display:inline-block">${label}</span>`}
+function dot5(n){return[1,2,3,4,5].map(d=>`<div style="width:4px;height:4px;border-radius:50%;background:${d<=n?G:BO}"></div>`).join('')}
+function avatar(init,col,sz){sz=sz||28;return`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col}22;border:0.5px solid ${col}44;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:${col};font-size:${Math.round(sz*.45)}px;font-weight:500">${init}</span></div>`}
+
+const screens=[
+{
+  label:'Home — constellation hub',
+  desc:'Saved relationships as a living star map. You are the center node. Type badges color-code each connection. Recent insights as return-entry points below.',
+  html(){return`<div style="padding:16px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+<div><div style="color:${G};font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:2px">Constellation</div>
+<div style="color:${TX};font-size:19px;font-weight:500;font-family:Georgia,serif">Your world</div></div>
+${avatar('C',G,34)}</div>
+<div style="background:${CA};border-radius:14px;border:0.5px solid ${BO};padding:10px;margin-bottom:14px">
+<svg viewBox="0 0 260 150" style="width:100%;display:block">
+<line x1="130" y1="75" x2="58" y2="42" stroke="${BO}" stroke-width="1.5"/>
+<line x1="130" y1="75" x2="208" y2="46" stroke="${BO}" stroke-width="1.5"/>
+<line x1="130" y1="75" x2="52" y2="125" stroke="${BO}" stroke-width="1.5"/>
+<line x1="130" y1="75" x2="205" y2="122" stroke="${BO}" stroke-width="1.5"/>
+<line x1="58" y1="42" x2="52" y2="125" stroke="${BO}" stroke-width="0.75" stroke-dasharray="3,4"/>
+<circle cx="130" cy="75" r="7" fill="${G}"/>
+<circle cx="58" cy="42" r="5" fill="${PK}"/>
+<circle cx="208" cy="46" r="5" fill="${TL}"/>
+<circle cx="52" cy="125" r="5" fill="${BL}"/>
+<circle cx="205" cy="122" r="5" fill="${SL}"/>
+<text x="130" y="78" fill="${BG}" font-size="7" text-anchor="middle" font-weight="600">you</text>
+<text x="58" y="31" fill="${TX}" font-size="9.5" text-anchor="middle">Jordan</text>
+<text x="208" y="35" fill="${TX}" font-size="9.5" text-anchor="middle">Mom</text>
+<text x="45" y="141" fill="${TX}" font-size="9.5" text-anchor="middle">Sam</text>
+<text x="205" y="138" fill="${TX}" font-size="9.5" text-anchor="middle">Alex</text>
+</svg></div>
+<div style="color:${T2};font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px">Saved readings</div>
+${[{n:'Jordan',t:'romantic',c:PK,a:'2 days ago'},{n:'Mom',t:'family',c:TL,a:'1 week ago'},{n:'Sam',t:'friendship',c:BL,a:'3 weeks ago'},{n:'Alex',t:'professional',c:SL,a:'1 month ago'}].map(r=>`
+<div style="background:${CA};border-radius:11px;border:0.5px solid ${BO};padding:9px 11px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center;gap:9px">${avatar(r.n[0],r.c)}<div><div style="color:${TX};font-size:12px;font-weight:500">${r.n}</div><div style="margin-top:2px">${badge(r.t,r.c)}</div></div></div>
+<span style="color:${T3};font-size:10px">${r.a}</span></div>`).join('')}
+</div>`}
+},
+{
+  label:'New reading — type selection',
+  desc:'Type selection sets the doctrine layer for the entire report downstream: which patterns surface, which suppress, and what vocabulary is used. Must happen before names are entered.',
+  html(){return`<div style="padding:16px">
+<div style="display:flex;align-items:center;gap:9px;margin-bottom:16px">
+<i class="fa-solid fa-arrow-left" style="color:${T2};font-size:15px"></i>
+<div><div style="color:${TX};font-size:16px;font-weight:500">New reading</div>
+<div style="color:${T2};font-size:11px">What kind of relationship?</div></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
+${[{ic:'fa-solid fa-heart',l:'Romantic',s:'dating, new',c:PK,sel:true},{ic:'fa-solid fa-link',l:'Committed',s:'long-term partner',c:'#A86080'},{ic:'fa-solid fa-house',l:'Family',s:'parent, sibling',c:TL},{ic:'fa-solid fa-users',l:'Friendship',s:'close friends',c:BL},{ic:'fa-regular fa-clock',l:'Ex',s:'past relationship',c:GR},{ic:'fa-solid fa-briefcase',l:'Professional',s:'work, colleague',c:SL}].map((t,i)=>`
+<div style="background:${t.sel?t.c+'22':CA};border-radius:12px;border:0.5px solid ${t.sel?t.c+'66':BO};padding:11px;cursor:pointer">
+<div style="width:26px;height:26px;border-radius:7px;background:${t.c}22;display:flex;align-items:center;justify-content:center;margin-bottom:7px">
+<i class="${t.ic}" style="color:${t.c};font-size:13px"></i></div>
+<div style="color:${TX};font-size:12px;font-weight:500">${t.l}</div>
+<div style="color:${T2};font-size:10px;margin-top:1px">${t.s}</div>
+${t.sel?`<div style="margin-top:5px;color:${PK};font-size:9px"><i class="fa-solid fa-check" style="font-size:9px"></i> selected</div>`:''}</div>`).join('')}</div>
+<div style="background:${CA};border-radius:11px;border:0.5px dashed ${BO};padding:9px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:16px">
+<div><div style="color:${TX};font-size:12px;font-weight:500">Other</div>
+<div style="color:${T2};font-size:10px">describe in your own words</div></div>
+<i class="fa-solid fa-ellipsis" style="color:${T2};font-size:14px"></i></div>
+<div style="background:${PK};border-radius:12px;padding:11px;text-align:center;cursor:pointer">
+<div style="color:#0C1220;font-size:13px;font-weight:500">Continue as Romantic</div></div>
+</div>`}
+},
+{
+  label:'People picker — the vault',
+  desc:'Enter birth data once and it persists. Birth time is explicitly marked optional with a note on what\'s unavailable without it. The vault is the primary retention driver.',
+  html(){return`<div style="padding:16px">
+<div style="display:flex;align-items:center;gap:9px;margin-bottom:16px">
+<i class="fa-solid fa-arrow-left" style="color:${T2};font-size:15px"></i>
+<div style="color:${TX};font-size:16px;font-weight:500">Choose two people</div></div>
+<div style="color:${T2};font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Person A — you</div>
+<div style="background:${CA};border-radius:11px;border:0.5px solid ${G}55;padding:9px 11px;margin-bottom:14px;display:flex;align-items:center;gap:9px">
+${avatar('C',G)}<div><div style="color:${TX};font-size:12px;font-weight:500">Charlie</div>
+<div style="color:${T2};font-size:10px">Mar 12, 1990 · 7:42am · New York</div></div>
+<i class="fa-solid fa-circle-check" style="color:${G};font-size:14px;margin-left:auto"></i></div>
+<div style="color:${T2};font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Person B</div>
+<div style="background:${CA};border-radius:11px;border:0.5px solid ${BO};padding:9px 11px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
+<i class="fa-solid fa-magnifying-glass" style="color:${T2};font-size:13px"></i>
+<span style="color:${T2};font-size:12px">Search saved people…</span></div>
+<div style="color:${T2};font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px">From your people</div>
+${[{n:'Jordan',d:'Jun 3, 1988 · 2:15pm · Chicago',c:PK,ok:true},{n:'Sam',d:'Nov 21, 1991 · time unknown',c:BL,ok:false}].map(p=>`
+<div style="background:${CA};border-radius:11px;border:0.5px solid ${BO};padding:9px 11px;margin-bottom:6px;display:flex;align-items:center;gap:9px;cursor:pointer">
+${avatar(p.n[0],p.c)}<div style="flex:1"><div style="color:${TX};font-size:12px;font-weight:500">${p.n}</div>
+<div style="color:${T2};font-size:10px;margin-top:1px">${p.d}${!p.ok?` <span style="color:${G}99">· houses unavailable</span>`:''}</div></div>
+</div>`).join('')}
+<div style="background:${CA};border-radius:11px;border:0.5px dashed ${BO};padding:11px;text-align:center;cursor:pointer;margin-top:2px">
+<i class="fa-solid fa-user-plus" style="color:${T2};font-size:16px;display:block;margin-bottom:3px"></i>
+<div style="color:${T2};font-size:11px">Add someone new</div></div></div>`}
+},
+{
+  label:'Report — surface view',
+  desc:'"The Bond" opens every report — 2-3 sentences naming the core of the connection. Pattern cards follow with signal strength. The surface hooks; depth is behind Read More.',
+  html(){return`<div style="padding:16px">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+<div style="display:flex;align-items:center;gap:7px">
+<i class="fa-solid fa-arrow-left" style="color:${T2};font-size:14px"></i>
+${badge('romantic',PK)}</div>
+<div style="display:flex;gap:8px">
+<i class="fa-regular fa-bookmark" style="color:${T2};font-size:14px"></i>
+<i class="fa-solid fa-share-nodes" style="color:${T2};font-size:14px"></i></div></div>
+<div style="text-align:center;margin-bottom:12px">
+<div style="display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px">
+${avatar('C',G,26)}<span style="color:${T2};font-size:12px">·</span>${avatar('J',PK,26)}</div>
+<div style="color:${TX};font-size:15px;font-weight:500">Charlie & Jordan</div></div>
+<div style="background:${CA};border-radius:13px;border-left:2px solid ${G};border-top:0.5px solid ${BO};border-right:0.5px solid ${BO};border-bottom:0.5px solid ${BO};padding:11px 13px;margin-bottom:12px">
+<div style="color:${G};font-size:9px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px">The Bond</div>
+<div style="color:${TX};font-size:11.5px;line-height:1.7;font-family:Georgia,serif;font-style:italic">There's a directness between you — Jordan reaches Charlie's sense of self in ways that feel both familiar and slightly uncanny. This connection has a quality of recognition at its core.</div></div>
+<div style="color:${T2};font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px">Key patterns</div>
+${[{t:'Sun trine Moon',tag:'What feels easy',n:4,txt:'Emotional rhythm between you has a natural quality — Charlie\'s need for recognition lands well with Jordan\'s instinct.',h:false},{t:'Venus conjunct Mars',tag:'The attraction',n:5,txt:'There\'s a charge here. Jordan activates something in Charlie\'s love nature that doesn\'t stay quiet.',h:false},{t:'Saturn square Moon',tag:'What\'s harder',n:3,txt:'At moments Jordan\'s presence can feel like pressure to Charlie — not unkindly, but there\'s a weight here.',h:true}].map(p=>`
+<div style="background:${CA};border-radius:11px;border:0.5px solid ${p.h?'#A86080':BO};padding:9px 11px;margin-bottom:6px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
+<div><div style="color:${TX};font-size:12px;font-weight:500">${p.t}</div>
+<div style="color:${T2};font-size:10px;margin-top:1px">${p.tag}</div></div>
+<div style="display:flex;gap:2px;margin-top:3px">${dot5(p.n)}</div></div>
+<div style="color:${T2};font-size:10.5px;line-height:1.55">${p.txt}</div>
+<div style="margin-top:6px;color:${G};font-size:10.5px;cursor:pointer">Read more <i class="fa-solid fa-chevron-right" style="font-size:9px"></i></div></div>`).join('')}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px">
+<div style="background:${CA};border-radius:11px;border:0.5px solid ${BO};padding:9px;text-align:center;cursor:pointer">
+<i class="fa-regular fa-comment" style="color:${T2};font-size:16px;display:block;margin-bottom:3px"></i>
+<div style="color:${TX};font-size:10.5px">Explore by theme</div></div>
+<div style="background:${PK}22;border-radius:11px;border:0.5px solid ${PK}44;padding:9px;text-align:center;cursor:pointer">
+<i class="fa-solid fa-share-nodes" style="color:${PK};font-size:16px;display:block;margin-bottom:3px"></i>
+<div style="color:${PK};font-size:10.5px">Share insight</div></div></div>
+</div>`}
+},
+{
+  label:'Question mode — the retention feature',
+  desc:'Users return mid-conflict, not to re-read. Theme pills pull and reframe the relevant patterns for that moment. The reason a user opens the app 3 months after their first read.',
+  html(){return`<div style="padding:16px">
+<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">
+<i class="fa-solid fa-arrow-left" style="color:${T2};font-size:15px"></i>
+<div><div style="color:${TX};font-size:15px;font-weight:500">Explore by theme</div>
+<div style="color:${T2};font-size:11px">Charlie & Jordan</div></div></div>
+<div style="color:${T2};font-size:12px;margin-bottom:11px">What do you want to understand right now?</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+${[{l:'Communication',a:true},{l:'Conflict style'},{l:'Closeness'},{l:'Independence'},{l:'Long term'},{l:'Fun & play'},{l:'Family patterns'}].map(t=>`
+<div style="background:${t.a?BL+'33':CA};border:0.5px solid ${t.a?BL+'88':BO};border-radius:18px;padding:4px 10px;cursor:pointer">
+<span style="color:${t.a?BL:T2};font-size:10.5px">${t.l}</span></div>`).join('')}</div>
+<div style="color:${T2};font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px">On communication</div>
+${[{t:'Mercury trine Mercury',txt:'You reach each other\'s minds with unusual ease — the reasoning that feels obvious to Charlie maps well to Jordan\'s natural cadence.',pos:true},{t:'Moon square Mercury',txt:'There\'s a gap between how Charlie processes feeling and how Jordan reaches for language. Jordan tends to explain what Charlie needs to have heard first.',pos:false}].map(p=>`
+<div style="background:${CA};border-radius:11px;border-left:2px solid ${p.pos?TL:'#A86080'};border-top:0.5px solid ${BO};border-right:0.5px solid ${BO};border-bottom:0.5px solid ${BO};padding:9px 11px;margin-bottom:7px">
+<div style="color:${TX};font-size:12px;font-weight:500;margin-bottom:3px">${p.t}</div>
+<div style="color:${T2};font-size:10.5px;line-height:1.6">${p.txt}</div>
+<div style="margin-top:6px;color:${G};font-size:10.5px;cursor:pointer">Read more <i class="fa-solid fa-chevron-right" style="font-size:9px"></i></div></div>`).join('')}
+<div style="background:${CA};border-radius:11px;border:0.5px solid ${BO};padding:11px;margin-top:2px">
+<div style="color:${T2};font-size:10.5px;line-height:1.6">The pattern in your communication is this: the ease is real, and so is the occasional near-miss. What helps is slowing down at the point where Charlie feels something before they've found the words for it.</div></div>
+</div>`}
+},
+{
+  label:'Insight card — the viral engine',
+  desc:'A single resonant line designed to share. Two destinations: send to the person (converts a new user) or share publicly (organic acquisition). Every share is a potential acquisition.',
+  html(){return`<div style="padding:16px">
+<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">
+<i class="fa-solid fa-arrow-left" style="color:${T2};font-size:15px"></i>
+<div style="color:${TX};font-size:15px;font-weight:500">Share an insight</div></div>
+<div style="color:${T2};font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px">Preview</div>
+<div style="background:#0A1428;border-radius:14px;border:0.5px solid ${BO};padding:18px;margin-bottom:12px">
+<div style="color:${G};font-size:9px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:11px">Constellation</div>
+<div style="color:${TX};font-size:12.5px;line-height:1.8;font-family:Georgia,serif;font-style:italic;margin-bottom:13px">"There's a charge here. Jordan activates something in Charlie's love nature that doesn't stay quiet."</div>
+<div style="border-top:0.5px solid ${BO};padding-top:11px;display:flex;align-items:center;gap:8px">
+<div style="display:flex">
+<div style="width:20px;height:20px;border-radius:50%;background:${G}22;border:0.5px solid ${G}44;display:flex;align-items:center;justify-content:center;z-index:2"><span style="color:${G};font-size:8px;font-weight:500">C</span></div>
+<div style="width:20px;height:20px;border-radius:50%;background:${PK}22;border:0.5px solid ${PK}44;display:flex;align-items:center;justify-content:center;margin-left:-5px"><span style="color:${PK};font-size:8px;font-weight:500">J</span></div></div>
+<span style="color:${T2};font-size:9.5px">Charlie & Jordan · Venus conjunct Mars</span></div></div>
+<div style="color:${T2};font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Choose insight</div>
+${[{l:'The Bond',s:false},{l:'Sun trine Moon',s:false},{l:'Venus conjunct Mars',s:true}].map(p=>`
+<div style="background:${p.s?PK+'22':CA};border-radius:10px;border:0.5px solid ${p.s?PK+'55':BO};padding:7px 11px;margin-bottom:5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+<span style="color:${p.s?TX:T2};font-size:11px">${p.l}</span>
+${p.s?`<i class="fa-solid fa-check" style="color:${PK};font-size:11px"></i>`:''}</div>`).join('')}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px">
+<div style="background:${CA};border-radius:11px;border:0.5px solid ${BO};padding:10px;text-align:center;cursor:pointer">
+<i class="fa-regular fa-copy" style="color:${T2};font-size:15px;display:block;margin-bottom:3px"></i>
+<div style="color:${TX};font-size:10.5px">Copy image</div></div>
+<div style="background:${PK};border-radius:11px;padding:10px;text-align:center;cursor:pointer">
+<i class="fa-solid fa-paper-plane" style="color:#0C1220;font-size:15px;display:block;margin-bottom:3px"></i>
+<div style="color:#0C1220;font-size:10.5px;font-weight:500">Send to Jordan</div></div></div>
+</div>`}
+},
+{
+  label:'Constellation view — patterns across your world',
+  desc:'Unlocks after 3+ readings. Shows what keeps appearing across all saved relationships — not a personality test but a relational mirror. The self-pattern seeker\'s killer feature.',
+  html(){return`<div style="padding:16px">
+<div style="margin-bottom:14px">
+<div style="color:${G};font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Your constellation</div>
+<div style="color:${TX};font-size:18px;font-weight:500;font-family:Georgia,serif">Patterns across your world</div>
+<div style="color:${T2};font-size:11px;margin-top:2px">Across 4 saved readings</div></div>
+${[{theme:'Saturn keeps appearing',desc:'In 3 of your 4 readings, Saturn makes a significant contact. Something in how you connect tends to invoke structure, endurance, and the pressure of time.',rels:[{n:'Jordan',c:PK},{n:'Mom',c:TL},{n:'Alex',c:SL}]},{theme:'8th house activation',desc:'Your closest connections consistently involve the 8th house — the zone of deep trust and what gets held back. You tend to reach people at depth, or be reached there.',rels:[{n:'Jordan',c:PK},{n:'Sam',c:BL}]},{theme:'Mercury harmony',desc:'Across most of your relationships, Mercury contacts are easy. Communication friction isn\'t where your relational work tends to live.',rels:[{n:'Sam',c:BL},{n:'Alex',c:SL},{n:'Mom',c:TL}]}].map(p=>`
+<div style="background:${CA};border-radius:13px;border:0.5px solid ${BO};padding:11px;margin-bottom:8px">
+<div style="color:${TX};font-size:12px;font-weight:500;margin-bottom:5px">${p.theme}</div>
+<div style="display:flex;gap:4px;margin-bottom:7px">${p.rels.map(r=>`<span style="background:${r.c}22;color:${r.c};font-size:9px;padding:2px 6px;border-radius:5px">${r.n}</span>`).join('')}</div>
+<div style="color:${T2};font-size:10.5px;line-height:1.6;margin-bottom:7px">${p.desc}</div>
+<div style="color:${G};font-size:10.5px;cursor:pointer">What does this mean? <i class="fa-solid fa-chevron-right" style="font-size:9px"></i></div></div>`).join('')}
+<div style="background:${CA};border-radius:11px;border:0.5px dashed ${BO};padding:10px;text-align:center">
+<div style="color:${T2};font-size:10.5px">Add more readings to deepen your pattern map</div></div>
+</div>`}
+}
+];
+
+const names=['Home','Type select','People picker','Report','Question mode','Share card','Constellation'];
+const navMap={0:'bn0',1:'bn0',2:'bn2',3:'bn0',4:'bn0',5:'bnu',6:'bn6'};
+
+function show(i){
+  document.getElementById('screen-area').innerHTML=screens[i].html();
+  document.getElementById('sdesc').textContent=screens[i].desc;
+  document.querySelectorAll('.sn-btn').forEach((b,j)=>{
+    b.classList.toggle('active',j===i);
+  });
+  document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
+  const active=navMap[i];
+  if(active){ const el=document.getElementById(active); if(el) el.classList.add('active'); }
+}
+
+const nav=document.getElementById('snav');
+names.forEach((name,i)=>{
+  const btn=document.createElement('button');
+  btn.className='sn-btn'+(i===0?' active':'');
+  btn.textContent=name;
+  btn.onclick=()=>show(i);
+  nav.appendChild(btn);
+});
+show(0);
+</script>
+</body>
+</html>
