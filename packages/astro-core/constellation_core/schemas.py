@@ -157,6 +157,7 @@ class DynamicDetail(BaseModel):
     related_dynamics: list[str] = Field(default_factory=list)
     repair_prompt: str | None = None
     motif_category: str | None = None
+    theme_tags: list[str] = Field(default_factory=list)
     priority: int
     section: str
 
@@ -238,3 +239,4 @@ class ReportSynthesisPacket(BaseModel):
     dynamic_details: list[DynamicDetail] = Field(default_factory=list)
     temperament_summary: dict[str, object] | None = None
     relationship_rulership_summary: dict[str, object] | None = None
+    active_themes: list[str] = Field(default_factory=list)

@@ -34,7 +34,27 @@ let enhancementRequestId = 0;
 let searchResults = { a: [], b: [] };
 let placeSelections = { a: null, b: null };
 let shouldScrollToReport = false;
+let currentThemeIndex = [];
+let savedBirthProfiles = [];
+let activeThemeFilter = null;
+let currentReportTitle = "Latest Relationship Map";
 const draftKey = "constellation.relationshipForm.v1";
+
+// Relationship type config for type grid (PR 3)
+const RELATIONSHIP_TYPES = {
+  romantic: { label: "Romantic", color: "#C47A8A" },
+  long_term_partner: { label: "Committed", color: "#A86080" },
+  dating_exploring: { label: "Dating", color: "#C47A8A" },
+  ex: { label: "Ex", color: "#505A72" },
+  unresolved_connection: { label: "Unresolved", color: "#505A72" },
+  friend: { label: "Friendship", color: "#6A9BC4" },
+  collaborator: { label: "Work", color: "#7A8B9B" },
+  parent: { label: "Family", color: "#5AADA0" },
+  sibling: { label: "Family", color: "#5AADA0" },
+  child: { label: "Family", color: "#5AADA0" },
+  family_other: { label: "Family", color: "#5AADA0" },
+  admired_figure: { label: "Mentor", color: "#7A8B9B" },
+};
 const constellationPatternsEmptyState = "Your constellation is still forming. Save relationships to begin seeing recurring patterns across your field.";
 const noReportsForSavedRelationshipsEmptyState = "Generate maps for your saved relationships to begin seeing what repeats.";
 const oneMapActiveEmptyState = "One map is active. Add more saved maps to see broader patterns in your constellation.";
@@ -112,6 +132,7 @@ function setForm(values) {
   updateTimeKnown("b");
   syncPlaceSelectionFromForm("a");
   syncPlaceSelectionFromForm("b");
+  syncTypeGrid(values.relationship_type || fieldValue("relationship_type", "romantic"));
 }
 
 function formValues() {
@@ -142,6 +163,49 @@ function updateTimeKnown(prefix) {
   if (!timeField) return;
   timeField.disabled = !known;
   if (!known) timeField.value = "";
+  const note = document.getElementById(`${prefix}_time_note`);
+  if (note) note.classList.toggle("visible", !known);
+}
+
+// PR 3: Type grid sync
+function syncTypeGrid(type) {
+  for (const card of document.querySelectorAll(".type-card")) {
+    card.classList.toggle("selected", card.dataset.type === type);
+  }
+}
+
+// PR 4: Vault picker rendering
+function renderVaultItem(prefix, profile) {
+  const item = document.createElement("div");
+  item.className = "vault-item";
+  item.innerHTML = `<div><div class="vault-item-name">${escapeHtml(profile.display_name || "Unknown")}</div><div class="vault-item-meta">${escapeHtml(profile.birth_date || "")}${profile.birthplace_label ? " · " + escapeHtml(profile.birthplace_label) : ""}</div></div>`;
+  item.addEventListener("click", () => {
+    setForm({ ...formValues(), ...birthProfileToFormValues(prefix, profile) });
+    statusEl.textContent = `${escapeHtml(profile.display_name || "Profile")} filled in.`;
+  });
+  return item;
+}
+
+function renderVaultPicker(prefix, profiles) {
+  const section = document.getElementById(`${prefix}_vault_section`);
+  const list = document.getElementById(`${prefix}_vault_list`);
+  if (!section || !list) return;
+  if (!profiles.length) { section.classList.add("hidden"); return; }
+  list.innerHTML = "";
+  for (const profile of profiles.slice(0, 6)) {
+    list.appendChild(renderVaultItem(prefix, profile));
+  }
+  section.classList.remove("hidden");
+}
+
+async function loadBirthProfiles() {
+  try {
+    const response = await fetch("/birth-profiles");
+    if (!response.ok) return;
+    savedBirthProfiles = await response.json();
+    renderVaultPicker("a", savedBirthProfiles);
+    renderVaultPicker("b", savedBirthProfiles);
+  } catch { /* vault unavailable — silent */ }
 }
 
 function setPlaceWarning(prefix, message) {
@@ -293,6 +357,176 @@ function escapeHtml(value) {
 
 function inlineMarkdown(value) {
   return escapeHtml(value).replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+}
+
+// ── PR 2: Structured report renderer ─────────────────────────────────────────
+
+function signalDots(priority) {
+  const filled = priority >= 80 ? 5 : priority >= 65 ? 4 : priority >= 50 ? 3 : priority >= 35 ? 2 : 1;
+  return Array.from({ length: 5 }, (_, i) =>
+    `<span class="signal-dot${i < filled ? " filled" : ""}"></span>`
+  ).join("");
+}
+
+function frameTagFromDetail(detail) {
+  const tags = detail.theme_tags || [];
+  if (tags.includes("repair-practice")) return "Where repair opens";
+  if (tags.includes("conflict-friction")) return "What's harder";
+  if (tags.includes("eros-attraction")) return "The attraction";
+  if (tags.includes("trust-vulnerability")) return "Where it deepens";
+  if (tags.includes("communication")) return "How you talk";
+  if (tags.includes("romance-play")) return "What feels playful";
+  if (tags.includes("partnership-commitment")) return "The structure";
+  if (tags.includes("unconscious-spiritual")) return "The undercurrent";
+  if (tags.includes("home-roots")) return "What's underneath";
+  if (tags.includes("composite-field")) return "In the shared field";
+  if (tags.includes("emotional-dynamics")) return "What's familiar";
+  if (tags.includes("chart-check")) return "Chart note";
+  return "What's present";
+}
+
+function patternCardHtml(detail) {
+  const frame = frameTagFromDetail(detail);
+  const priority = detail.priority || 0;
+  const tags = detail.theme_tags || [];
+  const isHard = tags.includes("conflict-friction") && !tags.includes("repair-practice");
+  const themeAttrs = tags.length ? `data-themes="${tags.join(",")}"` : "";
+  const cardClass = isHard ? "pattern-card-beta pattern-card-hard" : "pattern-card-beta";
+  const factors = (detail.technical_factors || []).map((item) => `<li>${inlineMarkdown(item)}</li>`).join("");
+  const related = (detail.related_dynamics || []).slice(0, 4).map((item) => `<li>${inlineMarkdown(item)}</li>`).join("");
+  const factorsBlock = factors ? `<h4>Technical factors</h4><ul>${factors}</ul>` : "";
+  const relatedBlock = related ? `<h4>Related dynamics</h4><ul>${related}</ul>` : "";
+  const repair = detail.repair_prompt ? `<p class="repair-prompt"><strong>Repair:</strong> ${inlineMarkdown(detail.repair_prompt)}</p>` : "";
+  const detailId = detail.id ? ` id="${escapeHtml(detail.id)}"` : "";
+  return `
+    <article class="${cardClass}"${detailId} ${themeAttrs}>
+      <div class="pattern-card-header">
+        <span class="frame-tag">${escapeHtml(frame)}</span>
+        <span class="signal-dots" aria-label="Signal strength ${Math.round(priority / 20)} of 5">${signalDots(priority)}</span>
+      </div>
+      <h3 class="pattern-card-title">${inlineMarkdown(detail.title || "")}</h3>
+      <p class="pattern-card-summary">${inlineMarkdown(detail.summary || "")}</p>
+      <details class="read-more-detail">
+        <summary>Read more</summary>
+        <div class="read-more-content">
+          <p>${inlineMarkdown(detail.read_more || detail.summary || "")}</p>
+          ${factorsBlock}${relatedBlock}${repair}
+        </div>
+      </details>
+    </article>`;
+}
+
+function parseReportSections(md) {
+  const sections = [];
+  let current = null;
+  let currentPattern = null;
+  for (const rawLine of md.split("\n")) {
+    const line = rawLine.trimEnd();
+    if (line.startsWith("## ")) {
+      if (current) sections.push(current);
+      current = { title: line.slice(3), leadLines: [], patterns: [] };
+      currentPattern = null;
+    } else if (line.startsWith("### ") && current) {
+      currentPattern = { title: line.slice(4), lines: [] };
+      current.patterns.push(currentPattern);
+    } else if (current) {
+      if (currentPattern) currentPattern.lines.push(line);
+      else current.leadLines.push(line);
+    }
+  }
+  if (current) sections.push(current);
+  return sections;
+}
+
+function renderReportStructured(md, dynamicDetails = []) {
+  const sections = parseReportSections(md);
+  const detailsByTitle = new Map((dynamicDetails || []).map((d) => [d.title, d]));
+  let html = "";
+
+  for (const section of sections) {
+    const lead = section.leadLines.filter((l) => l.trim()).join(" ").trim();
+    const patternCards = section.patterns
+      .map((p) => {
+        const detail = detailsByTitle.get(p.title);
+        return detail ? patternCardHtml(detail) : `<h3>${inlineMarkdown(p.title)}</h3>`;
+      })
+      .join("");
+
+    if (section.title === "Overview") {
+      if (lead) {
+        const bondLabel = fieldValue("a_name") && fieldValue("b_name")
+          ? `${escapeHtml(fieldValue("a_name"))} &amp; ${escapeHtml(fieldValue("b_name"))}`
+          : "";
+        const eyebrow = bondLabel ? `<div class="bond-eyebrow">${bondLabel}</div>` : "";
+        html += `<div class="bond-card">${eyebrow}<p>${inlineMarkdown(lead)}</p></div>`;
+      }
+      if (patternCards) {
+        html += `<div class="pattern-card-list-beta">${patternCards}</div>`;
+      }
+    } else {
+      const isOpen = section.title === "Composite Field" ? " open" : "";
+      const sectionLead = lead ? `<p>${inlineMarkdown(lead)}</p>` : "";
+      const sectionCards = patternCards ? `<div class="pattern-card-list-beta">${patternCards}</div>` : "";
+      html += `<details class="report-section"${isOpen}><summary>${escapeHtml(section.title)}</summary>${sectionLead}${sectionCards}</details>`;
+    }
+  }
+  return html || markdownToHtml(md, dynamicDetails);
+}
+
+// PR 6: Theme pills rendering
+function renderThemePills(themeIndex) {
+  const pillsSection = document.getElementById("theme-pills-section");
+  const pillsContainer = document.getElementById("theme-pills");
+  if (!pillsSection || !pillsContainer) return;
+  const present = themeIndex.filter((t) => t.present);
+  if (!present.length) { pillsSection.classList.add("hidden"); return; }
+
+  pillsContainer.innerHTML = "";
+  const allBtn = document.createElement("button");
+  allBtn.type = "button";
+  allBtn.className = "theme-pill active";
+  allBtn.textContent = "All";
+  allBtn.dataset.theme = "";
+  allBtn.addEventListener("click", () => applyThemeFilter(null, themeIndex));
+  pillsContainer.appendChild(allBtn);
+
+  const sorted = [...themeIndex].sort((a, b) => {
+    const order = { primary: 0, secondary: 1, background: 2, absent: 3 };
+    return (order[a.strength] ?? 3) - (order[b.strength] ?? 3);
+  });
+
+  for (const theme of sorted) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = theme.present ? "theme-pill" : "theme-pill absent";
+    btn.textContent = theme.label;
+    btn.dataset.theme = theme.theme;
+    if (theme.present) {
+      btn.addEventListener("click", () => applyThemeFilter(theme.theme, themeIndex));
+    }
+    pillsContainer.appendChild(btn);
+  }
+  pillsSection.classList.remove("hidden");
+}
+
+function applyThemeFilter(themeSlug, themeIndex) {
+  activeThemeFilter = themeSlug;
+  const allCards = document.querySelectorAll(".pattern-card-beta");
+  const allPills = document.querySelectorAll(".theme-pill");
+
+  for (const pill of allPills) {
+    pill.classList.toggle("active", pill.dataset.theme === (themeSlug || ""));
+  }
+
+  if (!themeSlug) {
+    for (const card of allCards) card.style.display = "";
+    return;
+  }
+
+  for (const card of allCards) {
+    const tags = (card.dataset.themes || "").split(",").filter(Boolean);
+    card.style.display = tags.includes(themeSlug) ? "" : "none";
+  }
 }
 
 function dynamicDetailHtml(detail) {
@@ -475,7 +709,9 @@ function setReportMarkdown(markdownText, dynamicDetails = currentDynamicDetails)
   currentMarkdown = markdownText;
   currentDynamicDetails = dynamicDetails || [];
   markdown.textContent = currentMarkdown;
-  preview.innerHTML = markdownToHtml(currentMarkdown, currentDynamicDetails);
+  preview.innerHTML = currentDynamicDetails.length
+    ? renderReportStructured(currentMarkdown, currentDynamicDetails)
+    : markdownToHtml(currentMarkdown, currentDynamicDetails);
   updateDownload(currentMarkdown);
 }
 
@@ -540,7 +776,13 @@ function clearReportState() {
   currentMarkdown = "";
   currentSynthesisPacket = null;
   currentDynamicDetails = [];
+  currentThemeIndex = [];
+  activeThemeFilter = null;
   currentSavedReportId = null;
+  document.getElementById("theme-pills-section")?.classList.add("hidden");
+  currentReportTitle = "Latest Relationship Map";
+  const reportHeading = document.querySelector("#report-section h2");
+  if (reportHeading) reportHeading.textContent = currentReportTitle;
   renderDiagnostics(null);
   resetFeedbackState();
   markdown.textContent = "Generate a relationship map to see Markdown.";
@@ -598,8 +840,17 @@ async function generateSavedReport(relationshipId) {
   currentSavedReportId = payload.id || null;
   currentSynthesisPacket = payload.synthesis_packet || null;
   currentDynamicDetails = payload.dynamic_details || [];
+  currentThemeIndex = payload.theme_index || [];
   renderDiagnostics(payload.diagnostics || null);
   setReportMarkdown(standardMarkdown);
+  renderThemePills(currentThemeIndex);
+  const nameA = fieldValue("a_name");
+  const nameB = fieldValue("b_name");
+  if (nameA && nameB) {
+    currentReportTitle = `${nameA} & ${nameB}`;
+    const reportHeading = document.querySelector("#report-section h2");
+    if (reportHeading) reportHeading.textContent = currentReportTitle;
+  }
   setTab("preview");
   setReportStatus("Relationship Map ready.");
   showFeedbackForCurrentReport();
@@ -983,8 +1234,19 @@ form.elements.b_place_result.addEventListener("change", (event) => { const place
 document.getElementById("a_search_button").addEventListener("click", () => searchPlace("a"));
 document.getElementById("b_search_button").addEventListener("click", () => searchPlace("b"));
 
+// PR 3: Type card selection
+for (const card of document.querySelectorAll(".type-card")) {
+  card.addEventListener("click", () => {
+    const type = card.dataset.type;
+    const select = document.getElementById("relationship_type_select");
+    if (select) select.value = type;
+    syncTypeGrid(type);
+  });
+}
+
 setForm(defaultState);
 updateRelationshipMode();
 loadProviderStatus();
 loadPlaces().catch(() => {});
 loadConstellation().catch(() => { constellationEl.innerHTML = "Constellation view unavailable."; });
+loadBirthProfiles().catch(() => {});
