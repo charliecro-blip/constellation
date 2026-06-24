@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Constellation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/styles.css?v=report-flow-chart-check-20260610" />
 </head>
 <body>
@@ -13,15 +16,16 @@
     <h1>Your relationship observatory</h1>
     <p class="tagline">Constellation maps the patterns between people.</p>
     <p class="muted intro-copy">Create Relationship Maps to understand individual bonds, then save them to see what keeps repeating across your relational field.</p>
-    <p class="guardrail-copy">No compatibility scores. No fate claims. Just relational patterns, timing, and places where the bond asks for attention.</p>
+    <p class="guardrail-copy">No compatibility scores. No fate claims. Just relational patterns and places where the bond asks for attention.</p>
     <div class="start-grid">
       <a href="#you-section" class="quick-link">Add yourself</a>
-      <a href="#someone-section" class="quick-link">Add a relationship</a>
-      <a href="#constellation-section" class="quick-link">View constellation (optional)</a>
+      <a href="#someone-section" class="quick-link">Add someone</a>
+      <a href="#constellation-section" class="quick-link">View saved maps</a>
     </div>
     <details class="how-it-works">
       <summary>How it works</summary>
       <ol>
+        <li>Choose what kind of relationship this is.</li>
         <li>Enter two birth charts.</li>
         <li>Add relationship context if you want a more focused reading.</li>
         <li>Generate a Relationship Map.</li>
@@ -35,24 +39,88 @@
   <section class="grid">
     <section id="constellation-section" class="card stack">
       <div class="actions" style="justify-content: space-between; gap: 12px;">
-        <div><h2>Constellation View</h2><p class="muted">Saved relationship snapshots across your field.</p></div>
-        <div class="actions"><button class="secondary" id="refresh_constellation" type="button">Refresh</button><button class="secondary" id="new_relationship_top" type="button">New Relationship</button></div>
+        <div><h2>Constellation View</h2><p class="muted">Saved relationship maps across your world.</p></div>
+        <div class="actions"><button class="secondary" id="refresh_constellation" type="button">Refresh</button><button class="secondary" id="new_relationship_top" type="button">New Map</button></div>
       </div>
       <div id="constellation" class="constellation-list">Loading saved relationships…</div>
     </section>
 
     <form id="relationship-form" class="card stack">
       <div class="form-mode-banner"><strong id="relationship_mode_title">New Relationship</strong><span id="relationship_mode_detail">Start a clean relationship map.</span></div>
+
+      <!-- Type selector (PR 3) -->
+      <div class="type-selector-section tight">
+        <div class="type-selector-label">What kind of connection is this?</div>
+        <p class="field-helper">Context helps the map know what kind of bond this is: romantic, creative, unresolved, new, long-term, or still forming.</p>
+        <div class="type-grid" id="type-grid" role="group" aria-label="Relationship type">
+          <button type="button" class="type-card" data-type="romantic">
+            <span class="type-card-dot" style="background:#C47A8A"></span>
+            <span class="type-card-label">Romantic</span>
+            <span class="type-card-sub">Current / dating</span>
+          </button>
+          <button type="button" class="type-card" data-type="long_term_partner">
+            <span class="type-card-dot" style="background:#A86080"></span>
+            <span class="type-card-label">Committed</span>
+            <span class="type-card-sub">Long-term partnership</span>
+          </button>
+          <button type="button" class="type-card" data-type="ex">
+            <span class="type-card-dot" style="background:#505A72"></span>
+            <span class="type-card-label">Ex</span>
+            <span class="type-card-sub">Past or unresolved</span>
+          </button>
+          <button type="button" class="type-card" data-type="friend">
+            <span class="type-card-dot" style="background:#6A9BC4"></span>
+            <span class="type-card-label">Friendship</span>
+            <span class="type-card-sub">Close or complicated</span>
+          </button>
+          <button type="button" class="type-card" data-type="parent">
+            <span class="type-card-dot" style="background:#5AADA0"></span>
+            <span class="type-card-label">Family</span>
+            <span class="type-card-sub">Parent, sibling, kin</span>
+          </button>
+          <button type="button" class="type-card" data-type="collaborator">
+            <span class="type-card-dot" style="background:#7A8B9B"></span>
+            <span class="type-card-label">Work</span>
+            <span class="type-card-sub">Collaborator / mentor</span>
+          </button>
+        </div>
+        <!-- Hidden actual select kept for non-JS and API payload -->
+        <select name="relationship_type" id="relationship_type_select" style="display:none">
+          <option value="romantic" selected>Romantic / current</option>
+          <option value="long_term_partner">Committed (long-term)</option>
+          <option value="dating_exploring">Dating / exploring</option>
+          <option value="ex">Ex</option>
+          <option value="unresolved_connection">Unresolved connection</option>
+          <option value="friend">Friend</option>
+          <option value="collaborator">Collaborator</option>
+          <option value="parent">Parent</option>
+          <option value="sibling">Sibling</option>
+          <option value="child">Child</option>
+          <option value="family_other">Family / other</option>
+          <option value="admired_figure">Admired figure / mentor</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+
       <div id="you-section" class="tight">
         <h2>Start with you</h2>
-        <p class="small-note">Your birth information anchors this relationship map.</p>
+
+        <!-- Vault picker for person A (PR 4) -->
+        <div id="a_vault_section" class="vault-section hidden">
+          <div class="vault-label">From your people</div>
+          <div id="a_vault_list" class="vault-list"></div>
+        </div>
+
         <div class="person-grid">
           <label>Your name<input name="a_name" placeholder="Your name" required /></label>
           <label>Your birth date<input name="a_date" type="date" placeholder="YYYY-MM-DD" required /></label>
-          <label>Your birth time<input name="a_time" type="time" placeholder="HH:MM" /></label>
-          <label>Is your birth time known?<select name="a_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
+          <label>Your birth time<input name="a_time" type="time" placeholder="HH:MM" /><span id="a_time_note" class="time-note">· Houses unavailable without a birth time</span></label>
+          <label>Birth time known?<select name="a_time_known"><option value="true" selected>Yes</option><option value="false">No — use approximate or skip</option></select></label>
           <label>Where were you born?<input name="a_place_query" placeholder="Austin, TX" /></label>
-          <label id="a_place_result_label" class="place-result hidden">Select matching birthplace<select name="a_place_result"><option value="">Search to see options</option></select></label><p id="a_place_warning" class="small-note hidden" aria-live="polite"></p>
+          <label id="a_place_result_label" class="place-result hidden">Select matching birthplace<select name="a_place_result"><option value="">Search to see options</option></select></label>
+          <p id="a_place_warning" class="small-note hidden" aria-live="polite"></p>
         </div>
         <div class="actions"><button class="secondary" type="button" id="a_search_button">Search city</button></div>
         <p class="hint">Search for the city where you were born. We'll use this to calculate the chart.</p>
@@ -63,51 +131,61 @@
 
       <div id="someone-section" class="tight">
         <h2>Add someone to your constellation</h2>
-        <p class="small-note">Their birth information helps map the connection between you.</p>
+
+        <!-- Vault picker for person B (PR 4) -->
+        <div id="b_vault_section" class="vault-section hidden">
+          <div class="vault-label">From your people</div>
+          <div id="b_vault_list" class="vault-list"></div>
+        </div>
+
         <div class="person-grid">
           <label>Their name<input name="b_name" placeholder="Their name" required /></label>
           <label>Their birth date<input name="b_date" type="date" placeholder="YYYY-MM-DD" required /></label>
-          <label>Their birth time<input name="b_time" type="time" placeholder="HH:MM" /></label>
-          <label>Is their birth time known?<select name="b_time_known"><option value="true" selected>Yes</option><option value="false">No</option></select></label>
+          <label>Their birth time<input name="b_time" type="time" placeholder="HH:MM" /><span id="b_time_note" class="time-note">· Houses unavailable without a birth time</span></label>
+          <label>Birth time known?<select name="b_time_known"><option value="true" selected>Yes</option><option value="false">No — use approximate or skip</option></select></label>
           <label>Where were they born?<input name="b_place_query" placeholder="London, UK" /></label>
-          <label id="b_place_result_label" class="place-result hidden">Select matching birthplace<select name="b_place_result"><option value="">Search to see options</option></select></label><p id="b_place_warning" class="small-note hidden" aria-live="polite"></p>
+          <label id="b_place_result_label" class="place-result hidden">Select matching birthplace<select name="b_place_result"><option value="">Search to see options</option></select></label>
+          <p id="b_place_warning" class="small-note hidden" aria-live="polite"></p>
         </div>
         <div class="actions"><button class="secondary" type="button" id="b_search_button">Search city</button></div>
-        <p class="hint">Search for their birth city so we can calculate this relationship map.</p>
         <details class="advanced-place"><summary>Advanced: enter coordinates manually</summary><p class="small-note">Use this only for edge cases or precise birthplace corrections.</p><div class="person-grid"><label>Timezone<input name="b_timezone" value="" required /></label><label>Latitude<input name="b_latitude" type="number" step="0.0001" value="" required /></label><label>Longitude<input name="b_longitude" type="number" step="0.0001" value="" required /></label></div></details>
       </div>
 
       <div class="divider"></div>
 
       <div class="tight">
-        <h2>Map this relationship</h2>
-        <div class="context-grid">
-          <label>What kind of connection is this?<span class="field-helper">Context helps the map know what kind of bond this is: romantic, creative, unresolved, new, long-term, or still forming.</span><select name="relationship_type"><option value="romantic" selected>Romantic / current</option><option value="dating_exploring">Dating / exploring</option><option value="ex">Ex</option><option value="unresolved_connection">Unresolved connection</option><option value="friend">Friend</option><option value="collaborator">Collaborator</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="child">Child</option><option value="family_other">Family / other</option><option value="admired_figure">Admired figure / mentor</option><option value="other">Other</option></select></label>
-        </div>
+        <h2>Context</h2>
         <label>What are you hoping to understand?<span class="field-helper">Optional. Ask what you most want this map to clarify.</span><textarea name="user_question" placeholder="What is the dynamic between us?"></textarea></label>
         <label>Anything important about this connection?<span class="field-helper">Optional. A few words about how this connection began or what it feels like now.</span><textarea name="origin_story" placeholder="Add context if you want a more grounded reading."></textarea></label>
         <details class="advanced-place"><summary>Advanced: chart settings</summary><label>House system<select name="house_system"><option value="whole_sign">Whole Sign</option><option value="placidus" selected>Placidus</option><option value="porphyry">Porphyry</option><option value="regiomontanus">Regiomontanus</option><option value="equal">Equal</option></select></label></details>
       </div>
 
       <div class="actions sticky-actions primary-actions">
-        <button class="secondary" id="new_relationship" type="button">New Relationship</button>
+        <button class="secondary" id="new_relationship" type="button">New Map</button>
         <button class="secondary" id="save_relationship" type="button">Save Relationship</button>
         <button id="generate" type="submit">Generate Relationship Map</button>
-        <button class="secondary hidden" id="regenerate_relationship" type="button">Regenerate Map</button>
+        <button class="secondary hidden" id="regenerate_relationship" type="button">Regenerate</button>
         <button class="secondary danger-action hidden" id="delete_relationship" type="button">Delete Relationship</button>
       </div>
       <div id="status" class="status">Ready.</div>
-      <details class="advanced-place developer-actions"><summary>Developer diagnostics</summary><div class="actions"><button class="secondary" id="save" type="button">Save browser draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample data</button></div></details>
+      <details class="advanced-place developer-actions"><summary>Developer tools</summary><div class="actions"><button class="secondary" id="save" type="button">Save draft</button><button class="secondary" id="restore" type="button">Restore draft</button><button class="secondary" id="sample" type="button">Load sample</button></div></details>
     </form>
 
     <section id="report-section" class="card stack report-panel">
       <h2>Latest Relationship Map</h2>
       <p id="report_status" class="small-note" aria-live="polite"></p>
+
+      <!-- Theme pills (PR 6) -->
+      <div id="theme-pills-section" class="theme-pills-section hidden">
+        <div class="theme-pills-label">Explore by theme</div>
+        <div id="theme-pills" class="theme-pills"></div>
+      </div>
+
       <div id="preview" class="output-html empty-state"><strong>Start with two people to generate a Relationship Map.</strong><p>The map will show central themes, friction points, repair paths, and the larger field between the charts.</p></div>
       <details id="feedback-panel" class="feedback-panel hidden">
         <summary>How did this map land?</summary>
         <form id="feedback-form" class="feedback-form stack">
-          <p class="small-note">Optional tester notes help improve the map while keeping the report calm and non-deterministic.</p>
+          <p class="small-note">Optional tester notes help improve the map.</p>
           <div class="feedback-choice-row" role="group" aria-label="Overall usefulness">
             <label><input type="radio" name="usefulness_rating" value="5" /> Landed</label>
             <label><input type="radio" name="usefulness_rating" value="3" /> Mixed</label>
@@ -132,7 +210,7 @@
         </form>
       </details>
       <details id="feedback-summary-panel" class="advanced-place developer-actions hidden"><summary>Tester feedback</summary><div id="feedback-summary" class="small-note">No tester feedback yet.</div></details>
-      <details class="advanced-place developer-actions"><summary>Export / developer tools</summary><div class="actions" aria-label="Markdown export tools"><button class="secondary" id="markdown-tab" type="button">View Markdown</button><a id="download" class="download-link secondary hidden" download="relationship-field-map.md">Download Markdown</a><button class="secondary" id="copy" type="button">Copy Markdown</button></div><p class="small-note">Interpretive prose may be refined using AI. Chart calculations remain deterministic.</p><pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre><details id="diagnostics-panel" class="advanced-place developer-actions hidden"><summary>Developer diagnostics</summary><pre id="diagnostics">Diagnostics are disabled.</pre></details></details>
+      <details class="advanced-place developer-actions"><summary>Export / developer tools</summary><div class="actions" aria-label="Markdown export tools"><button class="secondary" id="markdown-tab" type="button">View Markdown</button><a id="download" class="download-link secondary hidden" download="relationship-map.md">Download Markdown</a><button class="secondary" id="copy" type="button">Copy Markdown</button></div><p class="small-note">Interpretive prose may be refined using AI. Chart calculations remain deterministic.</p><pre id="markdown" class="hidden">Generate a relationship map to see Markdown.</pre><details id="diagnostics-panel" class="advanced-place developer-actions hidden"><summary>Developer diagnostics</summary><pre id="diagnostics">Diagnostics are disabled.</pre></details></details>
     </section>
   </section>
 </main>

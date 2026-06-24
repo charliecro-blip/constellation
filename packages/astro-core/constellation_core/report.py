@@ -35,18 +35,30 @@ from .schemas import (
     ReportPatternDiagnostics,
     ReportSynthesisPacket,
 )
+from .theme_index import ThemePresence, build_theme_index, theme_tags_for_category
 from .weighting import communication_context_requested, public_life_context_requested, weight_patterns
+
+# Stable machine-readable anchors for each fixed report section.
+SECTION_ANCHORS: dict[str, str] = {
+    "Overview": "overview",
+    "Composite Field": "composite-field",
+    "Friction and Repair": "friction-repair",
+    "Calculated chart check": "chart-check",
+    "Context Notes": "context-notes",
+}
 
 
 class ReportSection(BaseModel):
     title: str
     body: str
+    anchor: str | None = None
 
 
 class RelationshipReport(BaseModel):
     title: str
     sections: list[ReportSection]
     dynamic_details: list[DynamicDetail] = Field(default_factory=list)
+    theme_index: list[ThemePresence] = Field(default_factory=list)
 
     def to_markdown(self) -> str:
         lines = [f"# {self.title}", ""]
@@ -925,6 +937,14 @@ def _dynamic_detail_for_pattern(relationship: RelationshipCalculation, pattern: 
     related = _related_titles(pattern, all_patterns)
     if related:
         read_more += f" Related dynamics to compare: {', '.join(related[:3])}."
+    registry_cat = _registry_category(pattern)
+    repair_prompt = REPAIR_PRINCIPLES_BY_CATEGORY.get(registry_cat)
+    tags = theme_tags_for_category(
+        convergence_category_for(pattern),
+        section=section,
+        has_repair_prompt=bool(repair_prompt),
+        layer=pattern.layer,
+    )
     return DynamicDetail(
         id=f"detail-{pattern.id}",
         title=pattern.title,
@@ -933,8 +953,9 @@ def _dynamic_detail_for_pattern(relationship: RelationshipCalculation, pattern: 
         read_more=read_more,
         technical_factors=technical[:6],
         related_dynamics=related,
-        repair_prompt=REPAIR_PRINCIPLES_BY_CATEGORY.get(_registry_category(pattern)),
+        repair_prompt=repair_prompt,
         motif_category=convergence_category_for(pattern),
+        theme_tags=tags,
         priority=pattern.priority,
         section=section,
     )
@@ -1204,6 +1225,15 @@ def build_report_synthesis_packet(
     composite = _composite_patterns(patterns)
     lead = central[0] if central else (patterns[0] if patterns else None)
 
+    dynamic_details = build_dynamic_details(relationship, patterns, context)
+    # Compute theme index from the same weighted patterns the report uses.
+    theme_index = build_theme_index(patterns, [], dynamic_details)
+    # active_themes: primary/secondary themes only, max 5, for AI orientation (read-only).
+    active_themes = [
+        t.theme for t in theme_index
+        if t.strength in {"primary", "secondary"}
+    ][:5]
+
     return ReportSynthesisPacket(
         relationship_type=context.relationship_type if context else None,
         status=context.status if context else None,
@@ -1216,7 +1246,7 @@ def build_report_synthesis_packet(
         repair_themes=_repair_theme_list(patterns),
         composite_themes=[_pattern_summary(pattern) for pattern in composite[:3]],
         chart_sanity_summary=_chart_check_body(relationship),
-        dynamic_details=build_dynamic_details(relationship, patterns, context),
+        dynamic_details=dynamic_details,
         temperament_summary=compare_temperaments(relationship.person_a, relationship.person_b),
         relationship_rulership_summary={
             "person_a": relationship_significator_summary(relationship.person_a),
@@ -1229,6 +1259,7 @@ def build_report_synthesis_packet(
                 and pattern.priority >= 70
             ][:4],
         },
+        active_themes=active_themes,
     )
 
 
@@ -1443,43 +1474,42 @@ def generate_relationship_report(
     person_a_name = relationship.person_a.name
     person_b_name = relationship.person_b.name
     title = f"Relationship Field Map — {person_a_name} / {person_b_name}"
+
+    def _section(section_title: str, body: str) -> ReportSection:
+        anchor = SECTION_ANCHORS.get(section_title)
+        return ReportSection(title=section_title, body=body, anchor=anchor)
+
+    def _profile_section(name: str, body: str) -> ReportSection:
+        slug = "profile-a" if name == person_a_name else "profile-b"
+        return ReportSection(title=f"{name} Relationship Profile", body=body, anchor=slug)
+
+    def _activation_section(activator: str, activated: str, patterns_list: list[Pattern]) -> ReportSection:
+        slug = "activation-a-to-b" if activator == person_a_name else "activation-b-to-a"
+        body = _signature_block_for_relationship(
+            relationship, patterns_list, limit=3,
+            empty_message=f"No strong directional synastry patterns show {activator} specifically activating {activated} in the current selection.",
+        )
+        return ReportSection(title=f"How {activator} Activates {activated}", body=body, anchor=slug)
+
     sections = [
-        ReportSection(
-            title="Overview",
-            body=_overview(relationship, central, composite, patterns),
-        ),
-        ReportSection(
-            title=f"{person_a_name} Relationship Profile",
-            body=_profile_body(relationship.person_a, patterns),
-        ),
-        ReportSection(
-            title=f"{person_b_name} Relationship Profile",
-            body=_profile_body(relationship.person_b, patterns),
-        ),
-        ReportSection(
-            title=f"How {person_a_name} Activates {person_b_name}",
-            body=_signature_block_for_relationship(relationship, a_to_b, limit=3, empty_message=f"No strong directional synastry patterns show {person_a_name} specifically activating {person_b_name} in the current selection."),
-        ),
-        ReportSection(
-            title=f"How {person_b_name} Activates {person_a_name}",
-            body=_signature_block_for_relationship(relationship, b_to_a, limit=3, empty_message=f"No strong directional synastry patterns show {person_b_name} specifically activating {person_a_name} in the current selection."),
-        ),
-        ReportSection(
-            title="Composite Field",
-            body=_composite_field_body(composite),
-        ),
-        ReportSection(title="Friction and Repair", body=_friction_loop(patterns)),
-        ReportSection(
-            title="Calculated chart check",
-            body=_chart_check_body(relationship),
-        ),
+        _section("Overview", _overview(relationship, central, composite, patterns)),
+        _profile_section(person_a_name, _profile_body(relationship.person_a, patterns)),
+        _profile_section(person_b_name, _profile_body(relationship.person_b, patterns)),
+        _activation_section(person_a_name, person_b_name, a_to_b),
+        _activation_section(person_b_name, person_a_name, b_to_a),
+        _section("Composite Field", _composite_field_body(composite)),
+        _section("Friction and Repair", _friction_loop(patterns)),
+        _section("Calculated chart check", _chart_check_body(relationship)),
     ]
 
     context_body = _context_note(context)
     if context_body:
-        sections.append(ReportSection(title="Context Notes", body=context_body))
+        sections.append(ReportSection(title="Context Notes", body=context_body, anchor="context-notes"))
 
-    return RelationshipReport(title=title, sections=sections, dynamic_details=build_dynamic_details(relationship, patterns, context))
+    dynamic_details = build_dynamic_details(relationship, patterns, context)
+    theme_index = build_theme_index(patterns, sections, dynamic_details)
+
+    return RelationshipReport(title=title, sections=sections, dynamic_details=dynamic_details, theme_index=theme_index)
 
 def generate_report_from_birth_data(
     person_a: BirthData,
